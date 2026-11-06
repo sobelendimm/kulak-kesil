@@ -52,7 +52,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from . import config
-from .i18n import _
+from .i18n import N_, Metin, _, metin_kaydi
 from .models import ALL_SINK_PROFILES, SINK_PREFIX, sink_name
 
 log = logging.getLogger("oto_eq.onarim")
@@ -207,10 +207,10 @@ def _kontrol_cikislar(status: dict, now: float, g: Gozlem | None, d: Durum, a: A
     if unit and unit.get("LoadState") not in (None, "loaded"):
         if d.izin("eksik_bildirim", now, EKSIK_BILDIRIM_ARALIK):
             d.isaretle("eksik_bildirim", now)
-            return [Eylem(BILDIRIM, _("EQ çıkışları eksik ve {servis} kurulu değil").format(
+            return [Eylem(BILDIRIM, Metin(N_("EQ çıkışları eksik ve {servis} kurulu değil"),
                               servis=SINKS_UNIT),
                           "eksik_bildirim", baslik=_("Kulak Kesil: EQ çıkışları yok"),
-                          govde=_("Eksik: {liste}. Servis kurulu değil; {komut} ile kurun.").format(
+                          govde=Metin(N_("Eksik: {liste}. Servis kurulu değil; {komut} ile kurun."),
                               liste=liste, komut="./install.sh"))]
         return []
     if unit.get("ActiveState") in ("activating", "reloading", "deactivating"):
@@ -220,21 +220,21 @@ def _kontrol_cikislar(status: dict, now: float, g: Gozlem | None, d: Durum, a: A
         d.isaretle("restart", now)
         d.ardisik_restart += 1
         d.since.pop("eksik", None)          # give the restart a fresh grace period
-        return [Eylem(YENIDEN_BASLAT, _("EQ çıkışları {sn} sn'dir eksik ({liste})").format(
+        return [Eylem(YENIDEN_BASLAT, Metin(N_("EQ çıkışları {sn} sn'dir eksik ({liste})"),
                           sn=int(sure), liste=liste),
                       "restart", hedef=SINKS_UNIT,
                       baslik=_("Kulak Kesil: EQ çıkışları onarıldı"),
-                      govde=_("Eksik çıkışlar ({liste}) için {servis} yeniden başlatıldı.").format(
+                      govde=Metin(N_("Eksik çıkışlar ({liste}) için {servis} yeniden başlatıldı."),
                           liste=liste, servis=SINKS_UNIT))]
     if d.izin("eksik_bildirim", now, EKSIK_BILDIRIM_ARALIK):
         d.isaretle("eksik_bildirim", now)
         neden = (_("otomatik onarım sınırına ulaşıldı") if d.ardisik_restart >= RESTART_UST
                  or not a.otomatik_yeniden_baslat else _("10 dakikada en çok bir otomatik onarım"))
-        return [Eylem(BILDIRIM, _("EQ çıkışları hâlâ eksik ({liste}); {neden}").format(
+        return [Eylem(BILDIRIM, Metin(N_("EQ çıkışları hâlâ eksik ({liste}); {neden}"),
                           liste=liste, neden=neden), "eksik_bildirim",
                       baslik=_("Kulak Kesil: EQ çıkışları eksik"),
-                      govde=_("Eksik: {liste} ({neden}). Sesler düz çıkışa gidiyor. "
-                              "Elle: {komut} · {saglik}").format(
+                      govde=Metin(N_("Eksik: {liste} ({neden}). Sesler düz çıkışa gidiyor. "
+                              "Elle: {komut} · {saglik}"),
                           liste=liste, neden=neden,
                           komut=f"systemctl --user restart {SINKS_UNIT}", saglik="kulak saglik"))]
     return []
@@ -259,15 +259,15 @@ def _kontrol_xrun(status: dict, now: float, g: Gozlem | None, d: Durum, a: Ayar)
     en = sorted(artis.items(), key=lambda kv: -kv[1])[:3]
     ayrinti = ", ".join(f"{_xrun_ad(k)} +{v}" for k, v in en)
     if not d.izin("xrun", now, XRUN_BILDIRIM_ARALIK):
-        return [Eylem(KAYIT, _("xrun artışı ({toplam}: {ayrinti}); bildirim yakın zamanda "
-                               "gönderildi").format(toplam=toplam, ayrinti=ayrinti),
+        return [Eylem(KAYIT, Metin(N_("xrun artışı ({toplam}: {ayrinti}); bildirim yakın zamanda "
+                               "gönderildi"), toplam=toplam, ayrinti=ayrinti),
                       "xrun_kayit")]
     d.isaretle("xrun", now)
-    return [Eylem(BILDIRIM, _("xrun artışı: {sn} sn'de {toplam} kesinti ({ayrinti})").format(
+    return [Eylem(BILDIRIM, Metin(N_("xrun artışı: {sn} sn'de {toplam} kesinti ({ayrinti})"),
                       sn=int(now - t0), toplam=toplam, ayrinti=ayrinti),
                   "xrun", baslik=_("Kulak Kesil: ses kesintisi (xrun)"),
-                  govde=_("Son {sn} sn'de {toplam} ses kesintisi: {ayrinti}. Sistem çok "
-                          "yüklüyse geçicidir; sürerse: {komut}").format(
+                  govde=Metin(N_("Son {sn} sn'de {toplam} ses kesintisi: {ayrinti}. Sistem çok "
+                          "yüklüyse geçicidir; sürerse: {komut}"),
                       sn=int(now - t0), toplam=toplam, ayrinti=ayrinti, komut="kulak saglik"))]
 
 
@@ -287,11 +287,11 @@ def _kontrol_hs80(status: dict, now: float, g: Gozlem | None, d: Durum, a: Ayar)
     if d.sure("varsayilan_eq", bizim, now) >= 5.0 \
             and d.izin("varsayilan_eq", now, VARSAYILAN_EQ_BILDIRIM_ARALIK):
         d.isaretle("varsayilan_eq", now)
-        out.append(Eylem(BILDIRIM, _("varsayılan çıkış bir Kulak Kesil çıkışı: {cikis}").format(
+        out.append(Eylem(BILDIRIM, Metin(N_("varsayılan çıkış bir Kulak Kesil çıkışı: {cikis}"),
                              cikis=default),
                          "varsayilan_eq", baslik=_("Kulak Kesil: yanlış varsayılan çıkış"),
-                         govde=_("Varsayılan çıkış '{cikis}' seçilmiş; EQ devre dışı. "
-                                 "Ses ayarlarından HS80'i (ya da hoparlörü) seçin.").format(
+                         govde=Metin(N_("Varsayılan çıkış '{cikis}' seçilmiş; EQ devre dışı. "
+                                 "Ses ayarlarından HS80'i (ya da hoparlörü) seçin."),
                              cikis=default)))
 
     # (b) HS80 present but not the default (after the router's own 30 s window)
@@ -302,8 +302,8 @@ def _kontrol_hs80(status: dict, now: float, g: Gozlem | None, d: Durum, a: Ayar)
             and d.izin("hs80_tara", now, HS80_TARA_ARALIK):
         d.isaretle("hs80_tara", now)
         d.son["hs80_bolum"] = d.since["hs80_degil"]
-        out.append(Eylem(TARA, _("HS80 takılı ({takili}) ama varsayılan çıkış {cikis}; HS80 "
-                                 "takibine yeniden bakılıyor (elle seçildiyse dokunulmaz)").format(
+        out.append(Eylem(TARA, Metin(N_("HS80 takılı ({takili}) ama varsayılan çıkış {cikis}; HS80 "
+                                 "takibine yeniden bakılıyor (elle seçildiyse dokunulmaz)"),
                              takili=", ".join(_kisa(h) for h in hs80),
                              cikis=_kisa(default) or _("yok")), "hs80_tara"))
 
@@ -313,8 +313,8 @@ def _kontrol_hs80(status: dict, now: float, g: Gozlem | None, d: Durum, a: Ayar)
     if d.sure("eski_durum", eski, now) >= ESKI_DURUM_BEKLE \
             and d.izin("eski_durum", now, ESKI_DURUM_ARALIK):
         d.isaretle("eski_durum", now)
-        out.append(Eylem(TARA, _("yönlendirici durumu eski (onun varsayılanı {onun}, gerçek "
-                                 "{gercek}); yeniden taranıyor").format(
+        out.append(Eylem(TARA, Metin(N_("yönlendirici durumu eski (onun varsayılanı {onun}, gerçek "
+                                 "{gercek}); yeniden taranıyor"),
                              onun=_kisa(st_def), gercek=_kisa(default)), "eski_durum"))
     return out
 
@@ -327,8 +327,8 @@ def _kontrol_wp(status: dict, now: float, g: Gozlem | None, d: Durum, a: Ayar) -
     if not sessiz or not d.izin("wp", now, WP_ARALIK):
         return []
     d.isaretle("wp", now)
-    return [Eylem(WP_TEMIZLE, _("WirePlumber durumunda {n} test kalıntısı var; hiçbir şey "
-                                "çalmıyorken temizleniyor (yedekli)").format(n=g.wp_kalinti), "wp")]
+    return [Eylem(WP_TEMIZLE, Metin(N_("WirePlumber durumunda {n} test kalıntısı var; hiçbir şey "
+                                "çalmıyorken temizleniyor (yedekli)"), n=g.wp_kalinti), "wp")]
 
 
 def _kisa(name: str | None) -> str:
@@ -468,6 +468,7 @@ class Sonuc(str):
     def __new__(cls, text: str, basarili: bool = True) -> "Sonuc":
         o = super().__new__(cls, text)
         o.basarili = basarili
+        o.kayit = metin_kaydi(text)        # msgid record when text is a Metin (re-translatable)
         return o
 
 
@@ -518,7 +519,7 @@ def _uygula(e: Eylem, *, dry_run: bool, run: Callable[..., Any],
     if e.tur == YENIDEN_BASLAT:
         cmd = ["systemctl", "--user", "restart", e.hedef or SINKS_UNIT]
         if dry_run:
-            return _("[deneme] {komut} ({neden})").format(komut=" ".join(cmd), neden=e.neden)
+            return Metin(N_("[deneme] {komut} ({neden})"), komut=" ".join(cmd), neden=e.neden)
         try:
             r = run(cmd, capture_output=True, text=True, timeout=30, env=config.C_ENV)
             ok = getattr(r, "returncode", 1) == 0
@@ -532,42 +533,42 @@ def _uygula(e: Eylem, *, dry_run: bool, run: Callable[..., Any],
             log.warning("onarım: %s → %s yeniden başlatıldı", e.neden, e.hedef)
             if bildirim and e.baslik:
                 notify(e.baslik, e.govde)
-            return _("{servis} yeniden başlatıldı ({neden})").format(servis=e.hedef, neden=e.neden)
+            return Metin(N_("{servis} yeniden başlatıldı ({neden})"), servis=e.hedef, neden=e.neden)
         log.error("onarım: %s yeniden başlatılamadı: %s", e.hedef, err)
         if bildirim:
             notify(_("Kulak Kesil: onarım başarısız"),
-                   _("{servis} yeniden başlatılamadı: {hata}").format(
+                   Metin(N_("{servis} yeniden başlatılamadı: {hata}"),
                        servis=e.hedef, hata=err or _("bilinmeyen hata")))
-        return Sonuc(_("{servis} yeniden başlatılamadı: {hata}").format(servis=e.hedef, hata=err),
+        return Sonuc(Metin(N_("{servis} yeniden başlatılamadı: {hata}"), servis=e.hedef, hata=err),
                      False)
     if e.tur == BILDIRIM:
         if dry_run:
-            return _("[deneme] bildirim: {baslik} — {govde}").format(baslik=e.baslik, govde=e.govde)
+            return Metin(N_("[deneme] bildirim: {baslik} — {govde}"), baslik=e.baslik, govde=e.govde)
         log.warning("onarım: %s", e.neden)
         if bildirim:
             notify(e.baslik, e.govde)
-        return _("bildirim: {baslik}").format(baslik=e.baslik)
+        return Metin(N_("bildirim: {baslik}"), baslik=e.baslik)
     if e.tur == TARA:
         if dry_run:
-            return _("[deneme] yeniden tarama ({neden})").format(neden=e.neden)
+            return Metin(N_("[deneme] yeniden tarama ({neden})"), neden=e.neden)
         log.info("onarım: %s", e.neden)
         if rescan is not None:
             rescan()
-            return _("yeniden tarama istendi ({neden})").format(neden=e.neden)
-        return Sonuc(_("yeniden tarama yapılamadı (yönlendirici bağlı değil): {neden}").format(
+            return Metin(N_("yeniden tarama istendi ({neden})"), neden=e.neden)
+        return Sonuc(Metin(N_("yeniden tarama yapılamadı (yönlendirici bağlı değil): {neden}"),
             neden=e.neden), False)
     if e.tur == WP_TEMIZLE:
         if dry_run:
-            return _("[deneme] WirePlumber test kalıntıları temizlenecek ({neden})").format(
+            return Metin(N_("[deneme] WirePlumber test kalıntıları temizlenecek ({neden})"),
                 neden=e.neden)
         mod = wp if wp is not None else wp_modul()
         if mod is None:
-            return Sonuc(_("{dosya} bulunamadı; temizlenmedi").format(dosya="tools/wp_temizle.py"),
+            return Sonuc(Metin(N_("{dosya} bulunamadı; temizlenmedi"), dosya="tools/wp_temizle.py"),
                          False)
         log.info("onarım: %s", e.neden)
         ok = mod.apply(Path(state_dir or wp_state_dir()), say=lambda s: log.info("wp_temizle: %s", s))
-        return Sonuc(_("WirePlumber test kalıntıları temizlendi")) if ok else \
-            Sonuc(_("WirePlumber temizliği başarısız (yedekler geri yüklendi)"), False)
+        return Sonuc(Metin(N_("WirePlumber test kalıntıları temizlendi"))) if ok else \
+            Sonuc(Metin(N_("WirePlumber temizliği başarısız (yedekler geri yüklendi)")), False)
     # KAYIT and unknown kinds: log only
     log.info("onarım: %s", e.neden)
     return e.neden
@@ -635,12 +636,18 @@ class Onarici:
                            rescan=self.rescan, bildirim=self.ayar.bildirim)
             except Exception as ex:  # noqa: BLE001
                 log.exception("onarım eylemi başarısız: %s", e.tur)
-                r = Sonuc(_("hata: {tur}: {hata}").format(tur=type(ex).__name__, hata=ex), False)
+                r = Sonuc(Metin(N_("hata: {tur}: {hata}"), tur=type(ex).__name__, hata=ex), False)
             sonuc.append((e, r))
             if e.tur != KAYIT:
-                self.gecmis.append({"zaman": round(self.wall()), "tur": e.tur,
-                                    "neden": e.neden, "sonuc": str(r), "deneme": self.dry_run,
-                                    "basarili": bool(getattr(r, "basarili", True))})
+                kayit = {"zaman": round(self.wall()), "tur": e.tur,
+                         "neden": e.neden, "sonuc": str(r), "deneme": self.dry_run,
+                         "basarili": bool(getattr(r, "basarili", True))}
+                # msgid + arguments: the UI shows a stored entry in ITS current language
+                for alan, deger in (("neden", e.neden), ("sonuc", r)):
+                    k = getattr(deger, "kayit", None) or metin_kaydi(deger)
+                    if isinstance(k, dict):
+                        kayit[alan + "_k"] = k
+                self.gecmis.append(kayit)
         if sonuc and self.gecmis_dosya is not None and not self.dry_run:
             gecmis_yaz(list(self.gecmis), self.gecmis_dosya)
         return sonuc

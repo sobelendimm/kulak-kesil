@@ -57,7 +57,7 @@ from pathlib import Path
 import numpy as np
 
 from . import config, i18n, kisisel, kulaklik
-from .i18n import N_, _, h_
+from .i18n import N_, _, h_, veri_metni
 from .models import (ALL_SINK_PROFILES, EQ_PROFILES, FLAT_PROFILE, GROUP_LABELS, GROUP_NAMES,
                      PROFILE_LABELS, PROFILE_NAMES, SINK_PREFIX, VARIANT_PROFILES, variant_groups)
 
@@ -2042,7 +2042,7 @@ def plot(path: Path = config.PLOT_FILE, profiles: dict | None = None) -> Path:
         s = staging[name]
         tot = total_response(profiles, name, f, lsp, tone=tone_values(profiles, name))
         dyn = _dyn_active(profiles, name, lsp)
-        kw = {"profil": PROFILE_LABELS[name], "odak": p.get("odak", ""),
+        kw = {"profil": PROFILE_LABELS[name], "odak": veri_metni(p.get("odak")),
               "kazanc": s["preamp_db"] + s["match_db"]}
         if dyn:
             lab = _("{profil} — {odak}  (kazanç {kazanc:+.1f} dB + telafi {telafi:+g} dB, kompresör "

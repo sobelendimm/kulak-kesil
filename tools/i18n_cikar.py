@@ -70,6 +70,37 @@ def toml_bolumleri(dizin: Path = CONFIG_DIZINI) -> frozenset[str]:
     return frozenset(adlar)
 
 
+# Default-config values the UI shows (profile/genre "aciklama" + "odak"). They are stored
+# as Turkish msgids (language independent) and translated at display time with _(text):
+# a user's own edited text has no catalog entry and is shown as written.
+METIN_DOSYALARI = ("profiller.toml",)
+METIN_ANAHTARLARI = ("aciklama", "odak")
+_METIN_SATIRI = re.compile(rf"^[ \t]*(?:{'|'.join(METIN_ANAHTARLARI)})[ \t]*=")
+
+
+def toml_metinleri(dizin: Path = CONFIG_DIZINI) -> list[tuple[str, str]]:
+    """(msgid, "config/<dosya>:<satır>") for every non-empty ``aciklama``/``odak`` string
+    of the default config files in METIN_DOSYALARI."""
+    import tomllib
+    out: list[tuple[str, str]] = []
+    for ad in METIN_DOSYALARI:
+        f = Path(dizin) / ad
+        try:
+            satirlar = f.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for n, satir in enumerate(satirlar, 1):
+            if not _METIN_SATIRI.match(satir):
+                continue
+            try:
+                (deger,) = tomllib.loads(satir.strip()).values()
+            except (tomllib.TOMLDecodeError, ValueError):
+                continue
+            if isinstance(deger, str) and deger.strip():
+                out.append((deger, f"config/{ad}:{n}"))
+    return out
+
+
 def korunan_re(bolumler: frozenset[str] | None = None) -> re.Pattern:
     """Config names that must survive translation: ``[genel]``, ``[mod.X]``,
     ``[uygulamalar.sesli]`` (bracketed, first part a TOML section name), dotted keys
@@ -190,8 +221,10 @@ def dosya_tara(path: Path, goreli: str) -> tuple[list[tuple[str, str]], list[Uya
     return bulunan, uyarilar
 
 
-def tara(kok: Path = PAKET) -> tuple[dict[str, list[str]], list[Uyari]]:
-    """Scan every .py under ``kok`` → ({msgid: sorted locations}, warnings)."""
+def tara(kok: Path = PAKET, toml_dizin: Path | None = None
+         ) -> tuple[dict[str, list[str]], list[Uyari]]:
+    """Scan every .py under ``kok`` (+ the shown default-config texts of ``toml_dizin``,
+    see toml_metinleri) → ({msgid: sorted locations}, warnings)."""
     kok = Path(kok)
     msgs: dict[str, set[str]] = {}
     uyarilar: list[Uyari] = []
@@ -202,6 +235,9 @@ def tara(kok: Path = PAKET) -> tuple[dict[str, list[str]], list[Uyari]]:
         bulunan, u = dosya_tara(path, goreli)
         uyarilar.extend(u)
         for msgid, yer in bulunan:
+            msgs.setdefault(msgid, set()).add(yer)
+    if toml_dizin is not None:
+        for msgid, yer in toml_metinleri(toml_dizin):
             msgs.setdefault(msgid, set()).add(yer)
 
     def yer_anahtari(y: str):
@@ -248,8 +284,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--denetle", action="store_true",
                     help="yazma; çıkarılamayan çağrılar/bozuk yer tutucular varsa çıkış 1")
     ap.add_argument("--ayrinti", action="store_true", help="dinamik çağrıları da listele")
+    ap.add_argument("--config", type=Path, default=None,
+                    help="görünen aciklama/odak metinleri için varsayılan config dizini "
+                         "(varsayılan: --kok oto_eq ise config/)")
     a = ap.parse_args(argv)
-    msgs, uyarilar = tara(a.kok)
+    toml_dizin = a.config or (CONFIG_DIZINI if Path(a.kok).resolve() == PAKET else None)
+    msgs, uyarilar = tara(a.kok, toml_dizin)
     ciddi = [u for u in uyarilar if u.ciddi]
     bilgi = [u for u in uyarilar if not u.ciddi]
     for u in ciddi:

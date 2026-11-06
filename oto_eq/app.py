@@ -32,7 +32,7 @@ from PyQt6.QtWidgets import (QAbstractButton, QAbstractItemView, QApplication, Q
 
 from . import config
 from . import i18n
-from .i18n import N_, _
+from .i18n import N_, _, veri_metni
 from . import ui_common as ui
 from . import ui_text as tx
 from .models import EQ_PROFILES, GROUP_LABELS, VARIANT_PROFILES, variant_groups
@@ -124,7 +124,7 @@ def variant_odak(profile: str, group: str) -> str:
             _ODAK_CACHE["data"] = config.load_toml(config.PROFILES_FILE)
             _ODAK_CACHE["mtime"] = (path, mtime)
         tur = ((_ODAK_CACHE["data"].get("profil") or {}).get(profile) or {}).get("tur") or {}
-        return str((tur.get(group) or {}).get("odak") or "")
+        return veri_metni((tur.get(group) or {}).get("odak"))
     except (OSError, ValueError, AttributeError):
         return ""
 

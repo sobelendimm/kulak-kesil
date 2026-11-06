@@ -968,10 +968,11 @@ def check_onarim(fx: Facts) -> list[dict]:
     last = yakin[-1]
     dk = int((now - last["zaman"]) // 60)
     ne = _("{n} eylem; son: {neden} ({dk} dk önce)").format(
-        n=len(yakin), neden=_(str(last.get("neden", "?"))), dk=dk)
+        n=len(yakin), neden=i18n.kayittan(last.get("neden_k"), _(str(last.get("neden", "?")))),
+        dk=dk)
     restarts = sum(1 for x in yakin if x.get("tur") == "servis_yeniden_baslat")
-    # onarim.json "sonuc" is written by onarim.py in Turkish (log text, never translated);
-    # an explicit "basarili": false flag wins if a later onarim.py writes one
+    # "basarili" is the flag onarim.py writes; the word search only covers entries of older
+    # versions whose (then Turkish) "sonuc" text is the only hint
     failed = [x for x in yakin if x.get("basarili") is False or any(
         w in str(x.get("sonuc", "")) for w in ("başarısız", "yapılamadı", "başlatılamadı"))]
     if failed or restarts >= 3:

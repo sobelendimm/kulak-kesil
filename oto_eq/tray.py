@@ -73,7 +73,7 @@ def music_feedback_variant(st: dict | None) -> dict | None:
 def feedback_header(v: dict) -> str:
     """'Virgin Black — Metal / Rock (iTunes — Rock)'."""
     who = v.get("for") or str(v.get("key") or "").split(":", 1)[-1] or "?"
-    text = f"{who} — {v.get('label') or tx.group_label(v.get('group'))}"
+    text = f"{who} — {tx._router_label(v, v.get('group'))}"
     src = tx.source_text(v.get("source"))
     if src:
         text += f" ({src})"

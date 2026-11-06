@@ -78,7 +78,7 @@ def group_label(group: str | None) -> str:
 def _router_label(d: dict, group: str | None) -> str:
     """Label of a genre group: our own translation when the key is known (the router's
     "label" is in ITS language, maybe not ours); else the router's text."""
-    if group and group in GROUP_LABELS:
+    if group is not None and group in GROUP_LABELS:      # "" = Genel is a known key too
         return GROUP_LABELS[group]
     return d.get("label") or group_label(group)
 
@@ -505,6 +505,12 @@ def model_tile(info: dict | None) -> dict | None:
             "state": "wait", "lines": [_("Tepsiden tür düzelttikçe öğrenir")], "tip": tip}
 
 
+def onarim_metni(entry: dict, alan: str) -> str:
+    """"neden"/"sonuc" of an onarim.json entry in the CURRENT UI language (its msgid record
+    "<alan>_k"), else the stored text (written in the router's language at that time)."""
+    return i18n.kayittan(entry.get(alan + "_k"), str(entry.get(alan) or ""))
+
+
 def onarim_tile(entries: list | None, now: float | None = None) -> dict | None:
     """'Kendini onarma' tile from onarim.json history; None when nothing happened yet."""
     import time as _time
@@ -521,10 +527,10 @@ def onarim_tile(entries: list | None, now: float | None = None) -> dict | None:
         if (lt.tm_year, lt.tm_yday) != (ln.tm_year, ln.tm_yday):
             when = short_date(lt.tm_mday, lt.tm_mon, when)
     recent = isinstance(ts, (int, float)) and now - ts < 3600
-    lines = [str(last.get("neden") or "")]
+    lines = [onarim_metni(last, "neden")]
     if len(real) > 1:
         lines.append(_("toplam {n} kayıt").format(n=len(real)))
-    tip = "\n".join(f"{e.get('neden', '')} → {e.get('sonuc', '')}" for e in real[-5:])
+    tip = "\n".join(f"{onarim_metni(e, 'neden')} → {onarim_metni(e, 'sonuc')}" for e in real[-5:])
     return {"title": _("Kendini onarma"),
             "value": _("Son: {zaman}").format(zaman=when) if when else _("Kayıt var"),
             "lines": [ln for ln in lines if ln], "tip": tip, "state": "wait" if recent else "on"}

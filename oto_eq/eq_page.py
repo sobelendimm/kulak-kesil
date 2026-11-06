@@ -45,9 +45,9 @@ from PyQt6.QtWidgets import (QAbstractButton, QAbstractItemView, QButtonGroup, Q
 from . import config, eqgen, kulaklik
 from . import ui_common as ui
 from . import ui_text as tx
-from .i18n import _
-from .models import (ALL_SINK_PROFILES, EQ_PROFILES, FLAT_PROFILE, GROUP_LABELS, PROFILE_LABELS,
-                     SINK_PREFIX, VARIANT_PROFILES, sink_name, variant_groups)
+from .i18n import _, veri_metni
+from .models import (ALL_SINK_PROFILES, EQ_PROFILES, FLAT_PROFILE, GROUP_LABELS, GROUP_NAMES,
+                     PROFILE_LABELS, SINK_PREFIX, VARIANT_PROFILES, sink_name, variant_groups)
 
 log = logging.getLogger("oto_eq.eq_page")
 
@@ -1926,12 +1926,12 @@ class EqPage(QWidget):
             if flat:
                 d = self.work[FLAT_PROFILE]
                 self.title_lbl.setText(_("Düz — seviye eşitli geçiş"))
-                self.desc_lbl.setText(d.get("aciklama", ""))
+                self.desc_lbl.setText(veri_metni(d.get("aciklama")))
             else:
                 p = self.work["profil"][prof]
-                odak = p.get("odak") or ui.PROFILE_ODAK.get(prof, "")
+                odak = veri_metni(p.get("odak")) or ui.PROFILE_ODAK.get(prof, "")
                 self.title_lbl.setText(f"{PROFILE_LABELS[prof]} — {odak}")
-                self.desc_lbl.setText(p.get("aciklama", ""))
+                self.desc_lbl.setText(veri_metni(p.get("aciklama")))
                 self.profile_on.setChecked(p.get("aktif", True))
                 self.corr_on.setChecked(self.work["duzeltme"].get("aktif", True))
             self.profile_on.setVisible(not flat)
@@ -2024,7 +2024,8 @@ class EqPage(QWidget):
                    else _("Şu an: {tur} (otomatik)")).format(tur=tur)
         if self.variant_group:
             t = (self.work["profil"][prof].get("tur") or {}).get(self.variant_group) or {}
-            parts = [t.get("aciklama") or GROUP_LABELS.get(self.variant_group, self.variant_group),
+            parts = [veri_metni(t.get("aciklama"))
+                     or GROUP_LABELS.get(self.variant_group, self.variant_group),
                      _("yalnız tür farkı düzenlenir, kesik çizgi = Genel")]
             if self.live_on.isChecked():
                 parts.append(_("canlı önizleme: şarkı/oyun değişince otomatik tür geri gelir"))
@@ -2058,7 +2059,7 @@ class EqPage(QWidget):
         flt = [dict(b) for b in slots if abs(b["kazanc"]) >= 0.05]
         if flt or old:
             entry = {k: v for k, v in old.items() if k != "filtreler"}
-            entry.setdefault("aciklama", GROUP_LABELS.get(g, g))
+            entry.setdefault("aciklama", GROUP_NAMES.get(g, g))      # stored: language independent
             entry.setdefault("odak", "")
             entry["filtreler"] = flt
             tur[g] = entry

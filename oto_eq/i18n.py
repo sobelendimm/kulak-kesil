@@ -180,6 +180,49 @@ def _(text: str) -> str:
     return _state["katalog"].get(text, text) if _state["katalog"] else text
 
 
+class Metin(str):
+    """A translated text that remembers its msgid + format arguments, so a STORED copy
+    (onarim.json) can be shown again in the current UI language:
+    ``Metin(N_("{n} kayıt"), n=3)``. Arguments that are Metin are kept as records too."""
+    msgid: str
+    args: dict
+
+    def __new__(cls, msgid: str, **args) -> "Metin":
+        o = super().__new__(cls, _(msgid).format(**args) if args else _(msgid))
+        o.msgid, o.args = msgid, args
+        return o
+
+
+def metin_kaydi(t):
+    """JSON-safe record of a Metin ({"id": msgid, "arg": {…}}); other values as they are
+    (numbers kept: a format spec like {db:+.1f} needs them), anything else as str."""
+    if isinstance(t, Metin):
+        return {"id": t.msgid, "arg": {k: metin_kaydi(v) for k, v in t.args.items()}}
+    if isinstance(t, (int, float)) or t is None:
+        return t
+    return str(t)
+
+
+def kayittan(kayit, yedek: str = "") -> str:
+    """Text of a metin_kaydi record in the CURRENT UI language; ``yedek`` (the stored,
+    already translated text) when there is no record or it does not fit its msgid."""
+    if not (isinstance(kayit, dict) and isinstance(kayit.get("id"), str)):
+        return yedek
+    try:
+        args = {k: kayittan(v, "") if isinstance(v, dict) else v
+                for k, v in (kayit.get("arg") or {}).items()}
+        return _(kayit["id"]).format(**args) if args else _(kayit["id"])
+    except (KeyError, IndexError, ValueError, TypeError, AttributeError):
+        return yedek
+
+
+def veri_metni(text) -> str:
+    """A text stored in the config (profile/genre "aciklama", "odak"): the shipped
+    defaults are Turkish msgids (tools/i18n_cikar.py extracts them from config/) →
+    translated; a user's own text has no catalog entry → shown as written."""
+    return _(str(text)) if text else ""
+
+
 def h_(text: str) -> str:
     """argparse help/description text: argparse %-formats it (Python 3.14 even validates it
     in add_argument), so a translation with a lone "%" must not break the command."""
