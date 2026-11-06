@@ -6,7 +6,7 @@ import time
 import tomllib
 import unittest
 
-from oto_eq.classifier import Classifier, merge_rules, shipped_rules
+from oto_eq.classifier import Classifier, merge_rules, shipped_rules, step_label
 from oto_eq.config import DEFAULTS_DIR, RULES_FILE
 from oto_eq.models import Category, MediaPlayer, ProcInfo, Stream
 
@@ -619,7 +619,7 @@ class TestExplain(Base):
         self.assertEqual(len(decisive), 1)
         self.assertIn("cs2", decisive[0])
         self.assertIn("AppId=730", decisive[0])
-        self.assertTrue(trace[-1].startswith("→ karar: cs2"))
+        self.assertTrue(trace[-1].startswith("→ karar: CS2 / CS2"), trace[-1])
         self.assertTrue(any("host pid 8002" in t for t in trace))
 
     def test_trace_lists_all_steps_until_match(self):
@@ -630,8 +630,9 @@ class TestExplain(Base):
                                          media_name="Haber - YouTube"), [p])
         self.assertEqual(d.category, Category.MOVIE)
         steps = [t.split(":")[0][2:] for t in trace if t[:1] in "✔✘"]
-        self.assertEqual(steps, ["atama"] + self.c.steps)
-        self.assertIn("youtube.com", [t for t in trace if t.startswith("✔ tarayici")][0])
+        self.assertEqual(steps, [step_label(s) for s in ["atama"] + self.c.steps])
+        self.assertIn("kullanıcı kuralı", steps)
+        self.assertIn("youtube.com", [t for t in trace if t.startswith("✔ tarayıcı")][0])
 
     def test_user_rule_mismatch_reported(self):
         r = load_shipped()
@@ -669,6 +670,169 @@ class TestCeviri(Base):
         r["atama"] = [{"alan": "ikili", "deger": "spotify", "profil": "film"}]
         d = self.env.classifier(r).classify(stream(app="spotify", binary="spotify"), [])
         self.assertEqual(d.reason, "Benutzerzuweisung")
+
+    def test_trace_labels_translated(self):
+        # 6 Kas hata avı: the trace showed "ikili=", "süreç=", step ids and "film / film"
+        from oto_eq import i18n
+        i18n.sifirla("en", {"ikili": "binary", "uygulama": "app", "süreç": "process",
+                            "komut": "command", "tarayıcı": "browser", "kullanıcı kuralı": "user rule",
+                            "Film": "Movie", "karar: {kategori} / {profil} ({neden})":
+                            "verdict: {kategori} / {profil} ({neden})"})
+        self.env.add(proc(FIREFOX_PID, "firefox"))
+        _, trace = self.c.explain(stream(app="Firefox", binary="firefox", pid=FIREFOX_PID,
+                                         media_name="Haber - YouTube"), [])
+        text = "\n".join(trace)
+        self.assertIn("binary=firefox, app=Firefox, process=firefox", text)
+        self.assertIn("command=firefox", text)
+        self.assertIn("✘ user rule:", text)
+        self.assertIn("✔ browser:", text)
+        self.assertNotIn("süreç=", text)
+        self.assertTrue(trace[-1].startswith("→ verdict: Movie / Movie"), trace[-1])
+
+
+class TestInheritedGameEnv(Base):
+    """6 Kas hata avı: a browser / player first opened by a game's link keeps the game's
+    environment (WINEPREFIX, SteamAppId, wine ancestors) for the whole session."""
+
+    YTM = "https://music.youtube.com/watch?v=abc"
+
+    def _ff(self, env=None, ancestors=()):
+        self.env.add(proc(FIREFOX_PID, "firefox", env=env, ancestors=ancestors))
+        return stream(app="Firefox", binary="firefox", pid=FIREFOX_PID, media_name="Lofi Girl - radio")
+
+    def _ytm(self):
+        return player("org.mpris.MediaPlayer2.firefox.instance_1_9", FIREFOX_PID,
+                      title="radio", artist="Lofi Girl", url=self.YTM)
+
+    def test_browser_with_game_env_is_not_a_game(self):
+        for env in ({"WINEPREFIX": "/home/u/Games/oyun/pfx"}, {"LUTRIS_GAME_UUID": "x"},
+                    {"SteamAppId": "570"}, {"SteamAppId": "730"}, {"SteamGameId": "730"}):
+            with self.subTest(env=env):
+                self.check(self._ff(env), [self._ytm()], Category.MUSIC, "muzik",
+                           "music.youtube.com")
+
+    def test_browser_under_wine_ancestors_is_not_a_game(self):
+        wine = (5000, "wine64-preloader", "C:\\\\Games\\\\Launcher.exe")
+        s = self._ff({"WINEPREFIX": "/pfx"}, ancestors=[wine])
+        d = self.check(s, [], Category.MOVIE)               # browser default, not Oyun
+        self.assertEqual(d.kaynak, "tarayici")
+
+    def test_music_app_with_cs2_env(self):
+        self.env.add(proc(7100, "spotify", env={"SteamAppId": "730"}))
+        self.check(stream(app="spotify", binary="spotify", pid=7100), [], Category.MUSIC, "muzik")
+
+    def test_games_still_games(self):
+        self.env.add(proc(8000, "cs2", env={"SteamAppId": "730"}))
+        self.check(stream(app="cs2", binary="cs2", pid=8000), [], Category.CS2)
+        self.env.add(proc(8100, "game", env={"SteamAppId": "730"}))
+        self.check(stream(app="game", binary="game", pid=8100), [], Category.CS2)
+        self.env.add(proc(8200, "Game.exe", env={"WINEPREFIX": "/pfx"}))
+        self.check(stream(app="Game.exe", binary="Game.exe", pid=8200), [], Category.GAME)
+
+    def test_media_app_public(self):
+        s = self._ff({"WINEPREFIX": "/pfx"})
+        self.assertTrue(self.c.media_app(s))
+        self.assertTrue(self.c.media_app(s, self.env.procs[FIREFOX_PID]))
+        self.env.add(proc(8200, "Game.exe"))
+        self.assertFalse(self.c.media_app(stream(app="Game.exe", binary="Game.exe", pid=8200)))
+        self.assertFalse(self.c.media_app(None))               # never raises
+
+
+class TestUserRuleValues(Base):
+    """6 Kas hata avı: [[kural]] values as TOML lists and with a "(?i)" prefix."""
+
+    def _c(self, **rule):
+        r = load_shipped()
+        r["kural"] = [{"ad": "k", "kategori": "muzik", **rule}]
+        return self.env.classifier(r)
+
+    def test_list_in_search_field_is_any_of(self):
+        c = self._c(medya_adi=["Spotify", "Deezer"])
+        self.assertEqual(c.user_rules[0]["medya_adi"].pattern, "(?:Spotify)|(?:Deezer)")
+        self.env.add(proc(FIREFOX_PID, "firefox"))
+        # str(list) was the character class "['Spotify', 'Deezer']": matched almost any title
+        self.check(stream(app="Firefox", binary="firefox", pid=FIREFOX_PID,
+                          media_name="Haber bülteni videosu"), [], Category.MOVIE, c=c)
+        self.check(stream(app="Firefox", binary="firefox", pid=FIREFOX_PID,
+                          media_name="Bir şarkı - Deezer"), [], Category.MUSIC,
+                   reason_has="kullanıcı kuralı", c=c)
+
+    def test_list_in_full_field(self):
+        c = self._c(ikili=["foo", "bar"])
+        self.check(stream(app="bar", binary="bar"), [], Category.MUSIC, reason_has="kullanıcı kuralı", c=c)
+        self.check(stream(app="b", binary="b"), [], Category.UNKNOWN, c=c)
+        self.check(stream(app="foobar", binary="foobar"), [], Category.UNKNOWN, c=c)   # still full match
+
+    def test_global_flag_prefix(self):
+        c = self._c(ikili="(?i)witcher3\\.exe", kategori="film")
+        self.assertEqual(len(c.user_rules), 1)
+        self.check(stream(app="Witcher3.exe", binary="Witcher3.exe"), [], Category.MOVIE,
+                   reason_has="kullanıcı kuralı", c=c)
+        c = self._c(medya_adi="(?i)podcast")
+        self.check(stream(app="Firefox", binary="firefox", media_name="My PODCAST"), [],
+                   Category.MUSIC, c=c)
+
+    def test_table_value_list_and_empty_list(self):
+        c = self._c(ortam={"WINEPREFIX": ["Faugus/a", "Faugus/b"]}, kategori="oyun")
+        self.env.add(proc(7200, "x", env={"WINEPREFIX": "/home/u/Faugus/b"}))
+        self.check(stream(app="x", binary="x", pid=7200), [], Category.GAME,
+                   reason_has="kullanıcı kuralı", c=c)
+        self.assertEqual(self._c(ikili=[]).user_rules, [])      # empty list: rule skipped
+
+
+class TestSiteListRegex(unittest.TestCase):
+    def test_regex_kept_as_written_domains_lowered(self):
+        from oto_eq.classifier import _SiteList
+        sl = _SiteList([r"(^|\.)radio\S+\.com", "Example.COM", "www.Foo.org"], "t")
+        self.assertEqual(sl.regexes[0].pattern, r"(^|\.)radio\S+\.com")   # \S stays \S
+        self.assertEqual(sl.match("radiox.com"), "radiox.com")
+        self.assertIsNone(sl.match("radio x.com"))
+        self.assertEqual(sl.domains, ["example.com", "foo.org"])
+        self.assertEqual(sl.match("www2.example.com"), "example.com")
+
+
+class TestHls(Base):
+    """6 Kas hata avı: a remote .m3u8 (HLS: IPTV, Twitch via streamlink) went to Müzik."""
+
+    def _mpv(self, args, role=""):
+        self.env.add(proc(7300, "mpv", cmdline=("mpv",) + tuple(args)))
+        return stream(app="mpv", binary="mpv", pid=7300, media_name="index.m3u8", role=role)
+
+    def test_remote_manifest_is_no_audio_evidence(self):
+        url = "https://cdn.example.tv/live/trt1/index.m3u8"
+        p = player("org.mpris.MediaPlayer2.mpv", 7300, title="TRT 1", url=url)
+        d = self.check(self._mpv([url]), [p], Category.MOVIE)
+        self.assertNotIn("m3u8", d.reason)
+        self.check(self._mpv([url]), [], Category.MOVIE)                     # args + title
+        self.check(self._mpv([url], role="Music"), [p], Category.MUSIC,       # mpv's own role
+                   reason_has="medya rolü")
+
+    def test_local_playlist_still_music(self):
+        p = player("org.mpris.MediaPlayer2.mpv", 7300, title="x",
+                   url="file:///home/u/M%C3%BCzik/liste.m3u8")
+        self.check(self._mpv(["/home/u/Müzik/liste.m3u8"]), [p], Category.MUSIC,
+                   reason_has=".m3u8")
+        self.env.add(proc(7301, "mpv", cmdline=("mpv", "/home/u/liste.m3u8")))
+        self.check(stream(app="mpv", binary="mpv", pid=7301, media_name="Şarkı"), [],
+                   Category.MUSIC, reason_has=".m3u8")
+
+
+class TestReadOnlyLoader(unittest.TestCase):
+    def test_load_classifier_offline_never_requests(self):
+        from unittest import mock
+        from oto_eq import classifier as C
+        calls = []
+
+        class FakeResolver:
+            def known_artist(self, name, request=False):
+                calls.append((name, request))
+                return None
+        with mock.patch("oto_eq.tur.shared_resolver", return_value=FakeResolver()):
+            for online, want in ((False, False), (True, True)):
+                calls.clear()
+                c = C.load_classifier(online=online)
+                c._known_artist("Gece - Uyku İçin Hikaye - YouTube")
+                self.assertEqual(calls, [("Gece", want)])
 
 
 if __name__ == "__main__":

@@ -774,6 +774,121 @@ class TestResilience(RouterTestBase):
         resp = r.handle_command({"cmd": "rescan"})
         self.assertFalse(resp["ok"])
 
+    def test_unlinked_stream_is_rechecked_soon_not_manual(self):
+        # sink_index -1 = WirePlumber has not linked it yet: not "moved by hand", and the
+        # next look must not wait for the change event + CHANGE_MIN_GAP (≈250 ms un-EQ'd)
+        r = self.make()
+        p = self.pulse
+        st = p.add_stream(7, "cs2")
+        p.streams[7] = dataclasses.replace(st, sink_index=-1)
+        r.handle_item(("pulse", Event("new", "sink-input", 7)))
+        self.clock.advance(R.NEW_STREAM_DELAY)
+        r.tick()
+        self.assertEqual(p.moves, [])
+        self.assertNotIn("elle", self.entry(7)["reason"])
+        self.assertAlmostEqual(r._scan_at - self.clock.t, R.UNLINKED_RECHECK)
+        p.streams[7] = dataclasses.replace(st, sink_index=p.sink_idx(HS80))   # WP linked it
+        r.handle_item(("pulse", Event("change", "sink-input", 7)))
+        self.clock.advance(R.UNLINKED_RECHECK)
+        r.tick()
+        self.assertEqual(p.sink_of(7), "oto_eq_cs2")
+
+    def test_unlinked_recheck_is_bounded(self):
+        r = self.make()
+        p = self.pulse
+        st = p.add_stream(7, "cs2")
+        p.streams[7] = dataclasses.replace(st, sink_index=-1)      # never gets linked
+        scans = 0
+        orig = r.scan
+
+        def counting():
+            nonlocal scans
+            scans += 1
+            return orig()
+        r.scan = counting
+        r.scan()
+        for _ in range(200):
+            self.clock.advance(R.UNLINKED_RECHECK)
+            r.tick()
+        self.assertLess(scans, R.UNLINKED_WINDOW / R.UNLINKED_RECHECK + 5)
+        self.assertGreater(r._next_deadline() - self.clock.t, 1.0)   # back to periodic scans
+        p.streams.pop(7)
+        r.scan()
+        self.assertNotIn(7, r._unlinked)                            # pruned with the stream
+
+    def test_classifier_error_reason_is_translated(self):
+        from oto_eq import i18n
+        self.addCleanup(i18n.sifirla)
+
+        class Bad(FakeClassifier):
+            def classify(self, stream, players):
+                return "nonsense"
+        r = self.make()
+        r.classifier = Bad({})
+        i18n.sifirla("en", {"sınıflandırma hatası: {hata}": "classification error: {hata}",
+                            "beklenmeyen sonuç: {sonuc}": "unexpected result: {sonuc}"})
+        self.pulse.add_stream(1, "x")
+        r.scan()
+        self.assertEqual(self.entry(1)["reason"], "classification error: unexpected result: "
+                                                  "'nonsense'")
+
+    def test_device_write_failure_warns_once(self):
+        def bad(dev):
+            raise OSError("disk dolu")
+        r = self.make(device_writer=bad)
+        with self.assertLogs("oto_eq.router", "DEBUG") as cm:
+            for _ in range(5):
+                r.scan()
+        warns = [l for l in cm.output if l.startswith("WARNING") and "kulaklık durumu" in l]
+        self.assertEqual(len(warns), 1)
+
+    def test_command_wait_below_client_timeouts(self):
+        # GUI requests with 1.5 s, the CLI with 2 s: "bekliyor" must reach both
+        self.assertLess(R.COMMAND_WAIT, 1.5)
+
+
+class TestConfigRobustness(unittest.TestCase):
+    def setUp(self):
+        from oto_eq import config
+        self.config = config
+        self.dir = Path(tempfile.mkdtemp(prefix="oto-eq-test-cfg-"))
+        self.addCleanup(shutil.rmtree, self.dir, True)
+        p = mock.patch.object(config, "ASSIGNMENTS_FILE", self.dir / "atamalar.json")
+        p.start()
+        self.addCleanup(p.stop)
+
+    def test_malformed_assignments_never_break_the_rules(self):
+        for body in ('{"atamalar": null}', '{"atamalar": 5}', '{"atamalar": "x"}', "[1, 2]",
+                     '{"atamalar": {"a": 1}}', "bozuk"):
+            (self.dir / "atamalar.json").write_text(body, "utf-8")
+            self.assertEqual(self.config.load_assignments(), [], body)
+            self.assertEqual(self.config.load_rules()["atama"], [], body)
+
+    def test_empty_or_relative_xdg_dirs_fall_back(self):
+        home = Path.home()
+        with mock.patch.dict("os.environ", {"XDG_CONFIG_HOME": "", "XDG_STATE_HOME": "rel/x"}):
+            self.assertEqual(self.config._xdg("XDG_CONFIG_HOME", home / ".config"),
+                             home / ".config")
+            self.assertEqual(self.config._xdg("XDG_STATE_HOME", home / ".local/state"),
+                             home / ".local/state")
+        with mock.patch.dict("os.environ", {"XDG_CONFIG_HOME": "/tmp/xdg-c"}):
+            self.assertEqual(self.config._xdg("XDG_CONFIG_HOME", home / ".config"),
+                             Path("/tmp/xdg-c"))
+
+
+class TestMainSingleInstance(unittest.TestCase):
+    def test_second_instance_refuses_before_touching_anything(self):
+        # 6 Kas: kisma.restore_on_start() ran BEFORE the socket check → a manual second
+        # router undid the live daemon's ducking mid-call
+        from oto_eq import ipc, kisma
+        with mock.patch.object(ipc, "socket_in_use", return_value=True), \
+                mock.patch.object(R, "_setup_logging"), \
+                mock.patch.object(kisma, "Ducker") as ducker, \
+                mock.patch.object(R, "Router") as router:
+            self.assertEqual(R.main([]), 1)
+        ducker.assert_not_called()
+        router.assert_not_called()
+
 
 BT = "bluez_output.AA_BB_CC_DD_EE_FF.1"
 
@@ -2254,7 +2369,8 @@ class FakeDucker:
     def stop(self):
         self.stopped = True
 
-    def status(self):
+    def status(self, wait=None):
+        self.wait = wait
         return {"acik": True, "konusma": False}
 
 
@@ -2289,6 +2405,44 @@ class TestDucking(RouterTestBase):
         r = self.make(ducker=d, voice_check=self.voice_check)
         r.stop()
         self.assertTrue(d.stopped)
+
+    def test_status_never_waits_for_a_busy_ducker(self):
+        # 6 Kas: a ducker tick holds its lock across pactl calls (3 s each while
+        # pipewire-pulse hangs) → `kulak durum` / watch / the worker's publish hung on it
+        import tempfile
+        from oto_eq import kisma
+        tmp = tempfile.mkdtemp(prefix="oto-eq-test-kisma-")
+        self.addCleanup(shutil.rmtree, tmp, True)
+        entered, release = threading.Event(), threading.Event()
+
+        def slow_get(name):
+            entered.set()
+            release.wait(5)
+            return [30000, 30000]
+        duck = kisma.Ducker(set_volume=lambda n, v: True, get_volume=slow_get, threaded=False,
+                            settings_path=f"{tmp}/k.toml", state_path=f"{tmp}/state.json")
+        duck._recs["oto_eq_muzik"] = kisma._Rec([40000, 40000], [1, 1], stale=True)
+        duck._sinks = {"muzik": 101}
+        first = duck.status()
+        r = self.make(ducker=duck)
+        t = threading.Thread(target=duck.tick)
+        t.start()
+        self.addCleanup(t.join, 5)
+        self.addCleanup(release.set)
+        self.assertTrue(entered.wait(5))              # the tick is inside "pactl", lock held
+        t0 = time.monotonic()
+        st = r.status()
+        self.assertLess(time.monotonic() - t0, 0.5)
+        self.assertEqual(st["kisma"], first)          # the last snapshot
+        release.set()
+        t.join(5)
+        self.assertNotIn("oto_eq_muzik", r.status()["kisma"]["kisilan"])   # fresh again
+
+    def test_ducker_status_wait_is_passed(self):
+        d = FakeDucker()
+        r = self.make(ducker=d, voice_check=self.voice_check)
+        r.status()
+        self.assertEqual(d.wait, R.KISMA_STATUS_WAIT)
 
     def test_voice_check_error_is_contained(self):
         d = FakeDucker()

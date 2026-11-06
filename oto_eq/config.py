@@ -10,9 +10,18 @@ SRC_DIR = Path(__file__).resolve().parent.parent
 DEFAULTS_DIR = SRC_DIR / "config"
 
 _home = Path.home()
-CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", _home / ".config")) / "oto-eq"
-STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", _home / ".local/state")) / "oto-eq"
-RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"))
+
+
+def _xdg(var: str, default: Path | str) -> Path:
+    """XDG base directory: an unset, empty or relative value means the default (spec);
+    ``XDG_CONFIG_HOME=""`` must not turn our paths into ./oto-eq of the current dir."""
+    v = os.environ.get(var, "")
+    return Path(v) if v and os.path.isabs(v) else Path(default)
+
+
+CONFIG_DIR = _xdg("XDG_CONFIG_HOME", _home / ".config") / "oto-eq"
+STATE_DIR = _xdg("XDG_STATE_HOME", _home / ".local/state") / "oto-eq"
+RUNTIME_DIR = _xdg("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
 
 RULES_FILE = "kurallar.toml"
 PROFILES_FILE = "profiller.toml"
@@ -56,6 +65,10 @@ def load_assignments() -> list[dict]:
         with open(ASSIGNMENTS_FILE, encoding="utf-8") as f:
             items = json.load(f).get("atamalar", [])
     except (OSError, ValueError, AttributeError):
+        return []
+    if not isinstance(items, list):
+        # {"atamalar": null} (hand edit) used to raise TypeError in load_rules() →
+        # the router started with no rules at all (every stream without EQ)
         return []
     return [a for a in items
             if isinstance(a, dict) and a.get("alan") in ASSIGNMENT_FIELDS

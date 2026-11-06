@@ -351,6 +351,53 @@ class ThreadedTest(Base):
         self.assertEqual(self.src.open(), [])
 
 
+class StatusSnapshotTest(Base):
+    def test_status_wait_returns_snapshot_while_a_tick_holds_the_lock(self):
+        # 6 Kas: the router's status() (IPC `kulak durum`, watch, publish) hung for the
+        # whole tick while pactl was slow; status(wait=…) serves the last snapshot instead
+        import threading
+        entered, release = threading.Event(), threading.Event()
+        d = self.make()
+        d.ensure([], ALL_SINKS)
+        d._recs["oto_eq_muzik"] = kisma._Rec([40000, 40000], [1, 1], stale=True)
+        snap = d.status()
+        self.assertEqual(snap["kisilan"], ["oto_eq_muzik"])
+
+        def slow_get(name):                           # pactl hanging near its timeout
+            entered.set()
+            release.wait(5)
+            return self.vol.get(name)
+        d._get = slow_get
+        t = threading.Thread(target=d.tick)
+        t.start()
+        try:
+            self.assertTrue(entered.wait(5))
+            t0 = time.monotonic()
+            got = d.status(wait=0.05)
+            self.assertLess(time.monotonic() - t0, 0.5)
+            self.assertEqual(got, snap)
+            got["kisilan"].append("x")                # a copy: the snapshot is not mutated
+            self.assertNotIn("x", d.status(wait=0.05)["kisilan"])
+        finally:
+            release.set()
+            t.join(5)
+        self.assertFalse(t.is_alive())
+        self.assertEqual(d.status(wait=0.05)["kisilan"], [])   # the tick refreshed it
+
+    def test_snapshot_exists_before_the_first_tick(self):
+        d = self.make()
+        d._lock.acquire()
+        try:
+            import threading
+            out = []
+            t = threading.Thread(target=lambda: out.append(d.status(wait=0.01)))
+            t.start()
+            t.join(2)
+        finally:
+            d._lock.release()
+        self.assertFalse(out[0]["aktif"])
+
+
 class SafetyTest(Base):
     def test_no_stale_lowering_after_volume_exception(self):
         d = self.make()

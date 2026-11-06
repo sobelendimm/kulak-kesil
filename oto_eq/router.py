@@ -68,7 +68,11 @@ FLAP_MAX_MOVES = 5           # ... something keeps undoing us -> leave it alone 
 FLAP_PARK = 60.0             # ... this long
 BACKOFF_MIN = 0.5            # pulse error backoff (doubles up to BACKOFF_MAX)
 BACKOFF_MAX = 10.0
-COMMAND_WAIT = 1.5           # IPC thread waits this long for the worker
+COMMAND_WAIT = 1.0           # IPC thread waits this long for the worker (< every client
+                             # timeout: GUI 1.5 s, CLI 2 s, so "bekliyor" reaches them)
+KISMA_STATUS_WAIT = 0.05     # status(): max wait for the ducker's lock (its tick runs pactl)
+UNLINKED_RECHECK = 0.03      # a stream not linked to any sink yet: look again this soon …
+UNLINKED_WINDOW = 1.0        # … for at most this long after we first saw it unlinked
 RESTORE_BUDGET = 2.0         # stop(): max time spent moving streams back to the default
 STATUS_STALE_AFTER = 3       # consecutive pulse errors before the status is blanked
 VERIFY_DELAY = 0.2           # re-check a move this soon (a pactl move can silently no-op)
@@ -739,6 +743,7 @@ class Router:
         self.kulaklik_ayar = kulaklik.Ayar(desen=re.compile(DEFAULT_HEADSET_PATTERN))
         self._device: kulaklik.Aygit | None = None
         self._device_rec: tuple | None = None       # (ad, tur, duzeltme) last written
+        self._device_fail: tuple | None = None      # the record whose write failed last
         self._corr_applied: bool | None = None      # correction state of the live sinks
         self._corr_ids: tuple | None = None         # sink indices it was applied to
         self._corr_retry_at = float("-inf")
@@ -798,6 +803,7 @@ class Router:
         self._move_hist: dict[int, list[float]] = {}
         self._parked_until: dict[int, float] = {}
         self._placed: dict[int, str] = {}      # sink we last moved each stream to
+        self._unlinked: dict[int, float] = {}  # stream not linked to a sink yet -> first seen
         self._verify: dict[int, tuple[str, str, float, bool]] = {}  # idx -> (from, to, t, retried)
 
         # transitions, for logging
@@ -962,9 +968,11 @@ class Router:
         st["dil"] = i18n.dil()          # language of the router's texts (reasons, labels)
         if self.ducker is not None:
             try:
-                st["kisma"] = self.ducker.status()
+                # bounded: a ducker tick holds its lock across pactl calls (seconds while
+                # pipewire-pulse hangs); `kulak durum` / watch / the worker's publish must not
+                st["kisma"] = self.ducker.status(wait=KISMA_STATUS_WAIT)
             except Exception as e:
-                st["kisma"] = {"hata": str(e)}
+                st["kisma"] = {"hata": _("kısma durumu alınamadı: {hata}").format(hata=e)}
         return st
 
     def handle_command(self, req: dict) -> dict:
@@ -1292,8 +1300,18 @@ class Router:
                     log.debug("sesli akış denetimi hatası (#%d): %s", st.index, e)
             self._record_history(st, decision)
             owned = self._placed.get(st.index) == cur
-            target, reason = self._target(cur, decision, default, active, default_is_eq,
-                                          sink_names, owned)
+            if st.sink_index < 0:
+                # not linked yet (WirePlumber links within a few ms): no manual move, and the
+                # next look must not wait for a change event + CHANGE_MIN_GAP (≈250 ms
+                # un-EQ'd); NOTES-pulse risk 3
+                first = self._unlinked.setdefault(st.index, now)
+                if now - first < UNLINKED_WINDOW:
+                    self._request_scan_at(now + UNLINKED_RECHECK)
+                target, reason = None, _("henüz bir çıkışa bağlanmadı")
+            else:
+                self._unlinked.pop(st.index, None)
+                target, reason = self._target(cur, decision, default, active, default_is_eq,
+                                              sink_names, owned)
             final = cur
             if target is not None and target != cur:
                 moved, note = self._try_move(st, target, reason, now, cur, default)
@@ -1349,9 +1367,13 @@ class Router:
             try:
                 self.device_writer(dev)
             except Exception as e:
-                log.warning("kulaklık durumu kaydedilemedi: %s", e)
+                # retried every scan; warn once per device, not up to 4×/s (disk full / RO)
+                (log.debug if rec == self._device_fail else log.warning)(
+                    "kulaklık durumu kaydedilemedi: %s", e)
+                self._device_fail = rec
                 return                        # eqgen would read a stale state
         self._device_rec = rec
+        self._device_fail = None
         if self.apply_correction is None or not ready:
             return
         ids = tuple(sink_ids.get(sink_name(p)) for p in ALL_SINK_PROFILES)
@@ -1475,7 +1497,7 @@ class Router:
         try:
             d = self.classifier.classify(st, players)
             if not isinstance(d, Decision):
-                raise TypeError(f"beklenmeyen sonuç: {d!r}")
+                raise TypeError(_("beklenmeyen sonuç: {sonuc}").format(sonuc=repr(d)))
         except Exception as e:
             log.debug("sınıflandırma hatası (akış #%d): %s", st.index, e)
             return Decision(Category.UNKNOWN, None, _("sınıflandırma hatası: {hata}").format(hata=e))
@@ -1750,7 +1772,7 @@ class Router:
 
     def _prune(self, present: set[int], now: float) -> None:
         for d in (self._last_move, self._move_hist, self._parked_until, self._placed,
-                  self._verify):
+                  self._verify, self._unlinked):
             for idx in [i for i in d if i not in present]:
                 del d[idx]
 
@@ -1829,6 +1851,12 @@ def main(argv: list[str] | None = None) -> int:
     from . import classifier, pulse  # lazy: router.py imports without them
     from . import ipc
     from .ipc import IpcServer
+    # FIRST, before anything with side effects: kisma.restore_on_start() below would undo
+    # the live daemon's ducking mid-call and drop its stale-lowering records (and the
+    # models would load for nothing)
+    if ipc.socket_in_use():
+        log.error("başka bir oto-eq zaten çalışıyor (%s)", config.SOCKET_PATH)
+        return 1
     try:
         from . import mpris
         mpris_factory = mpris.MprisWatcher
@@ -1939,9 +1967,6 @@ def main(argv: list[str] | None = None) -> int:
         router.variants.audio_on = bool(config.load_genre_settings().get("ses_analizi", True))
     except Exception:
         pass
-    if ipc.socket_in_use():
-        log.error("başka bir oto-eq zaten çalışıyor (%s)", config.SOCKET_PATH)
-        return 1
     router.prepare()
     server = IpcServer(router.status, router.handle_command)
     router.add_status_listener(server.publish)

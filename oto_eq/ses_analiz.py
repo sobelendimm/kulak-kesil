@@ -45,9 +45,10 @@ DEFAULT_RATE = 22050
 def capture_argv(source: str, rate: int) -> list[str]:
     """parec (pipewire-pulse) if present, else pw-record; raw mono float32 to stdout."""
     if shutil.which("parec") or not shutil.which("pw-record"):
+        name = _("Kulak Kesil ses analizi")      # shown in pavucontrol / the KDE volume applet
         return ["parec", "--raw", "--format=float32le", "--channels=1", f"--rate={rate}",
-                "--latency-msec=100", "--client-name=Kulak Kesil ses analizi",
-                "--stream-name=Kulak Kesil ses analizi", "-d", source]
+                "--latency-msec=100", f"--client-name={name}",
+                f"--stream-name={name}", "-d", source]
     return ["pw-record", "--target", source, "-P", "stream.capture.sink=true",
             "--rate", str(rate), "--channels", "1", "--format", "f32", "--raw", "-"]
 
@@ -90,6 +91,7 @@ class AudioTap:
     BACKOFF_MIN = 0.5
     BACKOFF_MAX = 10.0
     STABLE_SECS = 10.0
+    JOIN_S = 3.0                    # stop(): wait this long for the capture thread
 
     def __init__(self, source: str = DEFAULT_SOURCE, rate: int = DEFAULT_RATE,
                  seconds: float = 45.0, runner: Callable[[list[str]], Any] | None = None,
@@ -117,6 +119,9 @@ class AudioTap:
 
     def start(self) -> None:
         if self.running:
+            # also a thread still winding down after stop(): clearing _stop now would revive
+            # it next to a new one (two parec writers into one ring buffer); the next
+            # ensure() after it has exited starts the capture again
             return
         self._stop.clear()
         self._thread = threading.Thread(target=self._run, name="oto_eq.ses_analiz.tap",
@@ -131,8 +136,11 @@ class AudioTap:
             _kill(proc)
         t = self._thread
         if t is not None and t is not threading.current_thread():
-            t.join(timeout=3)
-        self._thread = None
+            t.join(timeout=self.JOIN_S)
+        if t is None or not t.is_alive():
+            self._thread = None
+        else:
+            log.warning("ses analizi kaydı %.0f sn içinde durmadı", self.JOIN_S)
 
     def window(self, t0: float, t1: float | None = None) -> np.ndarray:
         """Copy of the samples captured between monotonic times t0..t1 (default: now)."""
@@ -248,7 +256,7 @@ BANDS: tuple[tuple[str, float, float], ...] = (
     ("lowmid", 250.0, 500.0),
     ("mid", 500.0, 2000.0),
     ("highmid", 2000.0, 6000.0),
-    ("high", 6000.0, 11025.0),
+    ("high", 6000.0, math.inf),     # up to Nyquist (11025 Hz at DEFAULT_RATE)
 )
 _EPS = 1e-12
 
@@ -291,8 +299,24 @@ def _tempo(ac: np.ndarray, fps: float) -> tuple[float, float]:
     return float(60.0 * fps / lag), strength
 
 
+def resample(x: np.ndarray, rate: int, target: int) -> np.ndarray:
+    """Band-limited FFT resampling of a mono window (float32)."""
+    x = np.asarray(x, dtype=np.float64).reshape(-1)
+    if rate == target or x.size == 0:
+        return x.astype(np.float32)
+    n_out = int(round(x.size * target / rate))
+    if n_out < 2:
+        return np.zeros(0, np.float32)
+    spec = np.fft.rfft(x)
+    keep = n_out // 2 + 1
+    spec = spec[:keep] if keep <= spec.size else np.concatenate(
+        [spec, np.zeros(keep - spec.size, dtype=spec.dtype)])
+    return (np.fft.irfft(spec, n_out) * (n_out / x.size)).astype(np.float32)
+
+
 def features(x: np.ndarray, rate: int) -> dict[str, float]:
     """Numpy-only descriptors of a mono signal (any length ≥ ~1 s).
+    The rules / weights below are calibrated at DEFAULT_RATE (classify() resamples).
 
     Keys (all finite floats):
       rms_db, active_s          level (dBFS) and non-silent duration
@@ -338,7 +362,7 @@ def features(x: np.ndarray, rate: int) -> dict[str, float]:
     psum = p[active].sum(axis=0) if active.any() else p.sum(axis=0)
     total = float(psum[(freqs >= 20.0)].sum()) + _EPS
     for name, lo, hi in BANDS:
-        sel = (freqs >= lo) & (freqs < min(hi, nyq + 1))
+        sel = (freqs >= lo) & (freqs < min(hi, nyq))
         out["r_" + name] = float(psum[sel].sum() / total)
     out["sub_share"] = out["r_sub"] / (out["r_sub"] + out["r_bass"] + _EPS)
 
@@ -639,7 +663,10 @@ def classify(x: np.ndarray, rate: int, model: Any = None, personal: Any = None,
         x = x.mean(axis=1 if x.shape[1] <= 8 else 0).astype(np.float32)
     if len(x) < MIN_ACTIVE_S * rate:
         return None
-    f = features(x, rate)
+    # the DSP rules/weights are calibrated at DEFAULT_RATE: at 44.1/48 kHz the band ratios
+    # and spectral shape differ (the model resamples on its own and gets the original)
+    xf = x if rate == DEFAULT_RATE else resample(np.nan_to_num(x), int(rate), DEFAULT_RATE)
+    f = features(xf, DEFAULT_RATE)
     if f["active_s"] < MIN_ACTIVE_S or f["rms_db"] < MIN_LEVEL_DB:
         return None
     pd_ = dsp_probs(f)

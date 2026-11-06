@@ -821,7 +821,7 @@ class TestTrackSources(unittest.TestCase):
                         "musicbrainz.org": {"artists": []}}, path=Path(self.tmp.name) / "e.json")
         got = self.resolve(r2, ContentId("muzik", "sanatci:ezhel", "Ezhel", "Yeni Parça"))
         self.assertEqual(got[0].group, "elektronik")
-        self.assertEqual(got[0].source, "Deezer (sanatçının diğer şarkıları): Rap/Hip Hop")
+        self.assertEqual(got[0].source, "Deezer: Rap/Hip Hop (sanatçının diğer şarkıları)")
         self.assertEqual(got[0].confidence, tur.OTHER_TRACK_TRUST)
 
     def test_deezer_quota_is_error_and_source_errors_tolerated(self):
@@ -1527,3 +1527,133 @@ print(json.dumps([data, stats], sort_keys=True))
             self.assertEqual(p.returncode, 0, p.stderr)
             outs.add(p.stdout)
         self.assertEqual(len(outs), 1)
+
+
+# ============================================================================
+#  6 Kas hata avı (sınıflandırma): kaynak metinleri, User-Agent, oyun ortamı devralan
+#  tarayıcı, bilinen sanatçı zayıf karar, başarısız sorgu belleği
+# ============================================================================
+
+class TestHataAvi6Kas(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.cache = Path(self.tmp.name) / "c.json"
+
+    def tearDown(self):
+        from oto_eq import i18n
+        i18n.sifirla()
+
+    def make(self, routes=None, settings=None):
+        self.net = FakeNet(routes or {})
+        r = tur.GenreResolver(settings=settings or {"cevrimici": True}, cache_path=self.cache,
+                              fetch=self.net, sleep=lambda s: None, builtin=False, db=False,
+                              title_hints={})
+        self.addCleanup(r.stop)
+        return r
+
+    def test_user_agent_names_the_repo(self):
+        self.assertRegex(tur.USER_AGENT,
+                         r"^KulakKesil/[0-9][\w.]* \(\+https://github\.com/sobelendimm/kulak-kesil\)$")
+        self.assertNotIn("@", tur.USER_AGENT)
+        tur.USER_AGENT.encode("ascii")
+
+    def _entry(self, **e):
+        return tur.GenreResolver._entry_result("muzik" if "kind" not in e else e.pop("kind"), e)
+
+    def test_source_texts_translated(self):
+        from oto_eq import i18n, ui_text
+        i18n.sifirla("en", {"tür bulunamadı": "genre not found",
+                            "mağazada bulunamadı": "not found in the store",
+                            "sanatçının diğer şarkıları": "the artist's other songs",
+                            "zayıf, kesik ad: {ad}": "weak, shortened name: {ad}"})
+        neg = self._entry(source="iTunes, Deezer", tags=[], negatif=True)
+        self.assertEqual(neg.source, "iTunes, Deezer: genre not found")
+        steam = self._entry(kind="oyun", source=tur.SRC_STEAM_SEARCH, tags=[], negatif=True)
+        self.assertEqual(steam.source, "Steam: not found in the store")
+        # stored form (old caches too): "<source> (sanatçının diğer şarkıları)"
+        other = self._entry(source=f"Deezer ({tur.OTHER_SONGS})", tags=[["Rap/Hip Hop", 1.0]],
+                            negatif=False, guven=0.6)
+        self.assertEqual(other.source, "Deezer: Rap/Hip Hop (the artist's other songs)")
+        self.assertEqual(other.group, "elektronik")
+        self.assertEqual(ui_text.source_short_key(other.source), "deezer")   # name first
+        self.assertNotIn("sanatçı", ui_text.source_text(other.source))
+        for s in (neg.source, steam.source):
+            self.assertFalse(any(ch in ui_text.source_text(s) for ch in "ışğüçö"), s)
+
+    def test_cut_name_detail_translated(self):
+        from oto_eq import i18n
+
+        class DB(tur.ArtistDB):
+            def lookup(self, *names):          # the whole name unknown, the cut one known
+                if names == ("Simon & Garfunkel",):
+                    return None
+                return tur.DBEntry("metal_rock", 0.9, False, False, ("heavy metal",))
+        r = tur.GenreResolver(settings={"cevrimici": False}, cache_path=self.cache,
+                              fetch=FakeNet({}), sleep=lambda s: None, builtin=False,
+                              db=DB(Path(self.tmp.name) / "yok.json.gz"), title_hints={})
+        self.addCleanup(r.stop)
+        cid = ContentId("muzik", "sanatci:simon", "Simon", "Mrs Robinson")
+        tur._note_uncut(cid, "Simon & Garfunkel")
+        self.assertIn("(zayıf, kesik ad: Simon)", r._db_result(cid, sure=False).source)
+        i18n.sifirla("en", {"zayıf, kesik ad: {ad}": "weak, shortened name: {ad}"})
+        self.assertEqual(r._db_result(cid, sure=False).source,
+                         "Yerleşik veritabanı (Wikidata): heavy metal (weak, shortened name: Simon)")
+
+    def test_steam_search_negative_stored_as_key(self):
+        r = self.make({"storesearch": {"items": []}})
+        got = []
+        self.assertTrue(r.request(ContentId("oyun", "oyun:bilinmez oyun", "Bilinmez Oyun"),
+                                  lambda c, x: got.append(x)))
+        self.assertTrue(r.wait_idle(5))
+        self.assertEqual(got[0].source, "Steam: mağazada bulunamadı")
+        data = json.loads(self.cache.read_text("utf-8"))["kayitlar"]
+        self.assertEqual(data["oyun:bilinmez oyun"]["source"], tur.SRC_STEAM_SEARCH)
+
+    def test_failed_lookup_memory_is_pruned(self):
+        import urllib.error
+        r = self.make({"itunes": urllib.error.URLError("yok"), "deezer": urllib.error.URLError("yok"),
+                       "musicbrainz": urllib.error.URLError("yok")})
+        old = tur.time.monotonic() - tur.ERROR_RETRY - 1
+        r._errors = {f"parca:x|{i}": old for i in range(tur.ERRORS_MAX)}
+        self.assertTrue(r.request(ContentId("muzik", "sanatci:y", "Y", "Song"), lambda c, x: None))
+        self.assertTrue(r.wait_idle(5))
+        self.assertEqual(list(r._errors), ["parca:y|song"])          # expired ones dropped
+
+    def test_browser_with_game_env_is_music_content(self):
+        # the classifier keeps such a browser out of Oyun (Classifier._media_app): its
+        # content id must be a song, not the game (the variant would be a game group)
+        info = proc(env={"WINEPREFIX": "/home/u/Games/oyun/pfx", "SteamAppId": "570"})
+        p = player("Duman - Bu Akşam", "Duman", "https://www.youtube.com/watch?v=abcdefghijk")
+        cid = tur.content_id(stream(media_name="Duman - Bu Akşam - YouTube"), [p], proc=info,
+                             classifier=clf())
+        self.assertEqual((cid.kind, cid.key), ("muzik", "sanatci:duman"))
+        g = tur.content_id(stream(app="Game.exe", binary="Game.exe", pid=9300), [],
+                           proc=proc(9300, "Game.exe", env={"WINEPREFIX": "/p"}), classifier=clf())
+        self.assertEqual(g.kind, "oyun")
+
+
+class TestKnownArtistWeak(unittest.TestCase):
+    """6 Kas hata avı: a title's first word may only share a known artist's name."""
+
+    def make(self, known):
+        procs = {FF: proc()}
+        return Classifier({}, proc_lookup=procs.get, resolve=lambda s: s.pid,
+                          artist_lookup=lambda n: known.get(n.lower()))
+
+    def test_known_artist_decision_is_weak(self):
+        c = self.make({"gece": True})
+        d = c.classify(stream(media_name="Gece - Uyku İçin Hikaye - YouTube"), [])
+        self.assertEqual(d.category.value, "muzik")
+        self.assertTrue(d.zayif)              # → the content check (YAMNet) verifies it
+
+    def test_obvious_video_titles(self):
+        c = self.make({"boston": True, "america": True, "queen": True, "the fray": True})
+        for t in ("Boston - Travel Guide 2026", "America - Full Documentary",
+                  "Queen - The Royal Family Explained", "Boston - 7 Days Itinerary"):
+            with self.subTest(t=t):
+                self.assertEqual(c.classify(stream(media_name=t + " - YouTube"), []).category.value,
+                                 "film")
+        # a song title with "how to" stays a song
+        d = c.classify(stream(media_name="The Fray - How to Save a Life - YouTube"), [])
+        self.assertEqual(d.category.value, "muzik")

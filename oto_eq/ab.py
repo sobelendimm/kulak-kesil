@@ -16,7 +16,8 @@ whatever kisisel.json holds, i.e. the old values unless the user saved).
 Nothing is recorded; no audio is written anywhere.
 
 Exit codes: 0 bitti (kaydedilsin/kaydedilmesin), 1 hata, 2 kullanım hatası ya da
-ön koşul yok (servis kapalı, kulaklık yok, çalan bir şey yok), 130 iptal.
+ön koşul yok (kulaklık yok, çalan bir şey yok), 3 servis çalışmıyor (as every `kulak`
+command; the message goes to stderr), 130 iptal.
 """
 from __future__ import annotations
 
@@ -27,6 +28,7 @@ import random
 import signal
 import sys
 import time
+import unicodedata
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -36,7 +38,7 @@ from .models import EQ_PROFILES, GROUP_LABELS, PROFILE_LABELS, sink_name
 
 log = logging.getLogger("oto_eq.ab")
 
-EXIT_OK, EXIT_ERR, EXIT_USAGE, EXIT_ABORT = 0, 1, 2, 130
+EXIT_OK, EXIT_ERR, EXIT_USAGE, EXIT_NO_SERVICE, EXIT_ABORT = 0, 1, 2, 3, 130
 
 # Fallbacks; the real values come from oto_eq.kisisel when it is importable.
 TON_KEYS: tuple[str, ...] = ("bas", "vokal", "parlaklik")
@@ -123,16 +125,24 @@ def confidence_label(consistent: int, total: int) -> str:
     return _(_CONF_LABELS[confidence_key(consistent, total)])
 
 
+def fold(raw: str | None) -> str:
+    """Answer key: lower case without accents, Turkish-aware ("ÇIK" → "cik", "EŞİT" →
+    "esit"; str.lower() made "ÇIK" "çik" and "EŞİT" "eşi̇t", neither an alias)."""
+    s = (raw or "").strip().replace("İ", "i").replace("I", "i").replace("ı", "i").lower()
+    s = unicodedata.normalize("NFKD", s)
+    return " ".join("".join(c for c in s if not unicodedata.combining(c)).split())
+
+
 def parse_answer(raw: str | None) -> str | None:
     """'1' / '2' / '=' / 't' (replay) / 'q' (quit); None = invalid."""
-    s = (raw or "").strip().lower()
+    s = fold(raw)
     if s in ("1", "2"):
         return s
-    if s in _EQUAL_ALIASES:
+    if s in {fold(a) for a in _EQUAL_ALIASES}:
         return "="
-    if s in _REPLAY_ALIASES:
+    if s in {fold(a) for a in _REPLAY_ALIASES}:
         return "t"
-    if s in _QUIT_ALIASES:
+    if s in {fold(a) for a in _QUIT_ALIASES}:
         return "q"
     return None
 
@@ -348,6 +358,10 @@ def _default_out(s: str = "", end: str = "\n") -> None:
     print(s, end=end, flush=True)
 
 
+def _default_err(s: str = "", end: str = "\n") -> None:
+    print(s, end=end, file=sys.stderr, flush=True)
+
+
 def _default_status() -> dict:
     from . import ipc
     return ipc.request({"cmd": "status"}, timeout=2.0)
@@ -380,6 +394,7 @@ class Deps:
     kisisel: Callable[[], Any] = _default_kisisel        # lazy loader → module-like
     status: Callable[[], dict] = _default_status
     out: Callable[..., None] = _default_out
+    err: Callable[..., None] = _default_err              # "service not running" (exit 3)
     ask: Callable[[str], str] = input
     sleep: Callable[[float], None] = time.sleep
     rng: random.Random | None = None
@@ -503,9 +518,9 @@ def run(argv: list[str] | None = None, deps: Deps | None = None) -> int:
         st = d.status()
     except (ConnectionError, OSError, TimeoutError) as e:
         log.debug("durum alınamadı: %s", e)
-        out(_("Kulak Kesil servisi (oto-eq) çalışmıyor — {komut}").format(
+        d.err(_("Kulak Kesil servisi (oto-eq) çalışmıyor — {komut}").format(
             komut="systemctl --user start oto-eq"))
-        return EXIT_USAGE
+        return EXIT_NO_SERVICE
     why = check_preconditions(st, profile)
     if why:
         out(why)
@@ -634,12 +649,12 @@ def run(argv: list[str] | None = None, deps: Deps | None = None) -> int:
         # the words of the user's language are shown and accepted ("(yes/no)", "(ja/nein)",
         # "(oui/non)"…), the Turkish e/h and y/n keep working everywhere
         ev, ha = _("evet"), _("hayır")
-        yes = {"e", "evet", "y", "yes", ev.lower(), ev.lower()[:1]}
-        no = {"h", "hayır", "hayir", "n", "no", ha.lower(), ha.lower()[:1], ""}
+        yes = {fold(w) for w in ("e", "evet", "y", "yes", ev, ev[:1])}
+        no = {fold(w) for w in ("h", "hayır", "n", "no", ha, ha[:1], "")}
         while True:
             try:
-                r = (d.ask(_("Kaydedilsin mi ({hedef})? ({evet}/{hayir}): ").format(
-                    hedef=target_text(profile, group), evet=ev, hayir=ha)) or "").strip().lower()
+                r = fold(d.ask(_("Kaydedilsin mi ({hedef})? ({evet}/{hayir}): ").format(
+                    hedef=target_text(profile, group), evet=ev, hayir=ha)))
             except EOFError:
                 raise Aborted()
             if r in yes:

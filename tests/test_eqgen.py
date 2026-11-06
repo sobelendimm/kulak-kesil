@@ -759,10 +759,12 @@ class ToneTests(unittest.TestCase):
         old = d / "eski.conf"
         old.write_text("\n".join(ln for ln in new.read_text(encoding="utf-8").splitlines()
                                  if "name = k" not in ln), encoding="utf-8")
-        self.assertFalse(eqgen.conf_outdated(new))
+        with mock.patch.object(eqgen, "lsp_available", return_value=True):
+            self.assertFalse(eqgen.conf_outdated(new))
         self.assertTrue(eqgen.conf_outdated(old))
         self.assertFalse(eqgen.conf_outdated(d / "yok.conf"))
-        self.assertFalse(eqgen.needs_restart(self.p, self.p, conf_path=new))
+        with mock.patch.object(eqgen, "lsp_available", return_value=True):
+            self.assertFalse(eqgen.needs_restart(self.p, self.p, conf_path=new))
         self.assertTrue(eqgen.needs_restart(self.p, self.p, conf_path=old))
         with mock.patch.object(config, "SINKS_CONF", old):          # default = SINKS_CONF
             self.assertTrue(eqgen.needs_restart(self.p, self.p))
@@ -1118,6 +1120,11 @@ class LevelLimiterTests(unittest.TestCase):
             self.assertFalse(eqgen.apply_crossfeed(True, profiles=q))
 
     def test_realistic_master_signal(self):
+        try:                    # optional: only `eqgen check`'s realistic master needs scipy
+            import scipy.ndimage  # noqa: F401
+            import scipy.signal  # noqa: F401
+        except ModuleNotFoundError:
+            self.skipTest("scipy yok (yalnız eqgen check'in gerçekçi master ölçümü için)")
         for kind, lv in eqgen.GERCEKCI_SETS:
             x = eqgen.gercekci_muzik(kind, lv, sec=2.0)
             self.assertEqual(x.shape[1], 2)
@@ -1183,6 +1190,122 @@ class TestCeviri(unittest.TestCase):
         tr = eqgen.generate_conf(p)
         i18n.sifirla("de", {"Müzik": "Musik", "Seviye eşitli düz geçiş": "Pegel"})
         self.assertEqual(eqgen.generate_conf(p), tr)
+
+
+# ---------------------------------------------------------------- hata avı 6 Kas
+class HataAviTests(unittest.TestCase):
+    def setUp(self):
+        self.p = shipped()
+
+    def test_partial_lsp_never_emits_a_missing_plugin(self):
+        """Compressor present, autogain/limiter missing (older LSP): ONE unloadable LV2 node
+        makes PipeWire reject the whole sinks conf, so none may be written."""
+        part = frozenset({"comp"})
+        txt = eqgen.generate_conf(self.p, lsp=part)
+        self.assertNotIn(eqgen.LSP_AG_URI, txt)
+        self.assertNotIn(eqgen.LSP_LIM_URI, txt)
+        self.assertIn(eqgen.LSP_COMP_URI, txt)
+        self.assertIn(f"{eqgen.CONF_LSP_MARK} comp", txt)
+        st = eqgen.gain_staging(self.p, part)
+        for n in EQ_PROFILES:
+            self.assertFalse(st[n]["limiter"], n)
+            self.assertLessEqual(st[n]["out_peak_dbfs"], self.p["genel"]["tavan_dbfs"] + 1e-6, n)
+        both = eqgen.generate_conf(self.p, lsp=frozenset({"comp", "lim"}))
+        self.assertIn(eqgen.LSP_LIM_URI, both)
+        self.assertNotIn(eqgen.LSP_AG_URI, both)
+
+    def test_lsp_available_checks_each_plugin(self):
+        from oto_eq import eklenti
+        with mock.patch.object(eklenti, "lsp_eklentileri", return_value=frozenset({"comp"})):
+            self.assertEqual(eqgen.lsp_available(), frozenset({"comp"}))
+            self.assertEqual(eqgen.lsp_missing(), ["lim", "ag"])
+        with mock.patch.object(eklenti, "lsp_eklentileri",
+                               return_value=frozenset(eqgen.LSP_KEYS)):
+            self.assertIs(eqgen.lsp_available(), True)
+        with mock.patch.object(eklenti, "lsp_eklentileri", return_value=frozenset()):
+            self.assertIs(eqgen.lsp_available(), False)
+        self.assertTrue(eqgen._lsp_has(True, "ag"))
+        self.assertFalse(eqgen._lsp_has(False, "comp"))
+
+    def test_lsp_installed_later_needs_restart(self):
+        d = Path(_TMP.name)
+        conf = d / "lspsiz.conf"
+        conf.write_text(eqgen.generate_conf(self.p, lsp=False), encoding="utf-8")
+        with mock.patch.object(eqgen, "lsp_available", return_value=False):
+            self.assertFalse(eqgen.conf_outdated(conf))
+        with mock.patch.object(eqgen, "lsp_available", return_value=True):
+            self.assertTrue(eqgen.conf_outdated(conf))
+            self.assertTrue(eqgen.needs_restart(self.p, self.p, conf_path=conf))
+        self.assertEqual(eqgen.conf_lsp(conf.read_text(encoding="utf-8")), frozenset())
+        self.assertIsNone(eqgen.conf_lsp("# eski dosya"))
+
+    def test_string_booleans_are_rejected(self):
+        raw = tomllib.loads((config.DEFAULTS_DIR / config.PROFILES_FILE).read_text("utf-8"))
+        for path in (("profil", "film", "aktif"), ("duzeltme", "aktif"), ("genel", "ses_esitleme"),
+                     ("genel", "ortak_link_grubu"), ("duz", "aktif"),
+                     ("profil", "muzik", "kisisel_ton"), ("profil", "cs2", "dinamik", "aktif")):
+            r = copy.deepcopy(raw)
+            t = r
+            for k in path[:-1]:
+                t = t[k]
+            t[path[-1]] = "false"
+            with self.subTest(path), self.assertRaisesRegex(eqgen.ProfileError, "true ya da false"):
+                eqgen.normalize_profiles(r)
+        r = copy.deepcopy(raw)
+        r["profil"]["film"]["filtreler"][0]["aktif"] = "false"
+        with self.assertRaises(eqgen.ProfileError):
+            eqgen.normalize_profiles(r)
+        r = copy.deepcopy(raw)
+        r["profil"]["film"]["aktif"] = 0                       # 0/1 still accepted
+        self.assertIs(eqgen.normalize_profiles(r)["profil"]["film"]["aktif"], False)
+        for bad in ({"genel": 1}, {"profil": "x"}, {"profil": {"film": 3}},
+                    {"genel": {"orneklem_hz": 0}}):
+            with self.subTest(bad), self.assertRaises(eqgen.ProfileError):
+                eqgen.normalize_profiles(bad)
+
+    def test_save_keeps_shipped_blocks_and_implicit_target_open(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = eqgen.save_profiles(self.p, Path(d) / "profiller.toml")
+            raw = tomllib.loads(path.read_text("utf-8"))
+            self.assertNotIn("hedef_lufs", raw["profil"]["muzik"]["seviye"])
+            self.assertNotIn("marj_db", raw["profil"]["film"]["sinirlayici"])   # = shipped
+            self.assertEqual(eqgen.load_profiles(path), self.p)                # round trip
+            raw["genel"]["referans_seviye_db"] = -16.0
+            path.write_text(eqgen.dumps_toml(raw), encoding="utf-8")
+            self.assertEqual(eqgen.load_profiles(path)["profil"]["muzik"]["seviye"]["hedef_lufs"],
+                             -16.0)                                            # follows again
+            q = copy.deepcopy(self.p)
+            q["profil"]["film"]["sinirlayici"]["marj_db"] = 2.0               # own value kept
+            q["profil"]["muzik"]["seviye"]["hedef_lufs"] = -23.0
+            eqgen.save_profiles(q, path)
+            raw = tomllib.loads(path.read_text("utf-8"))
+            self.assertEqual(raw["profil"]["film"]["sinirlayici"]["marj_db"], 2.0)
+            self.assertEqual(raw["profil"]["muzik"]["seviye"]["hedef_lufs"], -23.0)
+            self.assertEqual(eqgen.load_profiles(path), q)
+
+    def test_write_conf_atomic_no_temp_left(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = eqgen.write_conf(Path(d) / "s.conf", self.p)
+            eqgen.write_conf(path, self.p)
+            self.assertEqual(sorted(x.name for x in Path(d).iterdir()), ["s.conf", "s.conf.prev"])
+
+    def test_summary_group_labels_and_partial_lsp(self):
+        from oto_eq import i18n
+        self.addCleanup(i18n.sifirla)
+        i18n.sifirla("en", {"Metal / Rock": "Metal / Rock EN"})
+        with mock.patch.object(eqgen, "lsp_available", return_value=frozenset({"comp"})):
+            text = eqgen._summary(self.p)
+        self.assertIn("Metal / Rock EN", text)
+        self.assertNotIn("metal_rock", text)
+        self.assertIn("LSP eklentileri eksik", text)
+
+    def test_plot_titles_not_hs80_specific(self):
+        from oto_eq import kulaklik
+        with mock.patch.object(kulaklik, "durum_oku", return_value={"aciklama": "WH-1000XM4"}):
+            self.assertEqual(eqgen._kulaklik_adi(), "WH-1000XM4")
+        with mock.patch.object(kulaklik, "durum_oku", return_value={}):
+            self.assertEqual(eqgen._kulaklik_adi(), "kulaklık")
+        self.assertTrue(eqgen._duzeltme_adi(self.p))
 
 
 if __name__ == "__main__":

@@ -25,10 +25,11 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from . import config, i18n, kulaklik
+from . import config, eklenti, i18n, kulaklik
 from . import ui_text as tx
 from .i18n import N_, _
-from .models import ALL_SINK_PROFILES, SINK_PREFIX, sink_name
+from .models import ALL_SINK_PROFILES, PROFILE_LABELS, SINK_PREFIX, sink_name
+from .yedek import MIC_URET          # mikrofon.conf regeneration that works from any dir
 
 TAMAM, UYARI, HATA = "tamam", "uyari", "hata"
 UNITS = (config.DAEMON_SERVICE, config.SINKS_SERVICE, "oto-eq-mic.service")
@@ -37,10 +38,21 @@ MIC_CONF = config.CONFIG_DIR / "mikrofon.conf"
 MIC_FILE = "mikrofon.toml"
 HS80_VENDOR = "1b1c"
 HS80_PRODUCTS = {"0a6b": N_("kablosuz alıcı"), "0a69": N_("kablolu")}     # translated at use
-LV2_DIRS = ("~/.lv2", "/usr/local/lib/lv2", "/usr/lib/lv2", "/usr/lib64/lv2")
-LADSPA_DIRS = ("~/.ladspa", "/usr/local/lib/ladspa", "/usr/lib/ladspa", "/usr/lib64/ladspa")
-LSP_TTL = "lsp-plugins.lv2/compressor_stereo.ttl"
-RNNOISE_SO = "librnnoise_ladspa.so"
+# plugin dirs: oto_eq.eklenti (LV2_PATH/LADSPA_PATH, system, Debian multiarch, NixOS)
+LSP_TTL = eklenti.LSP_TTL["comp"]
+AUTOGAIN_TTL = eklenti.LSP_TTL["ag"]
+RNNOISE_SO = eklenti.RNNOISE_SO
+LSP_ADLARI = {"comp": N_("kompresör"), "lim": N_("sınırlayıcı"), "ag": N_("seviye eşitleyici")}
+# optional Python modules (installed separately): what stops working without them
+MODULLER = (("matplotlib", N_("matplotlib yok: EQ eğrisi grafiği (kulak eq-ciz) çizilemez"),
+             N_("python-matplotlib paketini kurun (Debian/Fedora: python3-matplotlib)")),
+            ("jeepney", N_("jeepney yok: tarayıcı/oynatıcıda ne çaldığı (MPRIS) okunamaz; "
+                           "tarayıcı sesleri yalnız adından sınıflandırılır"),
+             N_("python-jeepney paketini kurun (Debian/Fedora: python3-jeepney)")))
+# category keys of router status streams -> display names (same msgids as the GUI)
+KATEGORI_ADLARI = {"cs2": "CS2", "oyun": N_("Oyun"), "muzik": N_("Müzik"), "film": N_("Film"),
+                   "sesli": N_("Sesli sohbet"), "sistem": N_("Sistem"),
+                   "bilinmeyen": N_("Bilinmeyen")}
 CPU_WARN = 10.0          # % of one core for a sinks/mic pipewire process
 TEST_LEFTOVER = re.compile(r"oto[-_]eq[-_](test|perf|e2e)|a3_?rep|a4\\sbqtest", re.I)
 INSTALL_HINT = "./install.sh"
@@ -58,8 +70,8 @@ KULAKLIK_DEGIL_ONERI = N_("Kulaklığı takın ya da ses ayarlarından varsayıl
                           "ekleyin")
 KULAKLIK_YOK = N_("varsayılan çıkış yok")
 KULAKLIK_YOK_ONERI = N_("Ses ayarlarından bir çıkış seçin (kulaklık takılı mı?)")
-HS80_BASKA = N_("takılı değil; şu an {tur} kullanılıyor: {model} (HS80'e özgü düzeltme, "
-                "kablolu↔kablosuz takip ve mikrofon zinciri bu kulaklıkta devre dışı)")
+HS80_BASKA = N_("takılı değil; şu an {tur} kullanılıyor: {model} (EQ çalışıyor; yalnız HS80'e "
+                "özgü düzeltme ve kablolu↔kablosuz takip bu kulaklıkta devre dışı)")
 
 
 def _r(ad: str, durum: str, ayrinti: str, oneri: str = "") -> dict:
@@ -372,6 +384,16 @@ def check_sinks(fx: Facts) -> list[dict]:
     return out
 
 
+def _profil_adi(key) -> str:
+    """A profile key of the router status ("muzik") → its label in the UI language."""
+    return PROFILE_LABELS.get(str(key), str(key)) if key else ""
+
+
+def _kategori_adi(key) -> str:
+    """A stream category key ("sesli") → its label in the UI language."""
+    return _(KATEGORI_ADLARI[key]) if key in KATEGORI_ADLARI else str(key or "?")
+
+
 def _short(name: str) -> str:
     if "HS80" in name.upper():
         return "HS80"
@@ -402,10 +424,10 @@ def check_router(fx: Facts) -> list[dict]:
             and bool(_headset_re(fx).search(default))
     mode = {"auto": _("otomatik"), "off": _("kapalı")}.get(st.get("mode"), "")
     if st.get("mode") == "fixed":
-        mode = _("sabit ({profil})").format(profil=st.get("fixed_profile"))
+        mode = _("sabit ({profil})").format(profil=_profil_adi(st.get("fixed_profile")))
     extra = []
     if st.get("dominant"):
-        extra.append(_("baskın: {profil}").format(profil=st["dominant"]))
+        extra.append(_("baskın: {profil}").format(profil=_profil_adi(st["dominant"])))
     if st.get("hs80_takip_son"):
         extra.append(_("HS80 takibi: {takip}").format(takip=_(str(st["hs80_takip_son"]))))
     out = []
@@ -441,7 +463,7 @@ def check_streams(fx: Facts) -> list[dict]:
         return [_r(_("akışlar"), TAMAM,
                    _("{n} akışın hiçbiri ham kulaklık çıkışında değil").format(n=n))]
     items = "; ".join(f"#{s.get('index')} {s.get('app') or s.get('binary')} "
-                      f"({s.get('category')}: {s.get('reason')})" for s in raw)
+                      f"({_kategori_adi(s.get('category'))}: {s.get('reason')})" for s in raw)
     return [_r(_("akışlar"), UYARI,
                _("ham kulaklık çıkışında ({cikis}) {n} akış: {akislar}").format(
                    cikis=_short(default), n=len(raw), akislar=items),
@@ -449,7 +471,7 @@ def check_streams(fx: Facts) -> list[dict]:
 
 
 def _wp_state_file() -> Path:
-    base = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
+    base = config._xdg("XDG_STATE_HOME", Path.home() / ".local/state")
     return base / "wireplumber" / "stream-properties"
 
 
@@ -480,24 +502,41 @@ def check_wireplumber(fx: Facts) -> list[dict]:
     return out
 
 
-def _find(fx: Facts, dirs: tuple[str, ...], envvar: str, rel: str) -> bool:
-    cands = [d for d in os.environ.get(envvar, "").split(":") if d] + list(dirs)
-    return any(fx.env.exists(Path(d).expanduser() / rel) for d in cands)
+def _find(fx: Facts, rel: str, tur: str = "lv2") -> bool:
+    return eklenti.bul(rel, tur, exists=fx.env.exists) is not None
 
 
 def check_plugins(fx: Facts) -> list[dict]:
     out = []
-    if _find(fx, LV2_DIRS, "LV2_PATH", LSP_TTL):
+    have = eklenti.lsp_eklentileri(exists=fx.env.exists)
+    missing = [k for k in eklenti.LSP_TTL if k not in have]
+    if not missing:
         out.append(_r(_("LSP eklentisi"), TAMAM, _("lsp-plugins (kompresör) var")))
-    else:
+    elif len(missing) == len(eklenti.LSP_TTL):
         out.append(_r(_("LSP eklentisi"), UYARI, _("yok: dinamik/kompresör devre dışı kalır"),
-                      _("sudo pacman -S lsp-plugins-lv2; ardından kulak eq-uret")))
-    if _find(fx, LADSPA_DIRS, "LADSPA_PATH", RNNOISE_SO):
+                      _("lsp-plugins-lv2 paketini kurun; ardından kulak eq-uret")))
+    else:
+        # an older LSP: some plugins missing → those blocks are generated without them
+        out.append(_r(_("LSP eklentisi"), UYARI,
+                      _("eksik LSP eklentisi: {eksik} (bu bloklar üretilmez)").format(
+                          eksik=", ".join(_(LSP_ADLARI[k]) for k in missing)),
+                      _("lsp-plugins-lv2'yi güncelleyin; ardından kulak eq-uret")))
+    if _find(fx, RNNOISE_SO, "ladspa"):
         out.append(_r(_("RNNoise eklentisi"), TAMAM, _("gürültü bastırma eklentisi var")))
     else:
         out.append(_r(_("RNNoise eklentisi"), UYARI, _("yok: mikrofon gürültü bastırması kapalı"),
-                      _("sudo pacman -S noise-suppression-for-voice; ardından "
-                        "python3 -m oto_eq.micgen generate")))
+                      _("noise-suppression-for-voice ({dosya}) kurun; ardından {komut}").format(
+                          dosya=RNNOISE_SO, komut=MIC_URET)))
+    return out
+
+
+def check_moduller(fx: Facts) -> list[dict]:
+    """Optional Python modules (matplotlib: the curve plot, jeepney: MPRIS). One line only
+    when something is missing."""
+    out = []
+    for mod, ne, oneri in MODULLER:
+        if not fx.env.module_available(mod):
+            out.append(_r(_("Python modülü {ad}").format(ad=mod), UYARI, _(ne), _(oneri)))
     return out
 
 
@@ -506,7 +545,7 @@ def check_configs(fx: Facts) -> list[dict]:
     for ad, conf, src, regen, required in (
             (_("EQ ayar dosyası"), config.SINKS_CONF, config.PROFILES_FILE, "kulak eq-uret", True),
             (_("mikrofon ayar dosyası"), MIC_CONF, MIC_FILE,
-             "python3 -m oto_eq.micgen generate && systemctl --user restart oto-eq-mic", False)):
+             MIC_URET, False)):
         cm = fx.env.mtime(conf)
         if cm is None:
             out.append(_r(ad, HATA if required else UYARI,
@@ -615,6 +654,16 @@ def check_xruns(fx: Facts) -> list[dict]:
     return [_r(_("xrun (ses kesintisi)"), TAMAM, _("hiçbir düğümde xrun yok"))]
 
 
+def _hs80_kullanilmis(fx: Facts) -> bool:
+    """Has this system used an HS80? (the router's last recorded headphone, cihaz.json)"""
+    text = fx.env.read_text(kulaklik.durum_yolu())
+    try:
+        d = json.loads(text) if text else {}
+    except ValueError:
+        d = {}
+    return isinstance(d, dict) and "hs80" in f"{d.get('ad', '')} {d.get('aciklama', '')}".lower()
+
+
 def check_hs80(fx: Facts) -> list[dict]:
     base = "/sys/bus/usb/devices"
     found = []
@@ -626,15 +675,25 @@ def check_hs80(fx: Facts) -> list[dict]:
     if found:
         return [_r("HS80", TAMAM, _("takılı: {baglanti}").format(baglanti=", ".join(sorted(set(found)))))]
     a = fx.aygit()
-    if a is not None and a.kulaklik and "hs80" not in f"{a.ad} {a.aciklama}".lower():
+    in_pactl = a is not None and "hs80" in f"{a.ad} {a.aciklama}".lower()
+    if a is not None and a.kulaklik and not in_pactl:
         # another headphone in use: the EQ works without the HS80
         return [_r("HS80", TAMAM, _(HS80_BASKA).format(tur=_(a.etiket), model=a.aciklama or a.ad))]
+    if not in_pactl and not _hs80_kullanilmis(fx):
+        # never an HS80 here (hata avı 6 Kas): no HS80 advice, no red error for a system
+        # that simply has another (or no) headphone; check_kulaklik reports the output
+        return [_r("HS80", TAMAM, _("kullanılmıyor (yalnız HS80'e özgü düzeltme ve kablolu↔kablosuz "
+                                    "takip devre dışı)"))]
     if a is not None and a.ad and not a.kulaklik:
         # speakers / HDMI chosen as the default output: nothing is broken, EQ is idle by design
         return [_r("HS80", UYARI, _("takılı değil; varsayılan çıkış {tur} ({model}), EQ bu "
                                     "çıkışta çalışmaz").format(tur=_(a.etiket),
                                                                model=a.aciklama or a.ad),
                    _("HS80 ile dinlemek için kablosuz alıcıyı ya da USB kablosunu takın"))]
+    if a is None:
+        # no default output at all: check_kulaklik reports it; not a hard error (exit 1)
+        return [_r("HS80", UYARI, _("USB'de bulunamadı (1b1c:0a6b / 0a69)"),
+                   _("kablosuz alıcıyı ya da USB kablosunu takın"))]
     return [_r("HS80", HATA, _("USB'de bulunamadı (1b1c:0a6b / 0a69)"),
                _("kablosuz alıcıyı ya da USB kablosunu takın"))]
 
@@ -670,8 +729,9 @@ KISISEL_FILE = "kisisel.json"
 KISMA_FILE = "kisma.json"
 MODEL_FILES = ("discogs-effnet-bsdynamic-1.onnx", "discogs-effnet-bsdynamic-1.json")
 YAMNET_FILE = "audioset-yamnet-1.onnx"
-LIMITER_TTL = "lsp-plugins.lv2/limiter_stereo.ttl"
+LIMITER_TTL = eklenti.LSP_TTL["lim"]
 LIMITER_RE = re.compile(r'plugin\s*=\s*"[^"]*limiter_stereo"')
+AUTOGAIN_RE = re.compile(r'plugin\s*=\s*"[^"]*autogain_stereo"')
 ONARIM_FILE = config.STATE_DIR / "onarim.json"
 TON_ADLARI = {"bas": N_("bas"), "vokal": N_("vokal"), "parlaklik": N_("parlaklık")}  # _() at use
 
@@ -720,7 +780,7 @@ def _model_dir(fx: Facts) -> Path:
     d = fx.env.attr("oto_eq.ses_model", "MODEL_DIR")
     if d:
         return Path(d)
-    base = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share"))
+    base = config._xdg("XDG_DATA_HOME", Path.home() / ".local/share")
     return base / "oto-eq" / "models"
 
 
@@ -880,7 +940,7 @@ def check_calisan_graf(fx: Facts) -> list[dict]:
         if not fark:
             out.append(_r(ad, TAMAM, _("ayar dosyasıyla aynı yapıda ({n} zincir)").format(n=n)))
             continue
-        ozet = "; ".join(f"{c.removeprefix(SINK_PREFIX)}: {', '.join(f[:3])}"
+        ozet = "; ".join(f"{_profil_adi(c.removeprefix(SINK_PREFIX))}: {', '.join(f[:3])}"
                          + (" …" if len(f) > 3 else "") for c, f in list(fark.items())[:3])
         if len(fark) > 3:
             ozet += " …"
@@ -918,7 +978,7 @@ def check_kisma(fx: Facts) -> list[dict]:
     text = (_("açık, −{db:g} dB").format(db=float(db)) if isinstance(db, (int, float))
             else _("açık"))
     if isinstance(prof, list) and prof:
-        text += f" ({', '.join(str(p) for p in prof)})"
+        text += f" ({', '.join(_profil_adi(str(p)) for p in prof)})"
     if durum == "yok":
         text = _("{ozet}; varsayılan ayarlar").format(ozet=text)
     # the setting says "on", but is the router's ducker actually running? (it is absent when
@@ -941,18 +1001,29 @@ def check_limiter(fx: Facts) -> list[dict]:
     conf = fx.env.read_text(config.SINKS_CONF)
     if conf is None:
         return []                       # check_configs reports the missing conf
+    out = []
     n = len(LIMITER_RE.findall(conf))
     if not n:
-        supports = fx.env.attr("oto_eq.eqgen", "LSP_LIMITER_URI")
-        if supports:
-            return [_r(_("limiter"), UYARI, _("EQ ayarında limiter yok (eski ayar çalışıyor olabilir)"),
-                       "kulak eq-uret")]
-        return []
-    if not _find(fx, LV2_DIRS, "LV2_PATH", LIMITER_TTL):
-        return [_r(_("limiter"), HATA,
-                   _("EQ ayarı {n} limiter istiyor ama LSP limiter eklentisi yok").format(n=n),
-                   _("sudo pacman -S lsp-plugins-lv2; ardından kulak eq-uret"))]
-    return [_r(_("limiter"), TAMAM, _("{n} zincirde tepe sınırlayıcı var").format(n=n))]
+        # eqgen writes a limiter node whenever the plugin exists (every shipped profile has
+        # [sinirlayici]): none in the file although installed = an old conf is running
+        if _find(fx, LIMITER_TTL):
+            out.append(_r(_("limiter"), UYARI,
+                          _("EQ ayarında limiter yok (eski ayar çalışıyor olabilir)"),
+                          "kulak eq-uret"))
+    elif not _find(fx, LIMITER_TTL):
+        out.append(_r(_("limiter"), HATA,
+                      _("EQ ayarı {n} limiter istiyor ama LSP limiter eklentisi yok").format(n=n),
+                      _("lsp-plugins-lv2 paketini kurun; ardından kulak eq-uret")))
+    else:
+        out.append(_r(_("limiter"), TAMAM, _("{n} zincirde tepe sınırlayıcı var").format(n=n)))
+    # the autogain ([seviye]) the same way: ONE LV2 node PipeWire cannot load = no EQ sink
+    a = len(AUTOGAIN_RE.findall(conf))
+    if a and not _find(fx, AUTOGAIN_TTL):
+        out.append(_r(_("seviye eşitleyici"), HATA,
+                      _("EQ ayarı {n} seviye eşitleyici (LSP autogain) istiyor ama eklenti yok: "
+                        "PipeWire bu ayarı yükleyemez").format(n=a),
+                      _("lsp-plugins-lv2'yi güncelleyin ya da kulak eq-uret ile yeniden üretin")))
+    return out
 
 
 def check_onarim(fx: Facts) -> list[dict]:
@@ -984,7 +1055,7 @@ def check_onarim(fx: Facts) -> list[dict]:
 
 CHECKS: tuple[Callable[[Facts], list[dict]], ...] = (
     check_hs80, check_kulaklik, check_units, check_sinks, check_router, check_streams, check_configs,
-    check_conf_yapi, check_calisan_graf, check_plugins, check_limiter, check_kisisel, check_ses_analiz, check_kisma,
+    check_conf_yapi, check_calisan_graf, check_plugins, check_moduller, check_limiter, check_kisisel, check_ses_analiz, check_kisma,
     check_wireplumber, check_onarim, check_cpu, check_xruns,
 )
 

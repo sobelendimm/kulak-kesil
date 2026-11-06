@@ -47,7 +47,7 @@ pay_db = 1.0
 # seviyeyi aşmaz. Gerekirse TÜM çıkışlar aynı miktarda kısılır (eşitleme
 # bozulmaz).
 tavan_dbfs = -0.5
-# Ortak link grubu (docs/NOTES-perf.md): true → 5 zincir aynı
+# Ortak link grubu: true → 5 zincir aynı
 # node.link-group'ta; WirePlumber bir *_out çıkışını ASLA başka bir Kulak
 # Kesil çıkışına bağlamaz (güvenlik). Bedeli: herhangi bir çıkış çalınca
 # PipeWire 5 zinciri birlikte çalıştırır (~%2.7 / tek çekirdek yerine ~%0.6;
@@ -86,9 +86,9 @@ ek_kazanc_db = 0.0
 # Kaynak: AutoEq, Rtings ölçümü, Harman hedefi. HS80 ~3.5 kHz'te çukur
 # (tam adım sesi bandı!) ve bası zayıf; bu düzeltme onu hedefe çeker.
 # aktif = false → düzeltme kapanır (filtreler 0 dB olur, canlı değişebilir).
-# 24 Eki: iki dar (yüksek-Q) çentik yumuşatıldı — docs/NOTES-pro-referans.md
-# §3-4: 5 kHz üstü ve dar tepe/çukurlar oturuşa bağlı (Rtings "inconsistent",
-# oratory1990); Q≈6'lık çentik oturuş kayınca delik açar. Ölçülen örnekteki
+# İki dar (yüksek-Q) çentik yumuşatıldı: 5 kHz üstü ve dar tepe/çukurlar
+# kulaklığın kafaya oturuşuna bağlı (Rtings "inconsistent", oratory1990);
+# Q≈6'lık bir çentik oturuş biraz kayınca delik açar. Ölçülen örnekteki
 # bedel ≤ +0.9 dB. AutoEq orijinali yorum olarak duruyor.
 # ----------------------------------------------------------------------------
 [duzeltme]
@@ -108,7 +108,7 @@ filtreler = [
     { tip = "PK", fc = 627.0, kazanc = 3.2, q = 2.00 },
     { tip = "PK", fc = 1057.0, kazanc = -3.0, q = 2.44 },
     { tip = "HSC", fc = 10000.0, kazanc = 4.0, q = 0.70 },
-    # AutoEq: -4.1 dB Q 5.90 → yumuşatıldı (NOTES-pro-referans: oturuşa bağlı dar tepe)
+    # AutoEq: -4.1 dB Q 5.90 → yumuşatıldı (oturuşa bağlı dar tepe)
     { tip = "PK", fc = 5744.0, kazanc = -3.0, q = 3.0 },
     { tip = "PK", fc = 4111.0, kazanc = 1.4, q = 2.19 },
     # AutoEq: -1.6 dB Q 5.76 → yumuşatıldı (adım bandının ortasında dar çentik)
@@ -146,7 +146,7 @@ filtreler = [
 #  kişisel ton payını ve kompresör atak taşmasını AYIRMAZ, üstüne marj_db
 #  kadar daha az kısar → ortak seviye -12.4 → -4.3 dB. Gerçekçi -8 LUFS
 #  master'da sınırlayıcı çoğu türde hiç çalışmaz; bas ağırlıklı EDM +
-#  "elektronik" türünde en çok ~1.5 dB, kısa anlarda. Ayrıntı: docs/NOTES-seviye.md
+#  "elektronik" türünde en çok ~1.5 dB, kısa anlarda.
 #   aktif            : açık/kapalı (canlı). Blok yoksa düğüm de yok.
 #   marj_db          : 0..12. Tam ölçekli sürekli sinüsün (EQ tepesinde, ton 0)
 #                      tavanı aşmasına izin verilen pay (= kazanılan ses)
@@ -196,14 +196,14 @@ esik_db = -30.0
 oran = 3.0
 atak_ms = 1.0
 # 80 → 120: 50–100 ms "agresif uç", pompalama riski; 120 ms adımı yine
-# ~0.1 sn'de geri getirir (NOTES-pro-referans §5)
+# ~0.1 sn'de geri getirir
 birakma_ms = 120.0
 diz_db = 6.0
 telafi_db = 8.0
 algilama = "tepe"
 tepki_ms = 5.0
 # 0 → 100 Hz: bomba/patlama gürlemesi tüm bandı kısmasın; silahın orta/tiz
-# enerjisi kompresörü yine tetikler (NOTES-pro-referans, öneriler tablosu)
+# enerjisi kompresörü yine tetikler
 yan_zincir_hpf_hz = 100.0
 ileri_bakis_ms = 0.0
 
@@ -414,7 +414,6 @@ oran = 2.5
 # 10 → 15: çok hızlı atak ünsüzleri köreltir, 10–20 ms konuşmayı korur
 atak_ms = 15.0
 # 250 → 400: konuşma için 100–500 ms; cümle arası "nefes alma" azalır
-# (NOTES-pro-referans §5-6)
 birakma_ms = 400.0
 diz_db = 9.0
 telafi_db = 6.0

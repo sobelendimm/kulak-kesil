@@ -75,7 +75,7 @@ bildirim gelir; şarkı değişimlerinde bildirim gelmez.
 | `kulak saglik` | sağlık kontrolü (servisler, EQ çıkışları, eklentiler; hiçbir şeyi değiştirmez) |
 | `kulak eq-uret` | EQ'yu yeniden üret ve sanal çıkışları yeniden başlat |
 | `kulak eq-ciz` | EQ eğrilerinin grafiğini aç |
-| `kulak gunluk` | servis günlüğü (canlı) |
+| `kulak gunluk` | servis günlüğü (canlı; yönlendirici, EQ çıkışları, mikrofon) |
 | `kulak mikrofon` | sanal mikrofonun durumu; `test` (5 sn kayıt + dinle), `kalibre [--uygula]` (sesine göre otomatik ayar), `varsayilan` (Kulak Kesil · Mikrofon'u varsayılan yap), `hs80` (HS80 mikrofonuna dön) |
 
 Çıkış kodları: `0` başarı, `1` hata, `2` yanlış kullanım, `3` servis çalışmıyor.
@@ -148,11 +148,14 @@ Discord'da giriş cihazı olarak elle seç. Discord'da gürültü azaltma (Krisp
 kazanç ve yankı giderme kapalı olsun. Kaldırırken varsayılan mikrofon buysa önce HS80
 mikrofonuna geri alınır. Varsayılan giriş HS80 mikrofonudur; başka bir mikrofon için
 `~/.config/oto-eq/mikrofon.toml` içinde `giris_desen` (düzenli ifade) ya da `giris_sabit`
-(kaynak adı) ayarla.
+(kaynak adı) ayarla. Bu dosya pencerede bir mikrofon ayarı değiştirince oluşur; elle
+düzenlemek için önce açıklamalı varsayılanı kopyala: `cp config/mikrofon.toml ~/.config/oto-eq/`,
+sonra (kaynak klasöründe) `python3 -m oto_eq.micgen generate` ve
+`systemctl --user restart oto-eq-mic`.
 
 ## Nasıl çalışır
 
-İki systemd kullanıcı servisi girişte kendiliğinden başlar:
+Üç systemd kullanıcı servisi girişte kendiliğinden başlar:
 
 - `oto-eq-sinks.service` — 5 sanal çıkış (4 EQ'lu + Düz) (ayrı bir PipeWire filter-chain
   süreci). PipeWire'a bağlıdır: PipeWire yeniden başlarsa bu da onunla
@@ -160,6 +163,8 @@ mikrofonuna geri alınır. Varsayılan giriş HS80 mikrofonudur; başka bir mikr
 - `oto-eq.service` — yönlendirici: sesleri tanır ve doğru çıkışa taşır
   (`WantedBy=default.target`, çökerse 2 sn sonra yeniden başlar; PipeWire
   yeniden başlasa da çalışmaya devam eder).
+- `oto-eq-mic.service` — işlenmiş sanal mikrofon "Kulak Kesil · Mikrofon" (ayrı bir
+  PipeWire filter-chain süreci; PipeWire'a bağlı).
 
 Tepsi `~/.config/autostart/oto-eq-tray.desktop` ile girişte açılır.
 
@@ -177,35 +182,51 @@ Tepsi `~/.config/autostart/oto-eq-tray.desktop` ile girişte açılır.
 
 ## Kurulum / kaldırma
 
-Gereksinimler: PipeWire + `pipewire-pulse`, systemd kullanıcı oturumu, Python 3.11+, PyQt6,
-numpy, LSP eklentileri (LV2); mikrofon için noise-suppression-for-voice; ses analizi için
-isteğe bağlı `onnxruntime` + modeller (`./tools/download_models.sh`, bkz.
-[docs/MODELS.md](docs/MODELS.md)). `install.sh` eksikleri denetler ve söyler.
-Arch / CachyOS:
+Gereksinimler: ses sunucusu olarak PipeWire (`pipewire-pulse`; PulseAudio'nun kendisi değil),
+`pactl` ve `pw-*` komut satırı araçları, systemd kullanıcı oturumu, Python 3.11+, PyQt6,
+numpy, LSP eklentileri (LV2). Önerilen: matplotlib (EQ eğrileri grafiği, `kulak eq-ciz`) ve
+jeepney (müzik çalarları ve tarayıcıyı MPRIS ile tanır). Mikrofon için
+noise-suppression-for-voice; ses analizi için isteğe bağlı `onnxruntime` + modeller
+(`./tools/download_models.sh`, bkz. [docs/MODELS.md](docs/MODELS.md)). `install.sh` eksikleri
+denetler ve söyler.
 
 ```bash
+# Arch / CachyOS
 sudo pacman -S --needed pipewire-pulse lsp-plugins-lv2 python-pyqt6 python-numpy \
-    noise-suppression-for-voice python-onnxruntime
+    python-matplotlib python-jeepney noise-suppression-for-voice python-onnxruntime
+# Fedora
+sudo dnf install pipewire-pulseaudio pulseaudio-utils pipewire-utils lsp-plugins-lv2 \
+    python3-pyqt6 python3-numpy python3-matplotlib python3-jeepney
+# Debian / Ubuntu
+sudo apt install pipewire-pulse pulseaudio-utils pipewire-bin lsp-plugins-lv2 \
+    python3-pyqt6 python3-numpy python3-matplotlib python3-jeepney
 ```
 
-Servisler kaynağı `~/.local/src/oto-eq` yolunda bekler:
+Fedora / Debian / Ubuntu'da RNNoise: [werman/noise-suppression-for-voice](https://github.com/werman/noise-suppression-for-voice)
+adresinden derle ya da indir.
+
+Kaynağı istediğin yere klonla (örnekte `~/.local/src/oto-eq`) ve kurulumu `sudo` olmadan,
+kendi kullanıcınla çalıştır:
 
 ```bash
 git clone https://github.com/sobelendimm/kulak-kesil.git ~/.local/src/oto-eq
 cd ~/.local/src/oto-eq
 ./install.sh --dry-run    # önce ne yapacağını gör
 ./install.sh              # kur (tekrar çalıştırmak güvenli)
-./install.sh --force-config   # ayarları varsayılana döndür (eskiler yedeklenir)
+./install.sh --force-config   # kurallar.toml ve profiller.toml'u varsayılana döndür (eskiler yedeklenir)
 
 ./uninstall.sh            # her şeyi kaldırır, ayarların (~/.config/oto-eq) kalır
-./uninstall.sh --purge    # ayarları da siler
+./uninstall.sh --purge    # ayarları, durumu ve indirilen modelleri de siler
+                          # (kulak yedek yedekleri ~/.local/share/oto-eq/yedekler içinde kalır)
 ```
 
 Kurulum şunları ekler: üç systemd kullanıcı servisi (EQ çıkışları, yönlendirici, mikrofon), `~/.local/bin/kulak`,
 `kulak-tepsi`, `kulak-app`, tepsi otomatik başlatma, uygulama menüsünde ve
-masaüstünde "Kulak Kesil" kısayolu. `uninstall.sh` bunların hepsini geri alır.
+masaüstünde "Kulak Kesil" kısayolu. `uninstall.sh` bunların hepsini geri alır. Servisler
+kurulumu yaptığın klasörü kullanır: klasörü taşırsan `./install.sh`'i yeniden çalıştır.
 
-Güncelleme: `git pull && ./install.sh`.
+Güncelleme: `git pull && ./install.sh` (tepsinin otomatik başlamasını kapattıysan ya da
+masaüstü kısayolunu sildiysen güncelleme onları geri getirmez).
 
 ## Lisans
 

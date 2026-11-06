@@ -16,6 +16,7 @@ import time
 from typing import Callable
 
 from . import config
+from .i18n import _
 from .models import Event, Sink, Stream
 
 log = logging.getLogger("oto_eq.pulse")
@@ -37,20 +38,22 @@ def _run(args: list[str], timeout: float = TIMEOUT) -> subprocess.CompletedProce
     try:
         return subprocess.run(cmd, capture_output=True, text=True, env=config.C_ENV,
                               timeout=timeout, errors="replace")
+    # user-facing (`kulak teshis` shows them): translated; the journal gets the same text
     except FileNotFoundError as e:
-        raise PulseError(f"pactl bulunamadı: {e}") from e
+        raise PulseError(_("pactl bulunamadı: {hata}").format(hata=e)) from e
     except subprocess.TimeoutExpired as e:
-        raise PulseError(f"pactl zaman aşımı ({timeout:.0f} sn): {' '.join(args)}") from e
+        raise PulseError(_("pactl zaman aşımı ({sn} sn): {komut}").format(
+            sn=f"{timeout:.0f}", komut=" ".join(args))) from e
     except OSError as e:
-        raise PulseError(f"pactl çalıştırılamadı: {e}") from e
+        raise PulseError(_("pactl çalıştırılamadı: {hata}").format(hata=e)) from e
 
 
 def _run_ok(args: list[str], timeout: float = TIMEOUT) -> str:
     """Run pactl and return stdout; raise PulseError on non-zero exit."""
     p = _run(args, timeout)
     if p.returncode != 0:
-        raise PulseError(f"pactl {' '.join(args)} başarısız (kod {p.returncode}): "
-                         f"{p.stderr.strip() or p.stdout.strip()}")
+        raise PulseError(_("pactl {komut} başarısız (kod {kod}): {hata}").format(
+            komut=" ".join(args), kod=p.returncode, hata=p.stderr.strip() or p.stdout.strip()))
     return p.stdout
 
 

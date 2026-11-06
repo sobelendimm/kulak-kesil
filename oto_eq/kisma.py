@@ -140,9 +140,8 @@ def save_settings(data: dict, path: Path | str | None = None) -> dict:
     p = Path(path) if path else SETTINGS_FILE
     clean = normalize_settings(data)
     p.parent.mkdir(parents=True, exist_ok=True)
-    tmp = p.with_suffix(".tmp")
-    tmp.write_text(json.dumps(clean, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    tmp.replace(p)
+    from .yedek import atomik_yaz      # unique temp file + fsync (GUI and CLI may both save)
+    atomik_yaz(p, json.dumps(clean, ensure_ascii=False, indent=2) + "\n")
     return clean
 
 
@@ -432,6 +431,11 @@ class Gate:
 #  DUCKER
 # ============================================================================
 
+def _copy_status(st: dict) -> dict:
+    """A caller may edit what status() returns: never hand out the snapshot's own lists."""
+    return {k: list(v) if isinstance(v, list) else v for k, v in st.items()}
+
+
 class _Rec:
     """One lowered sink: the user's volume (base) and what we wrote last."""
     __slots__ = ("base", "floor", "set", "stale")
@@ -523,6 +527,8 @@ class Ducker:
         self._stopped = False
         self._last_level: float | None = None
         self._status_key: tuple | None = None
+        # last status() result: served when the worker holds the lock in a slow pactl call
+        self._snapshot: dict = self._status_dict()
         if self._threaded:
             ref = weakref.ref(self)
             atexit.register(lambda: (lambda d: d and d.stop())(ref()))
@@ -573,6 +579,11 @@ class Ducker:
                 self._safe_restore_all()
                 self._cooldown_until = now + ERROR_COOLDOWN_S
                 return TICK_S
+            finally:
+                try:
+                    self._snapshot = self._status_dict()   # for status(wait=…) during the next tick
+                except Exception:  # noqa: BLE001
+                    log.debug("kısma durum özeti alınamadı", exc_info=True)
 
     def stop(self) -> None:
         """Restore every lowered sink immediately and close the meters (idempotent)."""
@@ -590,7 +601,22 @@ class Ducker:
             self._closed_at = None
         self._stopping.clear()
 
-    def status(self) -> dict:
+    def status(self, wait: float | None = None) -> dict:
+        """Current state for the GUI/CLI. ``wait``: at most this many seconds for the
+        worker lock; on timeout the last snapshot (≤ one tick old) is returned. The
+        router passes a short wait: a tick holds the lock across pactl calls (3 s each
+        while pipewire-pulse hangs), and `kulak durum` / IPC watch must not hang on it."""
+        if wait is None:
+            self._lock.acquire()
+        elif not self._lock.acquire(timeout=max(0.0, wait)):
+            return _copy_status(self._snapshot)
+        try:
+            self._snapshot = self._status_dict()
+            return _copy_status(self._snapshot)
+        finally:
+            self._lock.release()
+
+    def _status_dict(self) -> dict:
         with self._lock:
             s = self.settings
             meters = list(self._meters)

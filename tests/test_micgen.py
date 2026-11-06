@@ -407,7 +407,7 @@ class CalibrateGuiHelpersTest(unittest.TestCase):
 
     def test_calibrate_error_codes(self):
         with mock.patch.object(micgen, "load_mic", return_value=shipped()), \
-                mock.patch.object(micgen, "resolve_target", return_value=None):
+                mock.patch.object(micgen, "kayit_kaynagi", return_value=None):
             self.assertEqual(micgen.calibrate(1.0)["kod"], "mikrofon_yok")
         cal = CalibrateTest()
         r, _, _ = cal.run_cal(synth(None, -70.0))
@@ -487,6 +487,165 @@ class TestCeviri(unittest.TestCase):
         with mock.patch.dict("os.environ", {"OTO_EQ_MAKINE": "0"}):
             self.assertFalse(mt._makine())
         self.assertEqual(mt._metin(mt.SATIR["ham"], False), "Roh")
+
+
+# ---------------------------------------------------------------- hata avı 6 Kas: non-HS80 mics
+DESK = "alsa_input.usb-Blue_Microphones_Yeti_Stereo_Microphone_REV8-00.analog-stereo"
+ONBOARD = "alsa_input.pci-0000_15_00.6.analog-stereo"
+
+
+class NonHs80TargetTest(unittest.TestCase):
+    """Without an HS80 the chain must still capture a REAL mic by name: falling back to the
+    default source breaks once "Kulak Kesil · Mikrofon" itself is the default input
+    (WirePlumber refuses the self-link → silent virtual mic)."""
+
+    def ct(self, sources, default, seen=""):
+        with mock.patch("oto_eq.kulaklik.durum_oku", return_value={"ad": seen}), \
+                mock.patch.object(micgen, "_run", side_effect=AssertionError("no pactl")):
+            return micgen.conf_target(shipped(), sources=sources, default=default,
+                                      default_sink=SPK)
+
+    def test_hs80_still_wins(self):
+        self.assertEqual(self.ct([DESK, W, "oto_eq_mikrofon"], "oto_eq_mikrofon"), W)
+
+    def test_real_default_is_pinned(self):
+        self.assertEqual(self.ct([ONBOARD, DESK, "oto_eq_mikrofon"], DESK), DESK)
+
+    def test_own_virtual_mic_as_default_is_never_the_target(self):
+        t = self.ct(["oto_eq_mikrofon", SINK_W + ".monitor", DESK, ONBOARD], "oto_eq_mikrofon")
+        self.assertEqual(t, DESK)
+        self.assertFalse(t.startswith("oto_eq"))
+
+    def test_no_real_mic_means_missing_target(self):
+        self.assertIsNone(self.ct(["oto_eq_mikrofon", SPK + ".monitor"], "oto_eq_mikrofon"))
+
+    def test_hs80_user_with_hs80_off_keeps_following_the_default(self):
+        self.assertIsNone(self.ct([ONBOARD, "oto_eq_mikrofon"], ONBOARD, seen=SINK_W))
+
+    def test_generated_conf_target_object(self):
+        with mock.patch.object(micgen, "rnnoise_path", return_value=None), \
+                mock.patch.object(micgen, "lsp_mono_available", return_value=False):
+            txt = micgen.generate_conf(shipped(), target=self.ct([DESK, "oto_eq_mikrofon"],
+                                                                 "oto_eq_mikrofon"))
+        import re
+        self.assertRegex(txt, r'target\.object\s*=\s*"' + re.escape(DESK) + '"')
+        self.assertNotIn(micgen.MISSING_TARGET, txt)
+
+
+class KayitKaynagiTest(unittest.TestCase):
+    """mic test / calibration: HS80 → the source linked into the capture → default input."""
+
+    @staticmethod
+    def dump(linked: str | None) -> list[dict]:
+        nodes = [{"id": 10, "type": "PipeWire:Interface:Node",
+                  "info": {"props": {"node.name": "oto_eq_mikrofon_giris"}}}]
+        if linked:
+            nodes += [{"id": 20, "type": "PipeWire:Interface:Node",
+                       "info": {"props": {"node.name": linked}}},
+                      {"id": 30, "type": "PipeWire:Interface:Link",
+                       "info": {"output-node-id": 20, "input-node-id": 10}}]
+        return nodes
+
+    def kk(self, linked, default, hs80=None):
+        with mock.patch.object(micgen, "resolve_target", return_value=hs80), \
+                mock.patch.object(micgen, "default_source", return_value=default):
+            return micgen.kayit_kaynagi(shipped(), dump=self.dump(linked))
+
+    def test_order(self):
+        self.assertEqual(self.kk(DESK, ONBOARD, hs80=W), W)
+        self.assertEqual(self.kk(DESK, ONBOARD), DESK)
+        self.assertEqual(self.kk(None, ONBOARD), ONBOARD)
+        self.assertEqual(self.kk("oto_eq_mikrofon", ONBOARD), ONBOARD)
+        self.assertIsNone(self.kk(None, "oto_eq_mikrofon"))
+        self.assertIsNone(self.kk(None, SPK + ".monitor"))
+
+    def test_mikrofon_test_uses_it(self):
+        from oto_eq import mikrofon_test as mt
+        with mock.patch.object(micgen, "load_mic", return_value=shipped()), \
+                mock.patch.object(micgen, "kayit_kaynagi", return_value=DESK) as kk:
+            self.assertEqual(mt._raw_source(), DESK)
+        kk.assert_called_once()
+        with mock.patch.object(micgen, "load_mic", side_effect=micgen.MicError("bozuk")), \
+                mock.patch.object(micgen, "kayit_kaynagi", return_value=None):
+            self.assertIsNone(mt._raw_source())
+
+    def test_calibrate_desk_mic(self):
+        with mock.patch.object(micgen, "load_mic", return_value=shipped()), \
+                mock.patch.object(micgen, "kayit_kaynagi", return_value=DESK), \
+                mock.patch.object(micgen, "_record", return_value=synth(-30.0, -70.0)), \
+                mock.patch.object(micgen, "lsp_mono_available", return_value=True):
+            r = micgen.calibrate(5.0)
+        self.assertNotIn("hata", r)
+        self.assertEqual(r["giris"], DESK)
+
+
+class RecordTimeoutTest(unittest.TestCase):
+    def test_silent_parec_does_not_block(self):
+        import os
+        import time
+        rfd, wfd = os.pipe()
+        self.addCleanup(os.close, wfd)
+
+        class Silent:                       # a "parec" that never writes a byte
+            def __init__(self, *a, **k):
+                self.stdout = os.fdopen(rfd, "rb", buffering=0)
+
+            def terminate(self):
+                pass
+
+            def wait(self, timeout=None):
+                return 0
+
+            def kill(self):
+                pass
+
+        t0 = time.monotonic()
+        x = micgen._record("bir_kaynak", 0.3, popen=Silent)
+        self.assertLess(time.monotonic() - t0, 2.0)
+        self.assertEqual(x.size, 0)
+
+    def test_reads_available_data(self):
+        import os
+        import numpy as np
+        rfd, wfd = os.pipe()
+        sig = np.full(4800, 0.25, dtype=np.float32)
+        os.write(wfd, sig.tobytes())
+        os.close(wfd)
+
+        class Fake:
+            def __init__(self, *a, **k):
+                self.stdout = os.fdopen(rfd, "rb", buffering=0)
+
+            def terminate(self):
+                pass
+
+            def wait(self, timeout=None):
+                return 0
+
+        x = micgen._record("bir_kaynak", 2.0, popen=Fake)
+        self.assertEqual(x.size, 4800)
+        self.assertAlmostEqual(float(x[0]), 0.25)
+
+
+class ModEtiketiTest(unittest.TestCase):
+    def tearDown(self):
+        from oto_eq import i18n
+        i18n.sifirla()
+
+    def test_builtin_mode_translated_user_mode_as_written(self):
+        from oto_eq import i18n
+        i18n.sifirla("en", {"tam (varsayılan)": "full processing"})
+        self.assertEqual(micgen.mod_etiketi("tam"), "full processing")
+        self.assertEqual(micgen.mod_etiketi("discord"), "discord")
+        d = shipped()
+        with mock.patch.object(micgen, "kayit_kaynagi", return_value=DESK), \
+                mock.patch.object(micgen, "source_volume_db", return_value=-3.0), \
+                mock.patch.object(micgen, "rnnoise_path", return_value=None), \
+                mock.patch.object(micgen, "lsp_mono_available", return_value=False):
+            text = micgen.summary(d)
+        self.assertIn("full processing", text)
+        self.assertNotIn("Mod: tam ", text)
+        self.assertNotIn("kablosuz", text)            # a desk mic has no wireless mode
 
 
 if __name__ == "__main__":

@@ -13,8 +13,10 @@ Please include:
 
 ## Pull requests
 
-- Run the tests before sending: `python3 -m unittest discover -s tests`
-  (they never touch your real `~/.config`).
+- Run the tests before sending: `python3 -m unittest discover -s tests`.
+  They never write to your real `~/.config`, but a few live tests load temporary null
+  sinks into the running PipeWire (skipped without `pactl` / `pipewire-pulse`).
+  Test-only dependencies: `scipy` and `jeepney`.
 - Keep user-facing text translatable: wrap it in `_()` (Turkish is the source language;
   catalogs live in `oto_eq/i18n/`). Log messages can stay as they are.
 - One topic per pull request, please.

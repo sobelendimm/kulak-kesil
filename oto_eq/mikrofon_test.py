@@ -1,4 +1,5 @@
-"""Mikrofon A/B testi: ham HS80 ve Kulak Kesil · Mikrofon aynı anda kaydedilir,
+"""Mikrofon A/B testi: ham mikrofon (HS80 ya da zincirin yakaladığı mikrofon) ve Kulak Kesil ·
+Mikrofon aynı anda kaydedilir,
 seviyeleri gösterilir, önce ham sonra işlenmiş ses geri çalınır.
 
     python3 -m oto_eq.mikrofon_test [saniye]
@@ -46,14 +47,16 @@ def _metin(msgid: str, makine: bool) -> str:
     return msgid if makine else _(msgid)
 
 
-def _hs80_source() -> str | None:
-    out = subprocess.run(["pactl", "list", "short", "sources"], capture_output=True,
-                         text=True, env=config.C_ENV, timeout=5).stdout
-    for line in out.splitlines():
-        name = line.split("\t")[1] if "\t" in line else ""
-        if "alsa_input" in name and "hs80" in name.lower():
-            return name
-    return None
+def _raw_source() -> str | None:
+    """The raw mic behind "Kulak Kesil · Mikrofon": mikrofon.toml's choice (giris_sabit /
+    giris_desen, the HS80 — wired preferred over a silent dongle), else the source the
+    chain is linked to, else the default input (micgen.kayit_kaynagi). Not HS80-only."""
+    from . import micgen
+    try:
+        data = micgen.load_mic()
+    except Exception:  # noqa: BLE001 - a broken mikrofon.toml must not stop the test
+        data = micgen.normalize_mic({})
+    return micgen.kayit_kaynagi(data)
 
 
 SESSIZ = (-240.0, -240.0, -240.0)       # no usable audio (empty/short/broken recording)
@@ -80,9 +83,9 @@ def _levels(path: Path) -> tuple[float, float, float]:
 
 def main() -> int:
     seconds = float(sys.argv[1]) if len(sys.argv) > 1 else 5.0
-    raw_src = _hs80_source()
+    raw_src = _raw_source()
     if raw_src is None:
-        print(_("HS80 mikrofonu bulunamadı."))
+        print(_("Mikrofon bulunamadı."))
         return 1
     if VIRTUAL not in {s.name for s in pulse.list_sinks()} and VIRTUAL not in \
             subprocess.run(["pactl", "list", "short", "sources"], capture_output=True,

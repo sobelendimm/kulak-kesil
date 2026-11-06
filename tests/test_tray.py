@@ -134,6 +134,58 @@ class TestNotifier(unittest.TestCase):
             raise FileNotFoundError("notify-send")
         self.assertFalse(ui.Notifier(runner=runner).notify("x"))
 
+    def test_background_does_not_block_and_keeps_order(self):
+        import threading
+        gate, calls, done = threading.Event(), [], threading.Event()
+
+        def runner(cmd, **kw):
+            gate.wait(5)                          # a slow notification server
+            calls.append(cmd)
+            if len(calls) == 2:
+                done.set()
+            return subprocess.CompletedProcess(cmd, 0, f"{40 + len(calls)}\n", "")
+
+        n = ui.Notifier(runner=runner, background=True)
+        t0 = time.monotonic()
+        self.assertTrue(n.notify("a"))
+        self.assertTrue(n.notify("b"))
+        self.assertLess(time.monotonic() - t0, 0.5)          # the caller never waits
+        gate.set()
+        self.assertTrue(done.wait(5))
+        self.assertEqual([c[-1] for c in calls], ["a", "b"])
+        self.assertNotIn("-r", calls[0])
+        self.assertEqual(calls[1][calls[1].index("-r") + 1], "41")   # replaces the first
+        self.assertTrue(ui.Notifier().background)            # real notify-send: off the GUI thread
+
+    def test_default_request_timeout_outlasts_router_wait(self):
+        from oto_eq import router
+        with mock.patch("oto_eq.ipc.request", return_value={"ok": True}) as req:
+            ui.default_request({"cmd": "status"})
+        self.assertEqual(req.call_args.kwargs["timeout"], ui.IPC_TIMEOUT)
+        self.assertGreaterEqual(ui.IPC_TIMEOUT, router.COMMAND_WAIT + 1.0)
+
+
+class TestFlowLayout(unittest.TestCase):
+    def test_wraps_and_reports_height(self):
+        from PyQt6.QtWidgets import QPushButton, QWidget
+        w = QWidget()
+        lay = ui.FlowLayout(w, spacing=8)
+        btns = [QPushButton(f"Düğme {i} uzun bir metin") for i in range(4)]
+        for b in btns:
+            lay.addWidget(b)
+        one = max(b.sizeHint().width() for b in btns)
+        self.assertEqual(lay.minimumSize().width(), max(b.minimumSizeHint().width() for b in btns))
+        h1 = lay.heightForWidth(10_000)
+        h4 = lay.heightForWidth(one)
+        self.assertGreater(h4, 3 * h1)                       # one per line
+        w.resize(one + 10, h4)
+        w.show()
+        QCoreApplication.processEvents()
+        self.assertEqual(len({b.y() for b in btns}), 4)
+        btns[1].hide()                                        # hidden ones take no place
+        self.assertLess(lay.heightForWidth(one), h4)
+        w.deleteLater()
+
 
 class ControllerBase(unittest.TestCase):
     def setUp(self):
@@ -236,6 +288,9 @@ class TestMenu(ControllerBase):
             {"index": 3, "app": "Firefox", "profile": None, "sink": "oto_eq_duz"}]))
         self.assertIn("• Firefox → Düz", t)
         self.assertIn("seviye eşitli düz geçiş", t)
+        many = [{"index": i, "app": f"App {i}", "profile": "muzik"} for i in range(9)]
+        t = tray.tooltip_text(st(streams=many))
+        self.assertIn("… diğer akışlar: 1", t)         # no "+1 akış"-style plural
 
 
 class TestI18n(unittest.TestCase):

@@ -109,7 +109,7 @@ def tooltip_text(st: dict | None) -> str:
         app = s.get("app") or s.get("binary") or f"#{s.get('index', '?')}"
         lines.append(f"• {app} → {ui.stream_profile_label(s)}")
     if len(streams) > 8:
-        lines.append(_("… +{n} akış").format(n=len(streams) - 8))
+        lines.append(_("… diğer akışlar: {n}").format(n=len(streams) - 8))
     if not streams:
         lines.append(_("Çalan akış yok"))
     return "\n".join(lines)

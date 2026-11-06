@@ -55,6 +55,7 @@ class Harness:
                  apply_ok=True, sleep_hook=None, signals=False):
         self.applies = []
         self.lines = []
+        self.errs = []
         self.prompts = []
         self.sleeps = []
         self.answers = list(answers or [])
@@ -64,7 +65,7 @@ class Harness:
         self.apply_ok = apply_ok
         self.sleep_hook = sleep_hook
         self.deps = ab.Deps(apply_tone=self.apply, kisisel=lambda: self.kis, status=self.status,
-                            out=self.out, ask=self.ask, sleep=self.sleep,
+                            out=self.out, err=self.err, ask=self.ask, sleep=self.sleep,
                             rng=random.Random(seed), install_signals=signals)
 
     def status(self):
@@ -78,6 +79,9 @@ class Harness:
 
     def out(self, s="", end="\n"):
         self.lines.append(s + end)
+
+    def err(self, s="", end="\n"):
+        self.errs.append(s + end)
 
     def sleep(self, s):
         self.sleeps.append(s)
@@ -132,6 +136,14 @@ class TestHelpers(unittest.TestCase):
         for raw, exp in (("1", "1"), (" 2 ", "2"), ("=", "="), ("0", "="), ("Fark yok", "="),
                          ("t", "t"), ("Q", "q"), ("ç", "q"), ("x", None), ("", None), (None, None)):
             self.assertEqual(ab.parse_answer(raw), exp, raw)
+
+    def test_parse_answer_turkish_capitals(self):
+        # 6 Kas: str.lower() made "ÇIK" "çik" and "EŞİT" "eşi̇t" (dotted i + U+0307)
+        for raw, exp in (("ÇIK", "q"), ("Çık", "q"), ("BİTİR", "q"), ("BITIR", "q"),
+                         ("EŞİT", "="), ("Eşit", "="), ("FARK YOK", "="), ("fark  yok", "="),
+                         ("TEKRAR", "t")):
+            self.assertEqual(ab.parse_answer(raw), exp, raw)
+        self.assertEqual(ab.fold("HAYIR"), ab.fold("hayır"))
 
     def test_confidence_label(self):
         self.assertEqual(ab.confidence_label(0, 0), "veri yok")
@@ -286,7 +298,14 @@ class TestPreconditions(unittest.TestCase):
         self.assertEqual(h.kis.calls, [])
 
     def test_router_down(self):
-        self._check(Harness(st=ConnectionRefusedError("x")), "çalışmıyor")
+        # like every `kulak` command: exit 3, the message on stderr (not stdout)
+        h = Harness(st=ConnectionRefusedError("x"))
+        self.assertEqual(h.run(), ab.EXIT_NO_SERVICE)
+        self.assertEqual(ab.EXIT_NO_SERVICE, 3)
+        self.assertIn("çalışmıyor", "".join(h.errs))
+        self.assertNotIn("çalışmıyor", h.text)
+        self.assertEqual(h.applies, [])
+        self.assertEqual(h.kis.calls, [])
 
     def test_not_active(self):
         self._check(Harness(st=status(active=False)), "varsayılan çıkış değil")
@@ -381,6 +400,15 @@ class TestRun(unittest.TestCase):
             h = Harness(answers=["", "1", "2", "1", "nein"], seed=2)
             self.assertEqual(h.run(["--deneme", "3"]), 0)
             self.assertEqual(h.kis.calls, [])
+
+    def test_save_prompt_capitals(self):
+        h = Harness(st=status(group=""), answers=["", "2", "2", "2", "EVET"], seed=0)
+        self.assertEqual(h.run(["--deneme", "3"]), 0)
+        self.assertEqual(h.kis.calls[0][0], "genel")
+        h = Harness(st=status(group=""), answers=["", "2", "2", "2", "HAYIR"], seed=0)
+        self.assertEqual(h.run(["--deneme", "3"]), 0)
+        self.assertEqual(h.kis.calls, [])
+        self.assertIn("Kaydedilmedi", h.text)              # recognised, not re-asked until EOF
 
     def test_no_save_restores(self):
         h = Harness(answers=["", "1", "2", "1", "h"], seed=2)

@@ -72,6 +72,7 @@ ESKI_DURUM_BEKLE = 30.0       # router status default ≠ real default this long
 ESKI_DURUM_ARALIK = 300.0
 WP_ARALIK = 86400.0           # WirePlumber cleanup at most once a day
 SINKS_UNIT = config.SINKS_SERVICE
+SINKS_CONF_AD = config.SINKS_CONF.name
 GECMIS_DOSYA = config.STATE_DIR / "onarim.json"
 GECMIS_UZUNLUK = 20
 APP_NAME = "Kulak Kesil"
@@ -99,10 +100,12 @@ class Gozlem:
     """One round of read-only observations. ``None`` = could not be observed."""
     sinks: list[str] | None = None            # pactl list short sinks (names)
     default_sink: str | None = None           # pactl get-default-sink
-    sinks_unit: dict[str, str] | None = None  # systemctl show oto-eq-sinks (LoadState, ActiveState…)
+    sinks_unit: dict[str, str] | None = None  # systemctl show oto-eq-sinks (LoadState, ActiveState,
+                                              # SubState, Result)
     xrun: dict[str, int] | None = None        # "id:name" -> cumulative ERR (pw-top)
     kayit_sayisi: int | None = None           # client-owned source-outputs (apps recording)
     wp_kalinti: int | None = None             # removable WP test entries (wp_temizle plan)
+    conf_var: bool | None = None              # the generated sinks conf exists (unit condition)
 
 
 @dataclass
@@ -215,6 +218,26 @@ def _kontrol_cikislar(status: dict, now: float, g: Gozlem | None, d: Durum, a: A
         return []
     if unit.get("ActiveState") in ("activating", "reloading", "deactivating"):
         return []                           # a (re)start is already in progress
+    if g is not None and g.conf_var is False:
+        # ConditionPathExists: without the conf the unit never starts, a restart "succeeds"
+        # and changes nothing — say what is really missing
+        if d.izin("eksik_bildirim", now, EKSIK_BILDIRIM_ARALIK):
+            d.isaretle("eksik_bildirim", now)
+            return [Eylem(BILDIRIM, Metin(N_("EQ çıkışları eksik: {dosya} yok"),
+                              dosya=SINKS_CONF_AD), "eksik_bildirim",
+                          baslik=_("Kulak Kesil: EQ çıkışları yok"),
+                          govde=Metin(N_("EQ ayar dosyası ({dosya}) yok; {komut} ile üretin."),
+                              dosya=SINKS_CONF_AD, komut="kulak eq-uret"))]
+        return []
+    if unit.get("ActiveState") == "inactive" and unit.get("Result") == "success":
+        # stopped cleanly = on purpose (`systemctl --user stop oto-eq-sinks`): a crash ends
+        # in "failed" / auto-restart. Do not fight the user; log it once per episode.
+        if d.son.get("durduruldu_bolum") != d.since.get("eksik"):
+            d.son["durduruldu_bolum"] = d.since.get("eksik")
+            return [Eylem(KAYIT, Metin(N_("EQ çıkışları eksik ama {servis} elle durdurulmuş; "
+                                          "yeniden başlatılmıyor"), servis=SINKS_UNIT),
+                          "durduruldu")]
+        return []
     if a.otomatik_yeniden_baslat and d.ardisik_restart < RESTART_UST \
             and d.izin("restart", now, RESTART_ARALIK):
         d.isaretle("restart", now)
@@ -283,15 +306,18 @@ def _kontrol_hs80(status: dict, now: float, g: Gozlem | None, d: Durum, a: Ayar)
     hs80 = sorted(s for s in g.sinks if rx.search(s) and not s.startswith(SINK_PREFIX))
     bizim = default.startswith(SINK_PREFIX)
 
-    # (a) one of OUR sinks became the default: EQ is bypassed, feedback-loop risk
-    if d.sure("varsayilan_eq", bizim, now) >= 5.0 \
+    # (a) one of OUR sinks became the default: EQ is bypassed, feedback-loop risk. Not when
+    # no real output exists at all (the only headphone was unplugged): WirePlumber then
+    # falls back to one of ours (priority 1 is still a candidate) — nothing to fix by hand.
+    gercek = [s for s in g.sinks if not s.startswith(SINK_PREFIX) and not s.endswith(".monitor")]
+    if d.sure("varsayilan_eq", bizim and bool(gercek), now) >= 5.0 \
             and d.izin("varsayilan_eq", now, VARSAYILAN_EQ_BILDIRIM_ARALIK):
         d.isaretle("varsayilan_eq", now)
         out.append(Eylem(BILDIRIM, Metin(N_("varsayılan çıkış bir Kulak Kesil çıkışı: {cikis}"),
                              cikis=default),
                          "varsayilan_eq", baslik=_("Kulak Kesil: yanlış varsayılan çıkış"),
                          govde=Metin(N_("Varsayılan çıkış '{cikis}' seçilmiş; EQ devre dışı. "
-                                 "Ses ayarlarından HS80'i (ya da hoparlörü) seçin."),
+                                 "Ses ayarlarından kulaklığınızı (ya da hoparlörü) seçin."),
                              cikis=default)))
 
     # (b) HS80 present but not the default (after the router's own 30 s window)
@@ -380,7 +406,7 @@ def _run(cmd: list[str], timeout: float = 5.0) -> tuple[int, str]:
 
 
 def wp_state_dir() -> Path:
-    return Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "wireplumber"
+    return config._xdg("XDG_STATE_HOME", Path.home() / ".local/state") / "wireplumber"
 
 
 def wp_modul() -> Any | None:
@@ -415,8 +441,9 @@ def wp_kalinti_say(state_dir: Path | None = None, wp: Any = None) -> int | None:
 
 
 def gozle(run: Runner = _run, xrun: bool = True, wp: bool = True,
-          state_dir: Path | None = None) -> Gozlem:
-    """Collect the observations (read-only commands only)."""
+          state_dir: Path | None = None, conf: Path | None = None) -> Gozlem:
+    """Collect the observations (read-only commands only). ``conf``: the sinks conf whose
+    existence is checked (default config.SINKS_CONF)."""
     g = Gozlem()
     rc, out = run(["pactl", "list", "short", "sinks"])
     if rc == 0:
@@ -424,9 +451,14 @@ def gozle(run: Runner = _run, xrun: bool = True, wp: bool = True,
     rc, out = run(["pactl", "get-default-sink"])
     if rc == 0:
         g.default_sink = out.strip()
-    rc, out = run(["systemctl", "--user", "show", SINKS_UNIT, "-p", "LoadState,ActiveState"])
+    rc, out = run(["systemctl", "--user", "show", SINKS_UNIT, "-p",
+                   "LoadState,ActiveState,SubState,Result"])
     if rc == 0:
         g.sinks_unit = dict(l.split("=", 1) for l in out.splitlines() if "=" in l)
+        try:
+            g.conf_var = Path(conf or config.SINKS_CONF).exists()
+        except OSError:
+            g.conf_var = None
     rc, out = run(["pactl", "list", "short", "source-outputs"])
     if rc == 0:
         n = 0
@@ -499,22 +531,26 @@ def uygula(e: Eylem, *, dry_run: bool = False, run: Callable[..., Any] = subproc
            notify: Callable[[str, str], Any] | None = None,
            rescan: Callable[[], Any] | None = None, bildirim: bool = True,
            wp: Any = None, state_dir: Path | None = None,
-           dogrula: Callable[[], bool] | None = None) -> Sonuc:
+           dogrula: Callable[[], bool] | None = None,
+           conf_var: Callable[[], bool] | None = None) -> Sonuc:
     """Execute one action; returns the (translated) result line as a ``Sonuc``
     (``.basarili`` = success). ``dry_run`` → only describe. ``dogrula``: after restarting
-    the sinks, check they came back (default: really check when ``run`` is the real
-    subprocess.run; a test double skips it unless it passes its own)."""
-    if dogrula is None and run is subprocess.run:
-        dogrula = cikislar_dondu
+    the sinks, check they came back; ``conf_var``: does the sinks conf exist (a failed
+    check then names the real cause). Default for both: really check when ``run`` is the
+    real subprocess.run; a test double skips them unless it passes its own."""
+    if run is subprocess.run:
+        dogrula = dogrula or cikislar_dondu
+        conf_var = conf_var or config.SINKS_CONF.exists
     r = _uygula(e, dry_run=dry_run, run=run, notify=notify, rescan=rescan, bildirim=bildirim,
-                wp=wp, state_dir=state_dir, dogrula=dogrula)
+                wp=wp, state_dir=state_dir, dogrula=dogrula, conf_var=conf_var)
     return r if isinstance(r, Sonuc) else Sonuc(r)
 
 
 def _uygula(e: Eylem, *, dry_run: bool, run: Callable[..., Any],
             notify: Callable[[str, str], Any] | None, rescan: Callable[[], Any] | None,
             bildirim: bool, wp: Any, state_dir: Path | None,
-            dogrula: Callable[[], bool] | None = None) -> str:
+            dogrula: Callable[[], bool] | None = None,
+            conf_var: Callable[[], bool] | None = None) -> str:
     notify = notify or (lambda b, g: bildir(b, g, run=run))
     if e.tur == YENIDEN_BASLAT:
         cmd = ["systemctl", "--user", "restart", e.hedef or SINKS_UNIT]
@@ -527,8 +563,12 @@ def _uygula(e: Eylem, *, dry_run: bool, run: Callable[..., Any],
         except (OSError, subprocess.SubprocessError) as ex:
             ok, err = False, str(ex)
         if ok and dogrula is not None and (e.hedef or SINKS_UNIT) == SINKS_UNIT and not dogrula():
-            ok, err = False, _("servis başladı ama EQ çıkışları geri gelmedi (yapılandırma "
-                               "bozuk olabilir: journalctl --user -u oto-eq-sinks)")
+            if conf_var is not None and not conf_var():   # ConditionPathExists failed
+                ok, err = False, _("EQ ayar dosyası ({dosya}) yok; {komut} ile üretin").format(
+                    dosya=SINKS_CONF_AD, komut="kulak eq-uret")
+            else:
+                ok, err = False, _("servis başladı ama EQ çıkışları geri gelmedi (yapılandırma "
+                                   "bozuk olabilir: journalctl --user -u oto-eq-sinks)")
         if ok:
             log.warning("onarım: %s → %s yeniden başlatıldı", e.neden, e.hedef)
             if bildirim and e.baslik:

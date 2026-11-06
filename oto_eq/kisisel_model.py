@@ -43,7 +43,7 @@ from typing import Any, Callable, Iterable
 import numpy as np
 
 from . import ses_analiz as sa
-from .i18n import _
+from .i18n import N_, Metin, _, kayittan, metin_kaydi
 from .models import MUSIC_GROUPS
 
 log = logging.getLogger("oto_eq.kisisel_model")
@@ -496,11 +496,11 @@ def egit(tahmin_path: Path | None = None, feedback_path: Path | None = None,
                          "aktif": False, "neden": "", "sayilar": say,
                          "girdiler": list(INPUTS), "gruplar": list(GROUPS)}
     if say["guclu"] < MIN_STRONG:
-        m["neden"] = _("yetersiz güçlü örnek: {n}/{gereken} (tepsiden 'Bu şarkı aslında…' "
-                       "düzeltmeleri gerekiyor)").format(n=say["guclu"], gereken=MIN_STRONG)
+        _neden(m, N_("yetersiz güçlü örnek: {n}/{gereken} (tepsiden 'Bu şarkı aslında…' "
+                     "düzeltmeleri gerekiyor)"), n=say["guclu"], gereken=MIN_STRONG)
     elif say["sanatci_guclu"] < MIN_KEYS:
-        m["neden"] = _("yetersiz sanatçı çeşidi: {n}/{gereken} (çapraz doğrulama için)").format(
-            n=say["sanatci_guclu"], gereken=MIN_KEYS)
+        _neden(m, N_("yetersiz sanatçı çeşidi: {n}/{gereken} (çapraz doğrulama için)"),
+               n=say["sanatci_guclu"], gereken=MIN_KEYS)
     if not m["neden"]:
         cv = None
         for lam, fr in (adaylar or ADAYLAR):
@@ -514,11 +514,11 @@ def egit(tahmin_path: Path | None = None, feedback_path: Path | None = None,
             m["W"] = [[round(float(v), 6) for v in row] for row in W]
             m["b"] = [round(float(v), 6) for v in b]
             m["aktif"] = True
-            m["neden"] = _("çapraz doğrulamada +{kazanc} puan (eşik {esik:.0f}, {n} güçlü "
-                           "örnek)").format(kazanc=cv["kazanc"], esik=cv["esik"], n=cv["taban"]["n"])
+            _neden(m, N_("çapraz doğrulamada +{kazanc} puan (eşik {esik:.0f}, {n} güçlü örnek)"),
+                   kazanc=cv["kazanc"], esik=cv["esik"], n=cv["taban"]["n"])
         else:
-            m["neden"] = _("tabandan iyi değil: çapraz doğrulama kazancı {kazanc:+d} puan "
-                           "(gereken ≥ {esik:.0f})").format(kazanc=cv["kazanc"], esik=cv["esik"])
+            _neden(m, N_("tabandan iyi değil: çapraz doğrulama kazancı {kazanc:+d} puan "
+                         "(gereken ≥ {esik:.0f})"), kazanc=cv["kazanc"], esik=cv["esik"])
     if kaydet:
         p = Path(model_path or MODEL_FILE)
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -527,6 +527,20 @@ def egit(tahmin_path: Path | None = None, feedback_path: Path | None = None,
         tmp.replace(p)
     log.info("kişisel model: %s — %s", "aktif" if m["aktif"] else "pasif", m["neden"])
     return m
+
+
+def _neden(m: dict, msgid: str, **args) -> None:
+    """The model file's reason: the text in today's language ("neden", read by older
+    versions as is) + its msgid record ("neden_k") to show it in the UI language of later."""
+    t = Metin(msgid, **args)
+    m["neden"], m["neden_k"] = str(t), metin_kaydi(t)
+
+
+def neden_metni(m: dict | None) -> str:
+    """The model's reason in the CURRENT UI language (a file without "neden_k": as stored)."""
+    if not isinstance(m, dict):
+        return ""
+    return kayittan(m.get("neden_k"), str(m.get("neden") or ""))
 
 
 def oku_model(path: Path | None = None) -> dict | None:
@@ -669,7 +683,7 @@ def run(argv: list[str] | None = None, out: Callable[[str], None] = print) -> in
             out(_("kulak model: eğitim başarısız: {hata}").format(hata=e))
             return 1
         out((_("Kişisel model ETKİN: {neden}") if m["aktif"]
-             else _("Kişisel model devre dışı: {neden}")).format(neden=m["neden"]))
+             else _("Kişisel model devre dışı: {neden}")).format(neden=neden_metni(m)))
         out(_say_satiri(m["sayilar"]))
         if "cv" in m:
             for s in _cv_satirlari(m["cv"]):
@@ -694,7 +708,7 @@ def run(argv: list[str] | None = None, out: Callable[[str], None] = print) -> in
         etkin = _gecerli(m) is not None
         out("  " + (_("son eğitim: {zaman} · ETKİN — {neden}") if etkin
                     else _("son eğitim: {zaman} · devre dışı — {neden}")).format(
-            zaman=m.get("egitim", "?"), neden=m.get("neden", "")))
+            zaman=m.get("egitim", "?"), neden=neden_metni(m)))
         if m.get("aktif") and not etkin:
             out("  " + _("(model dosyası bu sürümle uyumsuz: {komut} ile yeniden eğit)").format(
                 komut="`kulak model egit`"))

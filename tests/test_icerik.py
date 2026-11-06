@@ -220,7 +220,7 @@ class TestProber(unittest.TestCase):
         p.adjust(st(), weak_movie(), False, "k", make)
         self.assertEqual(len(self.tap.captured), 1)                 # FAIL_RETRY_S, not 5 s
 
-    def test_corked_not_probed_and_resume_resets(self):
+    def test_corked_not_probed_and_resume_reprobes(self):
         p = self.prober(V_MUSIC_STRONG, V_SPEECH_STRONG)
         d = weak_movie()
         p.adjust(st(corked=True), d, False, "k", make)
@@ -229,10 +229,56 @@ class TestProber(unittest.TestCase):
         self.assertEqual(p.adjust(st(), d, False, "k", make).category, Category.MUSIC)
         p.adjust(st(corked=True), d, False, "k", make)              # paused: keep, no probe
         self.assertEqual(len(self.tap.captured), 1)
-        nd = p.adjust(st(), d, False, "k", make)                    # resumed: fresh probe
+        nd = p.adjust(st(), d, False, "k", make)                    # resumed: fresh probe…
         self.assertEqual(len(self.tap.captured), 2)
+        self.assertEqual(nd.category, Category.MUSIC)               # …verdict kept meanwhile
+        # the new tab is clearly speech: now (and only now) back to Film
         self.assertEqual(p.adjust(st(), d, False, "k", make).category, Category.MOVIE)
-        self.assertIs(nd, d)
+
+    def test_resume_keeps_verdict_until_a_new_probe_disagrees(self):
+        # 6 Kas live (#20542): every cork → uncork reset the verdict → Film until the next
+        # probe ended → the router moved Film ↔ Müzik every ~5 s until it parked the stream
+        # each resume re-probes at once: music, one mix, one weak speech → none flips
+        p = self.prober(V_MUSIC_STRONG, V_MUSIC, V_MIX, V_SPEECH, V_SPEECH)
+        d = weak_movie()
+        p.adjust(st(), d, False, "k", make)
+        self.assertEqual(p.adjust(st(), d, False, "k", make).category, Category.MUSIC)
+        self.assertEqual(self.changes, 1)
+        for _ in range(3):                                           # pause / resume flicker
+            p.adjust(st(corked=True), d, False, "k", make)
+            self.assertEqual(p.adjust(st(), d, False, "k", make).category, Category.MUSIC)
+        self.assertEqual(len(self.tap.captured), 4)
+        self.assertEqual(self.changes, 1)                            # no flip, no rescan
+        self.assertEqual(p.adjust(st(), d, False, "k", make).category, Category.MUSIC)
+        self.clock.t += I.QUICK_REPROBE_S
+        p.adjust(st(), d, False, "k", make)                         # 2nd weak speech agrees
+        self.assertEqual(p.adjust(st(), d, False, "k", make).category, Category.MOVIE)
+        self.assertEqual(self.changes, 2)
+
+    def test_resume_with_two_mixes_returns_to_metadata(self):
+        p = self.prober(V_MUSIC_STRONG, V_MIX, V_MIX)
+        d = weak_movie()
+        p.adjust(st(), d, False, "k", make)
+        p.adjust(st(corked=True), d, False, "k", make)
+        self.assertEqual(p.adjust(st(), d, False, "k", make).category, Category.MUSIC)  # 1 mix
+        self.clock.t += I.QUICK_REPROBE_S
+        p.adjust(st(), d, False, "k", make)                                          # 2 mixes
+        self.assertIs(p.adjust(st(), d, False, "k", make), d)
+
+    def test_brief_non_candidate_decision_keeps_verdict(self):
+        # MPRIS flips to another tab for one scan ("müzik ipucu", sure, named) → the stream's
+        # measured verdict must survive it
+        p = self.prober(V_MUSIC_STRONG)
+        d = weak_movie(grup="")
+        p.adjust(st(), d, False, "k", make)
+        self.assertEqual(p.adjust(st(), d, False, "k", make).category, Category.MUSIC)
+        other = sure_music(grup="")
+        self.assertIs(p.adjust(st(), other, False, "k", make), other)   # not a candidate now
+        self.assertIn("1", p.status())                                   # …state kept
+        self.assertEqual(p.adjust(st(), d, False, "k", make).category, Category.MUSIC)
+        self.assertEqual(len(self.tap.captured), 1)
+        p.prune({2})                                                     # stream gone: dropped
+        self.assertEqual(p.status(), {})
 
     def test_metadata_change_keeps_verdict_and_rechecks(self):
         # 2 Kas live: x.com's muted autoplay took Vivaldi's ONE media session over; the song
@@ -391,6 +437,26 @@ class TestTap(unittest.TestCase):
         self.tap(channels=("MONO",)).capture(5759, 1.0)
         self.assertEqual(self.links, [["pw-link", "300", "901"], ["pw-link", "300", "902"]])
 
+    def test_no_leftover_file_when_the_recorder_never_appears(self):
+        tap = self.tap()
+        base_dump = tap._dump
+        tap._dump = lambda: [o for o in base_dump() if o["id"] < 900]   # our node never shows
+        self.assertIsNone(tap.capture(5759, 4.0))
+        self.assertTrue(self.procs[0].terminated)
+        self.assertEqual(list(self.dir.iterdir()), [])
+
+    def test_no_leftover_file_when_linking_fails(self):
+        tap = self.tap()
+        tap._run = lambda cmd, timeout=5.0: mock.Mock(returncode=1, stderr="no such port")
+        self.assertIsNone(tap.capture(5759, 4.0))
+        self.assertEqual(list(self.dir.iterdir()), [])
+
+    def test_no_leftover_file_when_stopped(self):
+        tap = self.tap()
+        tap._stop.set()
+        self.assertIsNone(tap.capture(5759, 4.0))
+        self.assertEqual(list(self.dir.iterdir()), [])
+
     def test_never_taps_a_sink_or_unknown_stream(self):
         self.assertIsNone(self.tap(stream_class="Audio/Sink").capture(5759))
         self.assertIsNone(self.tap().capture(1234))
@@ -450,6 +516,26 @@ class TestRouterIntegration(RouterTestBase):
         self.assertEqual(self.pulse.sink_of(1), "oto_eq_film")
         self.assertEqual(self.pulse.sink_of(2), "oto_eq_muzik")
         self.assertIn("ses içeriği", self.entry(2)["reason"])
+
+    def test_pause_resume_never_bounces_the_stream_back_to_film(self):
+        # 6 Kas live: Film → Müzik → Film → Müzik → Film → "sürekli geri alınıyor"
+        r = self.make_router()
+        self.pulse.add_stream(2, "vivaldi-bin")
+        r.scan()
+        self.clock.advance(3)
+        r.scan()
+        self.assertEqual(self.pulse.sink_of(2), "oto_eq_muzik")
+        moves = len(self.pulse.moves)
+        for _ in range(6):
+            self.pulse.set_corked(2, True)
+            self.clock.advance(1.5)
+            r.scan()
+            self.pulse.set_corked(2, False)
+            self.clock.advance(2.5)
+            r.scan()
+            self.assertEqual(self.pulse.sink_of(2), "oto_eq_muzik")
+        self.assertEqual(len(self.pulse.moves), moves)
+        self.assertNotIn("sürekli geri alınıyor", self.entry(2)["reason"])
 
     def test_switch_follows_ses_analizi_setting(self):
         r = self.make_router()

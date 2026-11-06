@@ -1,7 +1,9 @@
-# Kulak Kesil (oto-eq): akışları bağlama göre EQ çıkışlarına yönlendiren servis.
+# Kulak Kesil (oto-eq): moves each audio stream to the EQ output that fits it.
+# install.sh installs a copy into the systemd user directory; when the source or the
+# config folder is not at the default path it fills in the real paths there.
 [Unit]
-Description=Kulak Kesil - otomatik EQ yönlendirici
-Documentation=file://%h/.local/src/oto-eq/README.md
+Description=Kulak Kesil - automatic EQ router
+Documentation=https://github.com/sobelendimm/kulak-kesil
 After=pipewire-pulse.service oto-eq-sinks.service wireplumber.service
 Wants=pipewire-pulse.service oto-eq-sinks.service
 
@@ -17,6 +19,6 @@ NoNewPrivileges=yes
 Slice=session.slice
 
 [Install]
-# Girişte başlar. PipeWire yeniden başlarsa servis çalışmaya devam eder
-# (pactl olay dinleyicisi kendini yeniden bağlar).
+# Starts at login. If PipeWire restarts the service keeps running
+# (the pactl event listener reconnects by itself).
 WantedBy=default.target

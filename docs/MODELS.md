@@ -17,9 +17,13 @@ in memory only for the analysis — it is never written to disk or sent anywhere
 kulak saglik                      # "audio analysis model" line should be ✔
 ```
 
-You also need `onnxruntime` for Python (`python-onnxruntime` on Arch,
-`pip install --user onnxruntime` elsewhere). The service picks the models up on
-its next start (`systemctl --user restart oto-eq`).
+You also need `onnxruntime` for the system Python (`/usr/bin/python3`, which the
+service runs; a virtualenv is not seen): `python-onnxruntime` on Arch, otherwise
+`pip install --user onnxruntime`. Debian 12+ / Ubuntu 23.04+ refuse that by default
+(PEP 668, "externally-managed-environment"); there you can add `--break-system-packages`
+if you accept that pip installs into your user site next to the distro packages.
+The service picks the models up on its next start (`systemctl --user restart oto-eq`).
+`./uninstall.sh --purge` deletes them again.
 
 Files go to `${XDG_DATA_HOME:-~/.local/share}/oto-eq/models/`:
 

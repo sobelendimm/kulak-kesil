@@ -5,6 +5,7 @@ nothing else on the bus is touched (other players are only listed, read-only).
 """
 from __future__ import annotations
 
+import importlib.util
 import os
 import subprocess
 import sys
@@ -16,6 +17,8 @@ from oto_eq.config import C_ENV
 
 HAVE_DBUS = bool(os.environ.get("DBUS_SESSION_BUS_ADDRESS")) or os.path.exists(
     f"/run/user/{os.getuid()}/bus")
+# the watcher talks D-Bus through jeepney; the fake player needs dbus-python + GLib
+HAVE_LIBS = all(importlib.util.find_spec(m) is not None for m in ("jeepney", "dbus", "gi"))
 
 from oto_eq.mpris import MprisWatcher
 
@@ -86,6 +89,7 @@ def wait_for(cond, timeout=8.0):
 
 
 @unittest.skipUnless(HAVE_DBUS, "oturum D-Bus'ı yok")
+@unittest.skipUnless(HAVE_LIBS, "jeepney / dbus-python / gi kurulu değil")
 class TestMprisWatcher(unittest.TestCase):
     def setUp(self):
         self.procs: list[subprocess.Popen] = []
@@ -204,6 +208,20 @@ class TestLifecycle(unittest.TestCase):
 
 
 class TestWatcherWithoutBus(unittest.TestCase):
+    def test_missing_jeepney_is_reported_once_and_stops(self):
+        from unittest import mock
+        w = MprisWatcher(lambda: None)
+        with mock.patch.dict(sys.modules, {"jeepney": None}), \
+                self.assertLogs("oto_eq.mpris", "WARNING") as cm:
+            w.start()
+            w._thread.join(2)
+        self.assertFalse(w._thread.is_alive())          # no reconnect loop
+        self.assertEqual(w.mode, "yok")
+        self.assertIn("jeepney", w.hata or "")
+        self.assertEqual(len(cm.output), 1)
+        self.assertEqual(w.players(), [])
+        w.stop()
+
     def test_no_bus_does_not_raise(self):
         w = MprisWatcher(lambda: None, bus_address="unix:path=/nonexistent/otoeq-bus")
         w.start()

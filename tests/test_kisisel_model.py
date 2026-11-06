@@ -400,6 +400,30 @@ class TestRun(Tmp):
         rc, txt = self.run_cli("sifirla")
         self.assertIn("zaten yok", txt)
 
+    def test_reason_shown_in_current_language(self):
+        # 6 Kas: the reason was stored translated once; shown later in that old language
+        from oto_eq import i18n
+        self.addCleanup(i18n.sifirla)
+        self.fill({"pop0": "pop_vokal", "edm0": "elektronik"}, per=5)
+        self.run_cli("egit")
+        m = json.loads(self.mf.read_text("utf-8"))
+        self.assertIn("yetersiz güçlü örnek: 10/20", m["neden"])          # plain text kept
+        self.assertEqual(m["neden_k"]["arg"], {"n": 10, "gereken": km.MIN_STRONG})
+        msg = ("yetersiz güçlü örnek: {n}/{gereken} (tepsiden 'Bu şarkı aslında…' "
+               "düzeltmeleri gerekiyor)")
+        i18n.sifirla("en", {msg: "too few strong samples: {n}/{gereken}"})
+        _rc, txt = self.run_cli("durum")
+        self.assertIn("too few strong samples: 10/20", txt)
+        self.assertNotIn("yetersiz", txt)
+
+    def test_old_model_file_without_record(self):
+        self.mf.write_text(json.dumps({"surum": km.VERSION, "aktif": False,
+                                       "neden": "eski düz metin", "egitim": "x"}), "utf-8")
+        _rc, txt = self.run_cli("durum")
+        self.assertIn("eski düz metin", txt)
+        self.assertEqual(km.neden_metni({"neden": "a", "neden_k": {"id": "{yok}", "arg": {"x": 1}}}), "a")
+        self.assertEqual(km.neden_metni(None), "")
+
     def test_usage(self):
         rc, txt = self.run_cli("bilmem")
         self.assertEqual(rc, 2)

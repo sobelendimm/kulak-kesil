@@ -1,8 +1,11 @@
 [Desktop Entry]
 Type=Application
-Name=Kulak Kesil Tepsisi
-GenericName=Akıllı Ekolayzır
-Comment=Kulaklık EQ'sunu bağlama göre değiştiren Kulak Kesil'in sistem tepsisi simgesi
+Name=Kulak Kesil Tray
+Name[tr]=Kulak Kesil Tepsisi
+GenericName=Smart Equalizer
+GenericName[tr]=Akıllı Ekolayzır
+Comment=Headphone EQ status in the system tray
+Comment[tr]=Kulaklık EQ'sunu bağlama göre değiştiren Kulak Kesil'in sistem tepsisi simgesi
 Exec=kulak-tepsi
 Icon=audio-headphones
 Terminal=false

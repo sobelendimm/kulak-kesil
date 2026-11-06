@@ -134,20 +134,21 @@ CATEGORY_LABELS = {"cs2": "CS2", "oyun": N_("Oyun"), "muzik": N_("Müzik"), "fil
 
 
 def ago(ts: float, now: float | None = None) -> str:
-    """Turkish relative time: 'az önce', '5 dk önce', '3 sa önce', 'dün', '4 gün önce'."""
+    """Relative time: 'az önce', '5 dk önce', '3 sa önce', 'dün', '4 gün önce'. The amount is
+    a unit abbreviation inside "{zaman} önce" (no plural forms needed in any language)."""
     import time as _t
     now = _t.time() if now is None else now
     d = max(0.0, now - (ts or 0))
     if d < 60:
         return _("az önce")
     if d < 3600:
-        return _("{n} dk önce").format(n=int(d // 60))
+        return _("{zaman} önce").format(zaman=_("{n} dk").format(n=int(d // 60)))
     if d < 86400:
-        return _("{n} sa önce").format(n=int(d // 3600))
+        return _("{zaman} önce").format(zaman=_("{n} sa").format(n=int(d // 3600)))
     if d < 2 * 86400:
         return _("dün")
     if d < 30 * 86400:
-        return _("{n} gün önce").format(n=int(d // 86400))
+        return _("{zaman} önce").format(zaman=_("{n} gün").format(n=int(d // 86400)))
     return _t.strftime("%d.%m.%Y", _t.localtime(ts))
 
 
@@ -604,6 +605,29 @@ class CommandRunner(QObject):
 
 def systemctl_args(*args: str) -> list[str]:
     return ["systemctl", "--user", *args]
+
+
+def py_child_env(base: dict | None = None) -> dict[str, str]:
+    """Env for our own `python3 -m oto_eq.…` children: importable source + THIS window's
+    language (a child started with config.C_ENV / LC_ALL=C would pick English for
+    "otomatik" and show its errors in another language than the window)."""
+    env = dict(config.C_ENV if base is None else base)
+    env["PYTHONPATH"] = str(config.SRC_DIR)
+    env["OTO_EQ_DIL"] = i18n.dil()
+    return env
+
+
+def stop_process(proc: QProcess | None, grace_ms: int = 500) -> None:
+    """SIGTERM now, SIGKILL after ``grace_ms`` if it is still running — without blocking
+    the GUI thread (waitForFinished froze the window for up to 4 s)."""
+    if proc is None or proc.state() == QProcess.ProcessState.NotRunning:
+        return
+    proc.terminate()
+
+    def kill():
+        if proc.state() != QProcess.ProcessState.NotRunning:
+            proc.kill()
+    QTimer(proc, singleShot=True, interval=grace_ms, timeout=kill).start()
 
 
 class FuncThread(QThread):
@@ -1467,7 +1491,7 @@ class StatusPage(Page):
             self.rows.append(row)
             self.rows_box.addWidget(row)
         self.empty.setVisible(not streams)
-        self.count_label.setText(_("{n} akış").format(n=len(streams)) if streams else "")
+        self.count_label.setText(_("akış: {n}").format(n=len(streams)) if streams else "")
 
     def refresh_rows(self) -> None:
         self._streams_key = None
@@ -1643,8 +1667,7 @@ class GenreSection(QFrame):
         head.addWidget(label(_("Müzik sanatçıya, oyun türüne göre küçük ayar farkı alır (şarkı/oyun "
                                "değişince). Yanlış algılanırsa buradan düzelt."), "muted", wrap=True))
         lay.addLayout(head)
-        bar = QHBoxLayout()
-        bar.setSpacing(8)
+        bar = ui.FlowLayout(spacing=8)      # long translations wrap (no horizontal scroll)
         self.btn_add = button(_("Ekle"), "primary")
         self.btn_add.clicked.connect(lambda: self.edit_item(None))
         self.btn_from = QToolButton()
@@ -1663,10 +1686,8 @@ class GenreSection(QFrame):
         self.btn_cache.setToolTip(_("Çevrimiçi bulunan ve ses analiziyle öğrenilen türleri unutur; "
                                     "bir dahaki çalışta yeniden bulunur"))
         self.btn_cache.clicked.connect(self.clear_cache)
-        for b in (self.btn_add, self.btn_from, self.btn_edit, self.btn_del):
+        for b in (self.btn_add, self.btn_from, self.btn_edit, self.btn_del, self.btn_cache):
             bar.addWidget(b)
-        bar.addStretch(1)
-        bar.addWidget(self.btn_cache)
         lay.addLayout(bar)
         self.table = QTableWidget(0, 3)
         self.table.setHorizontalHeaderLabels([_("Tür"), _("Ad"), _("Grup")])
@@ -1685,7 +1706,7 @@ class GenreSection(QFrame):
         self.table.doubleClicked.connect(lambda _i: self.edit_selected())
         self.table.itemSelectionChanged.connect(self._sel_changed)
         lay.addWidget(self.table)
-        self.empty = label(_("Henüz tür ataması yok."), "muted")
+        self.empty = label(_("Henüz tür ataması yok."), "muted", wrap=True)
         self.empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lay.addWidget(self.empty)
         self.reload()
@@ -1837,7 +1858,7 @@ class RecentRow(QFrame):
         names.addWidget(label(" · ".join(bits), "small"))
         lay.addLayout(names, 2)
         n = int(entry.get("sayi") or 0)
-        when = label(_("{n} kez · {zaman}").format(n=n, zaman=ago(entry.get("son") or 0)), "small")
+        when = label(_("{zaman} · çalma: {n}").format(n=n, zaman=ago(entry.get("son") or 0)), "small")
         when.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         when.setToolTip(entry.get("neden") or "")
         lay.addWidget(when, 1)
@@ -1864,8 +1885,7 @@ class RulesPage(Page):
         cl = QVBoxLayout(c)
         cl.setContentsMargins(16, 14, 16, 14)
         cl.setSpacing(10)
-        bar = QHBoxLayout()
-        bar.setSpacing(8)
+        bar = ui.FlowLayout(spacing=8)
         self.btn_add = button(_("Ekle"), "primary")
         self.btn_add.clicked.connect(lambda: self.edit_item(None))
         self.btn_from = QToolButton()
@@ -1882,7 +1902,6 @@ class RulesPage(Page):
         self.btn_del.clicked.connect(self.delete_selected)
         for b in (self.btn_add, self.btn_from, self.btn_edit, self.btn_del):
             bar.addWidget(b)
-        bar.addStretch(1)
         cl.addLayout(bar)
         self.table = QTableWidget(0, 3)
         self.table.setHorizontalHeaderLabels([_("Neye göre"), _("Değer"), _("Profil")])
@@ -1901,7 +1920,8 @@ class RulesPage(Page):
         self.table.doubleClicked.connect(lambda _i: self.edit_selected())
         self.table.itemSelectionChanged.connect(self._sel_changed)
         cl.addWidget(self.table)
-        self.empty = label(_("Henüz atama yok. “Çalan uygulamadan ekle” ile başlayabilirsin."), "muted")
+        self.empty = label(_("Henüz atama yok. “Çalan uygulamadan ekle” ile başlayabilirsin."), "muted",
+                           wrap=True)
         self.empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
         cl.addWidget(self.empty)
         self.body.addWidget(c)
@@ -1940,7 +1960,8 @@ class RulesPage(Page):
         self.recent_box = QVBoxLayout()
         self.recent_box.setSpacing(2)
         rl.addLayout(self.recent_box)
-        self.recent_empty = label(_("Henüz kayıt yok — bir şey çalınca burada görünür."), "muted")
+        self.recent_empty = label(_("Henüz kayıt yok — bir şey çalınca burada görünür."), "muted",
+                                  wrap=True)
         self.recent_empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
         rl.addWidget(self.recent_empty)
         self.recent_more = button(_("Tümünü göster"))
@@ -1982,7 +2003,7 @@ class RulesPage(Page):
             self.recent_rows.append(row)
             self.recent_box.addWidget(row)
         self.recent_empty.setVisible(not entries)
-        self.recent_count.setText(_("{n} uygulama").format(n=len(entries)) if entries else "")
+        self.recent_count.setText(_("uygulama: {n}").format(n=len(entries)) if entries else "")
         extra = len(entries) - self.RECENT_SHORT
         self.recent_more.setVisible(extra > 0)
         self.recent_more.setText(_("Daha az göster") if self._recent_all
@@ -2441,7 +2462,7 @@ class SettingsPage(Page):
                 self.win.toast.show_text(_("EQ üretilemedi: {hata}").format(hata=last[:140]))
             self.refresh_services()
         self.win.runner.run([sys.executable, "-m", "oto_eq.cli", "eq-uret"], done,
-                            env={**config.C_ENV, "PYTHONPATH": str(config.SRC_DIR)}, timeout_ms=120000)
+                            env=py_child_env(), timeout_ms=120000)
 
     def run_health(self) -> None:
         if self.saglik is None or self._health_thread is not None:
@@ -2712,6 +2733,7 @@ class MicTestDialog(QDialog):
         env = QProcessEnvironment.systemEnvironment()
         env.insert("PYTHONPATH", str(config.SRC_DIR))
         env.insert("PYTHONUNBUFFERED", "1")
+        env.insert("OTO_EQ_DIL", i18n.dil())
         proc.setProcessEnvironment(env)
         proc.setWorkingDirectory(str(config.SRC_DIR))
         proc.readyReadStandardOutput.connect(lambda: self.feed(
@@ -2774,13 +2796,10 @@ class MicTestDialog(QDialog):
             self.hint.setText(last)
 
     def reject(self) -> None:
-        if self.proc and self.proc.state() != QProcess.ProcessState.NotRunning:
-            # SIGTERM first: mikrofon_test stops its pw-record children and deletes the
-            # recording; SIGKILL only if it does not end (its recorders run under `timeout`)
-            self.proc.terminate()
-            if not self.proc.waitForFinished(3000):
-                self.proc.kill()
-                self.proc.waitForFinished(1000)
+        # SIGTERM first: mikrofon_test stops its pw-record children and deletes the
+        # recording; SIGKILL only if it does not end in 3 s (its recorders run under
+        # `timeout`). The window closes at once.
+        stop_process(self.proc, 3000)
         super().reject()
 
 
@@ -2809,8 +2828,8 @@ CALIB_ROWS = {
 # micgen.calibrate() error code -> (title, what to do; None = micgen's own text)
 # (marked only: translated at use, "{saniye}" filled in then)
 CALIB_ERRORS = {
-    "mikrofon_yok": (N_("HS80 mikrofonu bulunamadı"),
-                     N_("Kulaklığı aç ve bağla (kablosuz alıcı ya da USB kablo), sonra “Yeniden ölç”e bas.")),
+    "mikrofon_yok": (N_("Mikrofon bulunamadı"),
+                     N_("Kulaklığı ya da mikrofonu aç ve bağla, sonra “Yeniden ölç”e bas.")),
     "sessiz": (N_("Konuşma algılanmadı"),
                N_("Mikrofon kolu aşağıda ve sessize alma kapalı mı? {saniye} saniye boyunca "
                   "normal sesinle konuş, sonra yeniden ölç.")),
@@ -3059,6 +3078,7 @@ class CalibrateDialog(QDialog):
         env = QProcessEnvironment.systemEnvironment()
         env.insert("PYTHONPATH", str(config.SRC_DIR))
         env.insert("PYTHONUNBUFFERED", "1")
+        env.insert("OTO_EQ_DIL", i18n.dil())
         proc.setProcessEnvironment(env)
         proc.setWorkingDirectory(str(config.SRC_DIR))
         proc.readyReadStandardOutput.connect(lambda p=proc: self._read(p, False))
@@ -3077,7 +3097,9 @@ class CalibrateDialog(QDialog):
             self._out += bytes(proc.readAllStandardOutput()).decode("utf-8", "replace")
 
     def _proc_finished(self, proc: QProcess, code: int) -> None:
-        if proc is not self.proc:
+        if proc is not self.proc:      # killed / replaced run
+            if isinstance(proc, QProcess):
+                proc.deleteLater()
             return
         self._read(proc, False)
         self._read(proc, True)
@@ -3109,8 +3131,7 @@ class CalibrateDialog(QDialog):
     def _kill_proc(self) -> None:
         proc, self.proc = self.proc, None
         if proc is not None and proc.state() != QProcess.ProcessState.NotRunning:
-            proc.kill()
-            proc.waitForFinished(1000)
+            proc.kill()                # finished arrives later (_proc_finished frees it)
 
     def _stop_measuring(self) -> None:
         self._tick.stop()
@@ -3142,6 +3163,7 @@ class CalibrateDialog(QDialog):
         proc.setProcessEnvironment(env)
         proc.readyReadStandardOutput.connect(
             lambda: self.meter.set_level(*pcm_level_db(bytes(proc.readAllStandardOutput()))))
+        proc.finished.connect(proc.deleteLater)
         self._meter_proc = proc
         args = list(MicPage.METER_ARGS)
         args[1] = f"--device={src}"
@@ -3149,10 +3171,7 @@ class CalibrateDialog(QDialog):
 
     def stop_meter(self) -> None:
         proc, self._meter_proc = self._meter_proc, None
-        if proc is not None and proc.state() != QProcess.ProcessState.NotRunning:
-            proc.terminate()
-            if not proc.waitForFinished(500):
-                proc.kill()
+        stop_process(proc, 500)
 
     # --- results
     def show_error(self, res) -> None:
@@ -3375,7 +3394,7 @@ class MicPage(Page):
         hl.addWidget(self.badge, 0, Qt.AlignmentFlag.AlignTop)
         hv = QVBoxLayout()
         hv.setSpacing(3)
-        t = label(MIC_LABEL, "pageTitle")
+        t = label(MIC_LABEL, "pageTitle", wrap=True)
         t.setStyleSheet("font-size: 15pt;")
         hv.addWidget(t)
         self.status_line = label(_("Durum alınıyor…"), "muted", wrap=True)
@@ -3616,7 +3635,7 @@ class MicPage(Page):
 
     # --- level meter (parec only while visible)
     METER_ARGS = ["parec", f"--device={MIC_SOURCE}", "--format=s16le", "--rate=16000", "--channels=1",
-                  "--latency-msec=40", "--property=application.name=Kulak Kesil seviye ölçer",
+                  "--latency-msec=40", "--property=application.name=" + _("Kulak Kesil seviye ölçer"),
                   "--property=media.role=production"]
 
     def start_meter(self) -> None:
@@ -3639,10 +3658,7 @@ class MicPage(Page):
 
     def stop_meter(self) -> None:
         proc, self._meter_proc = self._meter_proc, None
-        if proc is not None and proc.state() != QProcess.ProcessState.NotRunning:
-            proc.terminate()
-            if not proc.waitForFinished(500):
-                proc.kill()
+        stop_process(proc, 500)
         self.meter.set_level(LEVEL_FLOOR_DB, LEVEL_FLOOR_DB)
         self.level_text.setText("—")
 
@@ -3721,13 +3737,25 @@ class MicPage(Page):
         """Set several config paths at once: save_mic + set_live (or service restart)."""
         if self.micgen is None or not isinstance(self.cfg, dict):
             return False
-        old = new = self.cfg
+        gen = self.micgen
+        # mikrofon.toml may have changed since the page read it (`kulak mikrofon kalibre
+        # --uygula`, a hand edit): change the file's CURRENT content, never write the page's
+        # older copy back over it
+        try:
+            fresh = gen.load_mic()
+        except Exception as e:  # noqa: BLE001 - unreadable now: keep the page's copy
+            log.warning("mikrofon ayarı yeniden okunamadı: %s", e)
+            fresh = None
+        old = fresh if isinstance(fresh, dict) else self.cfg
+        outside = old != self.cfg
+        new = old
         for path, value in changes.items():
             if get_path(new, path) != value:
                 new = set_path(new, path, value)
         if new is old:
+            if outside:
+                self.load_params()         # show what the file says now
             return False
-        gen = self.micgen
         try:
             gen.save_mic(new)
             restart = bool(gen.needs_restart(old, new)) if hasattr(gen, "needs_restart") else True
@@ -3738,6 +3766,8 @@ class MicPage(Page):
             self.win.toast.show_text(_("Mikrofon ayarı uygulanamadı: {hata}").format(hata=e))
             return False
         self.cfg = new
+        if outside:
+            self.load_params()             # the other controls show the outside change too
         if restart:
             def done(rc, _o, err):
                 self.win.toast.show_text(_("Mikrofon yeniden başlatıldı ✓") if rc == 0
@@ -3804,6 +3834,18 @@ class WelcomeDialog(QDialog):
         outer.addLayout(head)
 
         self.checks: dict[str, QCheckBox] = {}
+        # the four steps scroll: in de/ru the guide is ~730 px tall, more than a 768 px
+        # (or 1080 px @150 %) screen leaves, and its "Tamam" button must stay reachable
+        steps_w = QWidget()
+        steps_w.setObjectName("scrollBody")
+        steps = QVBoxLayout(steps_w)
+        steps.setContentsMargins(0, 0, 0, 0)
+        steps.setSpacing(12)
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll.setWidget(steps_w)
 
         def step(key: str, title: str, lines: list[str], extra: QWidget | None = None):
             c = card()
@@ -3829,7 +3871,7 @@ class WelcomeDialog(QDialog):
                 row.addStretch(1)
                 lay.addLayout(row)
             self.checks[key] = cb
-            outer.addWidget(c)
+            steps.addWidget(c)
 
         step("ses", _("1. Ses biraz kısılır: kulaklık sesini bir kez artır"),
              [_("EQ'nun yükselttiği bölgeler patlamasın diye yaklaşık 10 dB pay bırakılır. Kulaklık "
@@ -3845,7 +3887,8 @@ class WelcomeDialog(QDialog):
         step("mikrofon", _("4. Mikrofon testi"),
              [_("5 saniye konuş; ham ve işlenmiş sesi art arda dinle, farkı duy.")], self.btn_test)
 
-        outer.addStretch(1)
+        steps.addStretch(1)
+        outer.addWidget(self.scroll, 1)
         row = QHBoxLayout()
         self.progress = label("", "muted")
         row.addWidget(self.progress)
@@ -3857,11 +3900,20 @@ class WelcomeDialog(QDialog):
         outer.addLayout(row)
         self._update_progress()
         self.btn_close.setFocus()
-        # wrapped labels: size the height for the fixed width, so nothing gets squeezed
-        outer.activate()
-        h = outer.heightForWidth(self.WIDTH) if outer.hasHeightForWidth() else -1
-        self.setMinimumHeight(max(h, outer.sizeHint().height()))
-        self.resize(self.WIDTH, self.minimumHeight())
+        # wrapped labels: the height the steps need at this width; the whole guide when the
+        # screen has room, else what it allows (the steps scroll, header and buttons stay)
+        m = outer.contentsMargins()
+        inner = self.WIDTH - m.left() - m.right()
+        steps.activate()
+        need = steps.heightForWidth(inner) if steps.hasHeightForWidth() else -1
+        need = max(need, steps.sizeHint().height())
+        chrome = (m.top() + m.bottom() + 2 * outer.spacing() + head.sizeHint().height()
+                  + row.sizeHint().height())
+        self.content_height = need + chrome
+        scr = self.screen() or QGuiApplication.primaryScreen()
+        avail = scr.availableGeometry().height() - 60 if scr is not None else self.content_height
+        self.setMinimumHeight(min(self.content_height, 360))
+        self.resize(self.WIDTH, max(self.minimumHeight(), min(self.content_height, avail)))
 
     def _save(self) -> None:
         self.win.update_app_settings({"rehber": {k: cb.isChecked() for k, cb in self.checks.items()}})
@@ -3912,7 +3964,9 @@ class MainWindow(QMainWindow):
         self._theming = False
         self.setWindowTitle(ui.APP_NAME)
         self.setWindowIcon(ui.app_icon())
-        self.setMinimumSize(980, 640)
+        # fits a 1366×768 @125 % / 1920×1080 @150 % screen (~1093×614 logical, minus the panel);
+        # pages scroll vertically, button rows wrap
+        self.setMinimumSize(900, 540)
         self.resize(1080, 720)
 
         root = QWidget()

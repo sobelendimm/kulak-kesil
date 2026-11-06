@@ -18,7 +18,7 @@ import time
 from typing import Any
 
 from . import procinfo
-from .i18n import _, h_
+from .i18n import N_, _, h_
 from .models import SINK_PREFIX, MediaPlayer, Stream
 
 log = logging.getLogger("oto_eq.teshis")
@@ -113,6 +113,23 @@ def _q(v: str, n: int = 70) -> str:
     return v if len(v) <= n else v[: n - 1] + "…"
 
 
+# MprisWatcher.mode values (ids) → shown text; an unknown value is shown as it is
+_WATCHER_MODES = {"sinyal": N_("sinyal"), "yoklama": N_("yoklama"), "kapali": N_("kapalı"),
+                  "yok": N_("yok (jeepney kurulu değil)")}
+
+
+def _watcher_mode(mode) -> str:
+    m = str(mode)
+    return _(_WATCHER_MODES[m]) if m in _WATCHER_MODES else m
+
+
+def _verdict(dec: dict) -> str:
+    """"Müzik → Müzik" in the UI language (the JSON keeps the category / profile ids)."""
+    from .classifier import category_label, profile_label
+    return (f"{category_label(dec.get('category', 'bilinmeyen'))} → "
+            f"{profile_label(dec.get('profile'))}")
+
+
 def format_block(d: dict, color: bool = False) -> str:
     st = Style(color)
     props = d.get("props", {})
@@ -155,8 +172,7 @@ def format_block(d: dict, color: bool = False) -> str:
                          f"'{_q(m['title'], 50)}' — {_q(m['artist'], 30)}  {_q(m['url'], 60)}")
     else:
         lines.append(_label(st, "MPRIS") + "-")
-    prof = dec.get("profile") or _("EQ yok")
-    lines.append(_label(st, _("KARAR")) + st.c(_CAT_COLOR.get(cat, ""), f"{cat} → {prof}")
+    lines.append(_label(st, _("KARAR")) + st.c(_CAT_COLOR.get(cat, ""), _verdict(dec))
                  + f"   ({dec.get('reason', '')})")
     for i, t in enumerate(d.get("trace", [])):
         txt = t
@@ -174,7 +190,7 @@ def format_line(d: dict, color: bool = False) -> str:
     dec = d["decision"]
     cat = dec["category"]
     return (f"↻ #{d['index']} {d['props'].get('application.name', '?')}: "
-            + st.c(_CAT_COLOR.get(cat, ""), f"{cat} → {dec['profile'] or _('EQ yok')}")
+            + st.c(_CAT_COLOR.get(cat, ""), _verdict(dec))
             + f"  ({dec['reason']})")
 
 
@@ -218,7 +234,7 @@ def main(argv: list[str] | None = None) -> int:
     watcher = MprisWatcher(lambda: events.put(("mpris", -1)))
     watcher.start()
     time.sleep(0.3)   # let the first MPRIS sync land
-    clf = load_classifier()
+    clf = load_classifier(online=False)     # read-only: genre cache only, no lookups
     sinks = _sink_names(pulse)
     blocks: list[dict] = []
     last: dict[int, dict] = {}
@@ -246,7 +262,8 @@ def main(argv: list[str] | None = None) -> int:
         blocks.append(d)
         last[s.index] = d
     out.write(_("{akis} akış, {oyuncu} MPRIS oyuncusu (izleyici: {izleyici}).").format(
-        akis=len(streams), oyuncu=len(watcher.players()), izleyici=watcher.mode) + "\n")
+        akis=len(streams), oyuncu=len(watcher.players()), izleyici=_watcher_mode(watcher.mode))
+        + "\n")
     if args.json:
         _write_json(args.json, blocks)
     if not args.izle:

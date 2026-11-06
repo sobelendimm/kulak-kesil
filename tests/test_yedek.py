@@ -165,6 +165,32 @@ class TestOku(Base):
             Y.oku(self.make_tar({"profiller.toml": bad}))
         Y.oku(self.make_tar({"profiller.toml": (SHIPPED / "profiller.toml").read_bytes()}))
 
+    def test_mic_semantic_validation(self):
+        """mikrofon.toml goes through micgen.normalize_mic (hata avı 6 Kas: a mode that is
+        not defined used to be restored and then broke `micgen generate`)."""
+        bad = b'[genel]\nmod = "discord"\n'
+        with self.assertRaisesRegex(Y.YedekHatasi, "geçersiz mikrofon"):
+            Y.oku(self.make_tar({"mikrofon.toml": bad}))
+        with self.assertRaisesRegex(Y.YedekHatasi, "geçersiz mikrofon"):
+            Y.oku(self.make_tar({"mikrofon.toml": b"genel = 1\n"}))
+        Y.oku(self.make_tar({"mikrofon.toml": (SHIPPED / "mikrofon.toml").read_bytes()}))
+
+    def test_atomik_yaz(self):
+        p = self.root / "alt" / "dosya.conf"
+        Y.atomik_yaz(p, "çalışıyor\n")
+        self.assertEqual(p.read_text(encoding="utf-8"), "çalışıyor\n")
+        self.assertEqual(p.stat().st_mode & 0o777, 0o644)
+        os.chmod(p, 0o600)
+        Y.atomik_yaz(p, b"yeni")
+        self.assertEqual(p.read_bytes(), b"yeni")
+        self.assertEqual(p.stat().st_mode & 0o777, 0o600)          # mode kept
+        self.assertEqual(sorted(x.name for x in p.parent.iterdir()), ["dosya.conf"])  # no temp left
+
+    def test_backup_dir_ignores_empty_xdg(self):
+        with mock.patch.dict(os.environ, {"XDG_DATA_HOME": ""}):
+            d = Y.yedek_dizini()
+        self.assertEqual(d, Path.home() / ".local/share/oto-eq/yedekler")
+
 
 class TestYukle(Base):
     def test_dry_run_writes_nothing(self):

@@ -265,9 +265,12 @@ def _xdg_open(target: Path) -> int:
 
 
 def cmd_eq_ciz(a) -> int:
+    # C_ENV (LC_ALL=C) keeps tool output parseable, but it would also make the plot's
+    # language English: hand the child this process's UI language explicitly.
+    env = {**config.C_ENV, "PYTHONPATH": str(config.SRC_DIR), "OTO_EQ_DIL": i18n.dil()}
     try:
         r = subprocess.run([sys.executable, "-m", "oto_eq.eqgen", "plot"],
-                           cwd=str(config.SRC_DIR), env={**config.C_ENV, "PYTHONPATH": str(config.SRC_DIR)},
+                           cwd=str(config.SRC_DIR), env=env,
                            capture_output=True, text=True, timeout=120)
     except (OSError, subprocess.SubprocessError) as e:
         _err(_("grafik çizilemedi: {hata}").format(hata=e))
@@ -315,7 +318,7 @@ def cmd_profiller(a) -> int:
 
 
 def cmd_gunluk(a) -> int:
-    args = ["journalctl", "--user", "-u", "oto-eq", "-u", "oto-eq-sinks", "-f"]
+    args = ["journalctl", "--user", "-u", "oto-eq", "-u", "oto-eq-sinks", "-u", "oto-eq-mic", "-f"]
     try:
         os.execvpe(args[0], args, config.C_ENV)
     except OSError as e:
@@ -472,7 +475,7 @@ def cmd_tur(a) -> int:
     return EXIT_OK
 
 
-# --- `kulak ton`: kişisel ton (CHANGE 5) ----------------------------------------------
+# --- `kulak ton`: kişisel ton -----------------------------------------------------------
 TON_ALIASES = {"bas": "bas", "vokal": "vokal", "parlaklik": "parlaklik", "parlaklık": "parlaklik",
                "tiz": "parlaklik", "ses": "vokal"}
 TON_SHORT = {"bas": N_("bas"), "vokal": N_("vokal"), "parlaklik": N_("parlaklık")}  # translate at use
@@ -615,7 +618,7 @@ def format_ton(data: dict, profiles: dict | None, st: dict | None) -> str:
         grp = _current_group(st, prof) or ""
         where = f" · {group_name(grp)}" if prof in VARIANT_PROFILES and grp else ""
         rows.append((prof_name(prof), where, _ton_fmt(ks.effective(data, prof, grp))))
-    # name ≥ 6, genre ≥ 20 cells (as before CHANGE 8; opted-out rows have no genre column),
+    # name ≥ 6, genre ≥ 20 cells (opted-out rows have no genre column),
     # but one width for ALL rows: a long genre name now widens every row so the colons
     # stay aligned (before, only that row moved); terminal cell width (CJK = 2)
     wn = max(6, *(text_width(n) for n, _w, _v in rows))
@@ -1102,7 +1105,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 # Subcommands whose module parses its own arguments (``run(argv) -> int``):
-# CHANGE 5 ab (kör A/B), CHANGE 6 kisma (sesli sohbette kısma), model (kişisel model), yedek.
+# ab (kör A/B), kisma (sesli sohbette kısma), model (kişisel model), yedek.
 PASSTHRU = {"ab": "ab", "kisma": "kisma", "model": "kisisel_model", "yedek": "yedek"}
 
 

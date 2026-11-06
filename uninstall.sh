@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Kulak Kesil (oto-eq) kaldırma: install.sh'in yaptığı her şeyi geri alır.
 #   ./uninstall.sh            kaldır (~/.config/oto-eq ayarların KORUNUR)
-#   ./uninstall.sh --purge    ayarları ve durum dosyalarını da sil
+#   ./uninstall.sh --purge    ayarları, durum dosyalarını ve indirilen modelleri de sil
 #   ./uninstall.sh --dry-run  hiçbir şey yapmadan yapılacakları yazdır
 set -euo pipefail
 
@@ -24,7 +24,8 @@ usage() {
         cat <<'EOF'
 Kulak Kesil (oto-eq) kaldırma: install.sh'in yaptığı her şeyi geri alır.
   ./uninstall.sh            kaldır (~/.config/oto-eq ayarların KORUNUR)
-  ./uninstall.sh --purge    ayarları ve durum dosyalarını da sil
+  ./uninstall.sh --purge    ayarları, durum dosyalarını ve indirilen modelleri de sil
+                            (kulak yedek yedekleri ~/.local/share/oto-eq/yedekler içinde kalır)
   ./uninstall.sh --dry-run  hiçbir şey yapmadan yapılacakları yazdır
   ./uninstall.sh --help     bu yardımı göster
 EOF
@@ -32,7 +33,8 @@ EOF
         cat <<'EOF'
 Kulak Kesil (oto-eq) uninstaller: undoes everything install.sh did.
   ./uninstall.sh            uninstall (your settings in ~/.config/oto-eq are KEPT)
-  ./uninstall.sh --purge    also delete the settings and state files
+  ./uninstall.sh --purge    also delete the settings, state files and downloaded models
+                            (backups from `kulak yedek` stay in ~/.local/share/oto-eq/yedekler)
   ./uninstall.sh --dry-run  print what would be done, change nothing
   ./uninstall.sh --help     show this help
 EOF
@@ -44,7 +46,9 @@ DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 CONF_DIR="$CFG_HOME/oto-eq"
 STATE_DIR="$STATE_HOME/oto-eq"
-UNIT_DIR="$CFG_HOME/systemd/user"
+DATA_DIR="$DATA_HOME/oto-eq"
+MODEL_DIR="$DATA_DIR/models"
+BACKUP_DIR="$DATA_DIR/yedekler"
 BIN_DIR="$HOME/.local/bin"
 AUTOSTART_FILE="$CFG_HOME/autostart/oto-eq-tray.desktop"
 APP_FILE="$DATA_HOME/applications/oto-eq.desktop"
@@ -90,7 +94,20 @@ rm_marked() {
     fi
 }
 
+if (( EUID == 0 )); then
+    printf '%s %s\n' "$(L 'HATA:' 'ERROR:')" \
+        "$(L 'root olarak çalıştırma: Kulak Kesil kullanıcı başına kurulur (sudo olmadan ./uninstall.sh)' \
+             'do not run as root: Kulak Kesil is installed per user (run ./uninstall.sh without sudo)')" >&2
+    exit 1
+fi
 if (( DRY )); then say "$(L 'DENEME MODU: hiçbir değişiklik yapılmayacak' 'DRY-RUN MODE: nothing will be changed')"; fi
+
+# install.sh puts the units where the systemd user manager looks (its XDG_CONFIG_HOME,
+# not necessarily this shell's); older installs used this shell's: check both
+MGR_CFG="$(systemctl --user show-environment 2>/dev/null | sed -n 's/^XDG_CONFIG_HOME=//p' || true)"
+[[ -n "$MGR_CFG" && "$MGR_CFG" != "\$'"* ]] || MGR_CFG="$HOME/.config"
+UNIT_DIRS=("$MGR_CFG/systemd/user")
+[[ "$CFG_HOME" == "$MGR_CFG" ]] || UNIT_DIRS+=("$CFG_HOME/systemd/user")
 
 say "$(L 'Tepsi ve pencere kapatılıyor' 'Closing the tray and window')"
 for pat in 'oto_eq[.]tray' 'oto_eq[.]app'; do
@@ -116,13 +133,20 @@ if command -v pactl >/dev/null 2>&1 && \
 fi
 
 say "$(L 'systemd servisleri durduruluyor ve kaldırılıyor' 'Stopping and removing the systemd services')"
+unit_file() {  # unit_file NAME: success if an installed copy exists in one of UNIT_DIRS
+    local d
+    for d in "${UNIT_DIRS[@]}"; do [[ -e "$d/$1" ]] && return 0; done
+    return 1
+}
 for u in "${UNITS[@]}"; do
-    if [[ -e "$UNIT_DIR/$u" ]] || systemctl --user cat "$u" >/dev/null 2>&1; then
+    if unit_file "$u" || systemctl --user cat "$u" >/dev/null 2>&1; then
         run systemctl --user disable --now "$u" || true
     fi
 done
-for u in "${UNITS[@]}"; do
-    if [[ -e "$UNIT_DIR/$u" ]]; then run rm -f "$UNIT_DIR/$u"; fi
+for d in "${UNIT_DIRS[@]}"; do
+    for u in "${UNITS[@]}"; do
+        if [[ -e "$d/$u" ]]; then run rm -f "$d/$u"; fi
+    done
 done
 run systemctl --user daemon-reload
 run systemctl --user reset-failed "${UNITS[@]}" 2>/dev/null || true
@@ -153,6 +177,12 @@ if (( PURGE )); then
     say "$(L 'Ayarlar ve durum siliniyor (--purge)' 'Deleting settings and state (--purge)')"
     if [[ -d "$CONF_DIR" ]]; then run rm -rf "$CONF_DIR"; fi
     if [[ -d "$STATE_DIR" ]]; then run rm -rf "$STATE_DIR"; fi
+    if [[ -d "$MODEL_DIR" ]]; then run rm -rf "$MODEL_DIR"; fi
+    if [[ -d "$BACKUP_DIR" ]]; then
+        say "$(L "Yedekler korundu: $BACKUP_DIR (istemiyorsan elle sil)" "Backups kept: $BACKUP_DIR (delete them by hand if you do not need them)")"
+    elif [[ -d "$DATA_DIR" ]]; then
+        run rmdir "$DATA_DIR" 2>/dev/null || true      # only if nothing else is left in it
+    fi
 else
     say "$(L "Ayarlar korundu: $CONF_DIR (tamamen silmek için --purge)" "Settings kept: $CONF_DIR (use --purge to delete them completely)")"
 fi

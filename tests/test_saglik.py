@@ -8,7 +8,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
-from oto_eq import config, saglik as S
+from oto_eq import config, kulaklik, saglik as S
 
 HS80 = "alsa_output.usb-Corsair_CORSAIR_HS80_RGB_Wireless_Gaming_Receiver-00.analog-stereo"
 HS80_IN = "alsa_input.usb-Corsair_CORSAIR_HS80_RGB_Wireless_Gaming_Receiver-00.mono-fallback"
@@ -85,10 +85,11 @@ class FakeEnv(S.Env):
         self.mtimes = {str(config.SINKS_CONF): 200.0, str(S.MIC_CONF): 200.0,
                        "SRC:" + config.PROFILES_FILE: 100.0, "SRC:" + S.MIC_FILE: 100.0}
         self.existing = {str(Path("/usr/lib/lv2") / S.LSP_TTL),
+                         str(Path("/usr/lib/lv2") / S.AUTOGAIN_TTL),
                          str(Path("/usr/lib/lv2") / S.LIMITER_TTL),
                          str(Path("/usr/lib/ladspa") / S.RNNOISE_SO)}
         self.existing |= {str(MODEL_DIR / f) for f in S.MODEL_FILES + (S.YAMNET_FILE,)}
-        self.modules = {"onnxruntime", "oto_eq.ses_model", "oto_eq.kisma"}
+        self.modules = {"onnxruntime", "oto_eq.ses_model", "oto_eq.kisma", "matplotlib", "jeepney"}
         self.attrs = {("oto_eq.ses_model", "MODEL_DIR"): MODEL_DIR}
         self.outdated = False
         self.wall = 1_000_000.0
@@ -193,7 +194,7 @@ class TestHealthy(unittest.TestCase):
         r = by_name(res)
         self.assertIn("kablosuz", r["HS80"]["ayrinti"])
         self.assertIn("%5,0", r["işlemci kullanımı"]["ayrinti"])
-        self.assertIn("baskın: cs2", r["yönlendirici"]["ayrinti"])
+        self.assertIn("baskın: CS2", r["yönlendirici"]["ayrinti"])     # label, not the key
         for x in res:
             self.assertEqual(set(x), {"ad", "durum", "ayrinti", "oneri"})
 
@@ -312,7 +313,7 @@ class TestProblems(unittest.TestCase):
                                       "reason": "elle taşınmış", "sink": HS80})
         r = by_name(S.run_checks(env))
         self.assertEqual(r["akışlar"]["durum"], S.UYARI)
-        self.assertIn("#7 Firefox (film: elle taşınmış)", r["akışlar"]["ayrinti"])
+        self.assertIn("#7 Firefox (Film: elle taşınmış)", r["akışlar"]["ayrinti"])
 
     def test_stale_configs(self):
         env = FakeEnv()
@@ -430,13 +431,33 @@ class TestKulaklik(unittest.TestCase):
 
     def test_no_headphone_and_no_hs80_is_a_warning(self):
         # speakers chosen as the default output: nothing is broken (EQ idles by design),
-        # so not a red error / exit 1 any more (1 Kas 2026); still flagged
+        # so not a red error / exit 1 any more (1 Kas 2026); still flagged — for a system
+        # that has USED an HS80 (cihaz.json); the kulaklık line flags it for everybody
+        env = self.bt_env()
+        env.default_sink = env.status["default_sink"] = SPK
+        env.status["active"] = False
+        env.files[str(kulaklik.durum_yolu())] = json.dumps({"ad": HS80, "aciklama": "HS80"})
+        r = by_name(S.run_checks(env))
+        self.assertEqual(r["HS80"]["durum"], S.UYARI)
+        self.assertEqual(r["kulaklık"]["durum"], S.UYARI)
+
+    def test_never_an_hs80_no_hs80_advice(self):
+        """A system that never had an HS80 (hata avı 6 Kas): no HS80 plug-in advice on
+        speakers, no red error (exit 1) without any output."""
         env = self.bt_env()
         env.default_sink = env.status["default_sink"] = SPK
         env.status["active"] = False
         r = by_name(S.run_checks(env))
-        self.assertEqual(r["HS80"]["durum"], S.UYARI)
-        self.assertEqual(r["kulaklık"]["durum"], S.UYARI)
+        self.assertEqual(r["HS80"]["durum"], S.TAMAM)
+        self.assertNotIn("takın", r["HS80"]["oneri"] + r["HS80"]["ayrinti"])
+        self.assertEqual(r["kulaklık"]["durum"], S.UYARI)            # the output is flagged
+        env.default_sink = env.status["default_sink"] = ""
+        self.assertEqual(by_name(S.run_checks(env))["HS80"]["durum"], S.TAMAM)
+
+    def test_other_headphone_text_does_not_claim_mic_is_off(self):
+        r = by_name(S.run_checks(self.bt_env()))["HS80"]["ayrinti"]
+        self.assertNotIn("mikrofon", r)
+        self.assertIn("EQ çalışıyor", r)
 
     def test_bluetooth_call_mode(self):
         r = by_name(S.run_checks(self.bt_env("headset-head-unit")))["kulaklık"]
@@ -541,7 +562,7 @@ class TestChange6Parts(unittest.TestCase):
         path = str(config.CONFIG_DIR / S.KISMA_FILE)
         self.assertIn("varsayılan", by_name(S.run_checks(env))["sohbette kısma"]["ayrinti"])
         env.files[path] = json.dumps({"acik": True, "db": 9, "profiller": ["muzik"]})
-        self.assertIn("−9 dB (muzik)", by_name(S.run_checks(env))["sohbette kısma"]["ayrinti"])
+        self.assertIn("−9 dB (Müzik)", by_name(S.run_checks(env))["sohbette kısma"]["ayrinti"])
         env.attrs[("oto_eq.kisma", "normalize_settings")] = lambda d: {**d, "db": 24.0}
         self.assertIn("−24 dB", by_name(S.run_checks(env))["sohbette kısma"]["ayrinti"])
         env.files[path] = json.dumps({"acik": False})
@@ -561,9 +582,56 @@ class TestChange6Parts(unittest.TestCase):
         env.existing.discard(str(Path("/usr/lib/lv2") / S.LIMITER_TTL))
         self.assertEqual(by_name(S.run_checks(env))["limiter"]["durum"], S.HATA)
         env.files[str(config.SINKS_CONF)] = "limiter yok"
-        self.assertNotIn("limiter", by_name(S.run_checks(env)))
-        env.attrs[("oto_eq.eqgen", "LSP_LIMITER_URI")] = "http://x/limiter_stereo"
+        self.assertNotIn("limiter", by_name(S.run_checks(env)))       # plugin missing too
+        env.existing.add(str(Path("/usr/lib/lv2") / S.LIMITER_TTL))
+        # the plugin is installed but the conf has no limiter node: an old conf is running
         self.assertEqual(by_name(S.run_checks(env))["limiter"]["durum"], S.UYARI)
+
+    def test_autogain_needed_but_missing_is_an_error(self):
+        """ONE LV2 node PipeWire cannot load = no EQ sink at all (hata avı 6 Kas)."""
+        env = FakeEnv()
+        env.existing.discard(str(Path("/usr/lib/lv2") / S.AUTOGAIN_TTL))
+        ag = 'nodes = [ { type = lv2 name = ag plugin = "http://lsp-plug.in/plugins/lv2/autogain_stereo" } ]'
+        env.files[str(config.SINKS_CONF)] = "\n".join([LIMITER_LINE] * 4 + [ag] * 3)
+        r = by_name(S.run_checks(env))
+        self.assertEqual(r["seviye eşitleyici"]["durum"], S.HATA)
+        self.assertIn("3 seviye eşitleyici", r["seviye eşitleyici"]["ayrinti"])
+        self.assertEqual(r["LSP eklentisi"]["durum"], S.UYARI)       # partial LSP named
+        self.assertIn("seviye eşitleyici", r["LSP eklentisi"]["ayrinti"])
+        env.existing.add(str(Path("/usr/lib/lv2") / S.AUTOGAIN_TTL))
+        r = by_name(S.run_checks(env))
+        self.assertNotIn("seviye eşitleyici", r)
+        self.assertEqual(r["LSP eklentisi"]["durum"], S.TAMAM)
+
+    def test_plugins_found_in_multiarch_dir(self):
+        """install.sh accepts /usr/lib/x86_64-linux-gnu/{lv2,ladspa}: so must saglik."""
+        env = FakeEnv()
+        env.existing = {str(Path("/usr/lib/x86_64-linux-gnu/lv2") / t)
+                        for t in (S.LSP_TTL, S.LIMITER_TTL, S.AUTOGAIN_TTL)}
+        env.existing.add(str(Path("/usr/lib/x86_64-linux-gnu/ladspa") / S.RNNOISE_SO))
+        r = by_name(S.run_checks(env))
+        self.assertEqual(r["LSP eklentisi"]["durum"], S.TAMAM)
+        self.assertEqual(r["RNNoise eklentisi"]["durum"], S.TAMAM)
+        env.existing = set()
+        r = by_name(S.run_checks(env))
+        self.assertNotIn("pacman", r["LSP eklentisi"]["oneri"])     # not an Arch-only hint
+
+    def test_optional_python_modules(self):
+        env = FakeEnv()
+        env.modules -= {"matplotlib", "jeepney"}
+        r = by_name(S.run_checks(env))
+        self.assertEqual(r["Python modülü matplotlib"]["durum"], S.UYARI)
+        self.assertIn("eq-ciz", r["Python modülü matplotlib"]["ayrinti"])
+        self.assertEqual(r["Python modülü jeepney"]["durum"], S.UYARI)
+        self.assertIn("MPRIS", r["Python modülü jeepney"]["ayrinti"])
+        env.modules |= {"matplotlib", "jeepney"}
+        self.assertFalse([k for k in by_name(S.run_checks(env)) if k.startswith("Python modülü")])
+
+    def test_wp_state_file_ignores_empty_xdg(self):
+        with mock.patch.dict("os.environ", {"XDG_STATE_HOME": ""}):
+            p = S._wp_state_file()
+        self.assertTrue(p.is_absolute())
+        self.assertEqual(p, Path.home() / ".local/state/wireplumber/stream-properties")
 
     def test_onarim_history(self):
         env = FakeEnv()

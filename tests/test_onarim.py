@@ -93,6 +93,30 @@ class TestCikislar(unittest.TestCase):
         self.assertEqual(self.k(t, st=status(), g=gozlem()), [])
         self.assertEqual(self.d.ardisik_restart, 0)
 
+    def test_deliberately_stopped_unit_is_left_alone(self):
+        """`systemctl --user stop oto-eq-sinks` (clean stop: inactive + Result=success) must
+        not be undone; logged once per episode (hata avı 6 Kas)."""
+        g = gozlem(sinks=[HS80, SPK], unit={"LoadState": "loaded", "ActiveState": "inactive",
+                                            "SubState": "dead", "Result": "success"})
+        g.conf_var = True
+        out = [self.k(t, g=g) for t in (0, 25, 60, 700, 1400)]
+        self.assertNotIn(O.YENIDEN_BASLAT, [k for e in out for k in kinds(e)])
+        self.assertEqual([kinds(e) for e in out if e], [[O.KAYIT]])
+        self.assertEqual(self.d.ardisik_restart, 0)
+        # a crash ends in "failed": that one is restarted
+        g.sinks_unit = {"LoadState": "loaded", "ActiveState": "failed", "Result": "exit-code"}
+        self.assertEqual(kinds(self.k(1500, g=g)), [O.YENIDEN_BASLAT])
+
+    def test_missing_conf_asks_for_eq_uret_not_restart(self):
+        g = gozlem(sinks=[HS80, SPK], unit={"LoadState": "loaded", "ActiveState": "inactive",
+                                            "Result": "success"})
+        g.conf_var = False
+        self.assertEqual(self.k(0, g=g), [])
+        e = self.k(25, g=g)
+        self.assertEqual(kinds(e), [O.BILDIRIM])
+        self.assertIn("kulak eq-uret", e[0].govde)
+        self.assertEqual(self.k(60, g=g), [])               # rate-limited
+
     def test_router_inactive_does_nothing(self):
         g = gozlem(sinks=[SPK] + OURS[:3], default=SPK)
         for t in (0, 30, 60):
@@ -168,8 +192,15 @@ class TestHs80(unittest.TestCase):
         self.assertEqual(self.k(0, "oto_eq_film"), [])
         e = self.k(10, "oto_eq_film")
         self.assertEqual(kinds(e), [O.BILDIRIM])
-        self.assertIn("HS80", e[0].govde)
+        self.assertIn("kulaklığınızı", e[0].govde)       # not HS80-specific (hata avı 6 Kas)
+        self.assertNotIn("HS80", e[0].govde)
         self.assertEqual(self.k(20, "oto_eq_film"), [])
+
+    def test_only_our_sinks_left_is_not_a_misconfiguration(self):
+        """The only headphone was unplugged: WirePlumber falls back to one of our sinks
+        (priority 1 is still a candidate) — no 'wrong default' notification."""
+        for t in (0, 10, 20, 60):
+            self.assertEqual(self.k(t, "oto_eq_cs2", sinks=OURS + ["oto_eq_cs2.monitor"]), [])
 
     def test_hs80_present_not_default_nudges_once_per_episode(self):
         self.assertEqual(self.k(0, SPK), [])
@@ -289,6 +320,27 @@ class TestGozle(unittest.TestCase):
         g = O.gozle(run=lambda cmd, timeout=5.0: (1, ""), wp=False)
         self.assertEqual(g, O.Gozlem())
 
+    def test_unit_result_and_conf_presence(self):
+        def run(cmd, timeout=5.0):
+            if cmd[:3] == ["systemctl", "--user", "show"]:
+                self.assertIn("Result", cmd[-1])
+                return 0, "LoadState=loaded\nActiveState=inactive\nSubState=dead\nResult=success\n"
+            return 1, ""
+        with tempfile.TemporaryDirectory() as td:
+            g = O.gozle(run=run, xrun=False, wp=False, conf=Path(td) / "yok.conf")
+            self.assertEqual(g.sinks_unit["Result"], "success")
+            self.assertFalse(g.conf_var)
+            Path(td, "var.conf").write_text("x")
+            self.assertTrue(O.gozle(run=run, xrun=False, wp=False, conf=Path(td) / "var.conf").conf_var)
+
+    def test_wp_state_dir_ignores_empty_or_relative_xdg(self):
+        from unittest import mock
+        for v in ("", "goreli/yol"):
+            with mock.patch.dict("os.environ", {"XDG_STATE_HOME": v}):
+                d = O.wp_state_dir()
+            self.assertTrue(d.is_absolute(), (v, d))
+            self.assertEqual(d, Path.home() / ".local/state" / "wireplumber")
+
     def test_wp_leftovers_counted_with_real_tool(self):
         wp = O.wp_modul()
         self.assertIsNotNone(wp, "tools/wp_temizle.py yüklenemedi")
@@ -331,6 +383,14 @@ class TestUygula(unittest.TestCase):
         self.assertEqual(self.notes[-1][0], "Kulak Kesil: onarım başarısız")
         r = O.uygula(self.restart(), run=FakeRun(), notify=self.notify, dogrula=lambda: True)
         self.assertTrue(r.basarili)
+
+    def test_restart_without_conf_names_the_missing_file(self):
+        with self.assertLogs("oto_eq.onarim", "ERROR"):
+            r = O.uygula(self.restart(), run=FakeRun(), notify=self.notify,
+                         dogrula=lambda: False, conf_var=lambda: False)
+        self.assertFalse(r.basarili)
+        self.assertIn("kulak eq-uret", r)
+        self.assertNotIn("geri gelmedi", r)
 
     def test_sinks_back_check(self):
         lines = "\n".join(f"{i}\t{n}\tPipeWire\tfloat32le 2ch 48000Hz\tIDLE"

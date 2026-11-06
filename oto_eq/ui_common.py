@@ -14,13 +14,15 @@ from __future__ import annotations
 import json
 import logging
 import os
+import queue
 import subprocess
 import sys
 import threading
 from dataclasses import dataclass
 from pathlib import Path
 
-from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QPoint, QRect, QSize, Qt, QThread, pyqtSignal
+from PyQt6.QtWidgets import QLayout, QWidgetItem
 
 from . import config
 from . import ui_text as tx
@@ -41,6 +43,9 @@ AUTOSTART_FILE = config.CONFIG_DIR.parent / "autostart" / "oto-eq-tray.desktop"
 APP_SETTINGS_FILE = config.STATE_DIR / "pencere.json"
 DESKTOP_MARK = "X-OtoEQ-Installed=true"
 RETRY_SECONDS = 3.0
+# IPC client wait: longer than the router's own COMMAND_WAIT, so a busy router's
+# "bekliyor" answer arrives instead of a timeout ("service not running" would be wrong)
+IPC_TIMEOUT = 2.5
 DOWN_TEXT = _("Servis çalışmıyor — systemctl --user start oto-eq")
 FALLBACK_ICON = "audio-headphones"
 
@@ -290,17 +295,45 @@ NOTIFY_ENV = {**config.C_ENV, "LC_ALL": "C.UTF-8", "LANG": "C.UTF-8"}
 
 
 class Notifier:
-    """notify-send wrapper that replaces its previous notification (-r)."""
+    """notify-send wrapper that replaces its previous notification (-r).
 
-    def __init__(self, runner=subprocess.run, app_name: str = APP_NAME):
+    notify-send waits for the notification server (up to 3 s): with the real
+    ``subprocess.run`` it runs on one worker thread so a slow server never freezes the
+    tray/window; requests stay in order, so ``-r`` keeps replacing the last one. An
+    injected runner (tests) runs inline and ``notify`` returns its result."""
+
+    def __init__(self, runner=subprocess.run, app_name: str = APP_NAME,
+                 background: bool | None = None):
         self._run = runner
         self.app_name = app_name
         self.last_id: int | None = None
+        self.background = (runner is subprocess.run) if background is None else background
+        self._queue: queue.Queue | None = None
+        self._lock = threading.Lock()
 
     def icon(self) -> str:
         return str(APP_ICON_FILE) if APP_ICON_FILE.exists() else FALLBACK_ICON
 
     def notify(self, summary: str, body: str = "", timeout_ms: int = 4000) -> bool:
+        """Show (or replace) the notification; True = sent (background: queued)."""
+        if not self.background:
+            return self._send(summary, body, timeout_ms)
+        with self._lock:
+            if self._queue is None:
+                self._queue = queue.Queue()
+                threading.Thread(target=self._worker, name="oto-eq-bildirim", daemon=True).start()
+        self._queue.put((summary, body, timeout_ms))
+        return True
+
+    def _worker(self) -> None:
+        while True:
+            summary, body, timeout_ms = self._queue.get()
+            try:
+                self._send(summary, body, timeout_ms)
+            except Exception:  # noqa: BLE001 - never kill the worker
+                log.exception("bildirim gönderilemedi")
+
+    def _send(self, summary: str, body: str, timeout_ms: int) -> bool:
         cmd = ["notify-send", "-a", self.app_name, "-i", self.icon(), "-e",
                "-t", str(timeout_ms), "-p"]
         if self.last_id:
@@ -378,7 +411,7 @@ def default_watch():
 
 def default_request(obj: dict) -> dict:
     from . import ipc
-    return ipc.request(obj, timeout=1.5)
+    return ipc.request(obj, timeout=IPC_TIMEOUT)
 
 
 class WatchThread(QThread):
@@ -411,6 +444,96 @@ class WatchThread(QThread):
                 log.debug("izleme koptu: %s", e)
                 self.down.emit(str(e))
             self._stop.wait(self._retry)
+
+
+# --- wrapping row of buttons --------------------------------------------------
+class FlowLayout(QLayout):
+    """Lays its widgets out left to right and wraps to a new line when the width runs
+    out (Qt's flow layout example). Button rows use it so long translations (de, ru …)
+    wrap instead of forcing a horizontal scroll bar. ``right`` = right-align each line."""
+
+    def __init__(self, parent=None, spacing: int = 8, right: bool = False):
+        super().__init__(parent)
+        self._items: list = []
+        self._right = right
+        self.setSpacing(spacing)
+        self.setContentsMargins(0, 0, 0, 0)
+
+    def addItem(self, item) -> None:  # noqa: N802 - Qt API
+        self._items.append(item)
+
+    def addWidget(self, w) -> None:  # noqa: N802 - Qt API
+        self.addChildWidget(w)
+        self.addItem(QWidgetItem(w))
+
+    def count(self) -> int:
+        return len(self._items)
+
+    def itemAt(self, i: int):  # noqa: N802 - Qt API
+        return self._items[i] if 0 <= i < len(self._items) else None
+
+    def takeAt(self, i: int):  # noqa: N802 - Qt API
+        return self._items.pop(i) if 0 <= i < len(self._items) else None
+
+    def expandingDirections(self):  # noqa: N802 - Qt API
+        return Qt.Orientation(0)
+
+    def hasHeightForWidth(self) -> bool:  # noqa: N802 - Qt API
+        return True
+
+    def heightForWidth(self, width: int) -> int:  # noqa: N802 - Qt API
+        return self._do_layout(QRect(0, 0, width, 0), apply=False)
+
+    def setGeometry(self, rect) -> None:  # noqa: N802 - Qt API
+        super().setGeometry(rect)
+        self._do_layout(rect, apply=True)
+
+    def sizeHint(self) -> QSize:  # noqa: N802 - Qt API
+        w = h = 0
+        for it in self._visible():
+            sh = it.sizeHint()
+            w += sh.width() + (self.spacing() if w else 0)
+            h = max(h, sh.height())
+        m = self.contentsMargins()
+        return QSize(w + m.left() + m.right(), h + m.top() + m.bottom())
+
+    def minimumSize(self) -> QSize:  # noqa: N802 - Qt API
+        size = QSize()
+        for it in self._visible():
+            size = size.expandedTo(it.minimumSize())
+        m = self.contentsMargins()
+        return size + QSize(m.left() + m.right(), m.top() + m.bottom())
+
+    def _visible(self) -> list:
+        return [it for it in self._items if not (it.widget() and it.widget().isHidden())]
+
+    def _do_layout(self, rect, apply: bool) -> int:
+        m = self.contentsMargins()
+        r = rect.adjusted(m.left(), m.top(), -m.right(), -m.bottom())
+        sp = self.spacing()
+        lines, line, line_w = [], [], 0
+        for it in self._visible():
+            w = it.sizeHint().width()
+            if line and line_w + sp + w > r.width():
+                lines.append(line)
+                line, line_w = [], 0
+            line_w += (sp if line else 0) + w
+            line.append(it)
+        if line:
+            lines.append(line)
+        y = r.y()
+        for ln in lines:
+            h = max(it.sizeHint().height() for it in ln)
+            if apply:
+                used = sum(it.sizeHint().width() for it in ln) + sp * (len(ln) - 1)
+                x = r.x() + (max(0, r.width() - used) if self._right else 0)
+                for it in ln:
+                    sh = it.sizeHint()
+                    w = min(sh.width(), r.width())
+                    it.setGeometry(QRect(QPoint(x, y + (h - sh.height()) // 2), QSize(w, sh.height())))
+                    x += w + sp
+            y += h + sp
+        return (y - sp - r.y() if lines else 0) + m.top() + m.bottom()
 
 
 # --- small JSON settings files ----------------------------------------------
@@ -456,20 +579,30 @@ def autostart_enabled(path: Path | None = None) -> bool:
     return Path(path or AUTOSTART_FILE).exists()
 
 
+# English default keys + Turkish [tr] (the session's locale picks one). The marker key
+# is unchanged, so entries written by older versions are still recognised as ours.
+AUTOSTART_TEXTS = (
+    "Name=Kulak Kesil Tray\nName[tr]=Kulak Kesil Tepsisi\n"
+    "GenericName=Smart Equalizer\nGenericName[tr]=Akıllı Ekolayzır\n"
+    "Comment=Headphone EQ status in the system tray\n"
+    "Comment[tr]=Kulaklık EQ'sunu bağlama göre değiştiren Kulak Kesil'in sistem tepsisi simgesi\n")
+
+
+def autostart_text() -> str:
+    icon = str(APP_ICON_FILE) if APP_ICON_FILE.exists() else FALLBACK_ICON
+    return ("[Desktop Entry]\nType=Application\n" + AUTOSTART_TEXTS
+            + f"Exec={tray_exec_line()}\nIcon={icon}\nTerminal=false\n"
+            "Categories=AudioVideo;Audio;\nNoDisplay=true\nX-KDE-autostart-after=panel\n"
+            f"X-GNOME-Autostart-enabled=true\n{DESKTOP_MARK}\n")
+
+
 def set_autostart(on: bool, path: Path | None = None) -> bool:
     """Create/remove the tray autostart entry. Never deletes a foreign file."""
     path = Path(path or AUTOSTART_FILE)
     try:
         if on:
             path.parent.mkdir(parents=True, exist_ok=True)
-            icon = str(APP_ICON_FILE) if APP_ICON_FILE.exists() else FALLBACK_ICON
-            path.write_text(
-                "[Desktop Entry]\nType=Application\nName=Kulak Kesil Tepsisi\n"
-                "GenericName=Akıllı Ekolayzır\n"
-                "Comment=Kulaklık EQ'sunu bağlama göre değiştiren Kulak Kesil'in sistem tepsisi simgesi\n"
-                f"Exec={tray_exec_line()}\nIcon={icon}\nTerminal=false\n"
-                "Categories=AudioVideo;Audio;\nNoDisplay=true\nX-KDE-autostart-after=panel\n"
-                f"X-GNOME-Autostart-enabled=true\n{DESKTOP_MARK}\n", encoding="utf-8")
+            path.write_text(autostart_text(), encoding="utf-8")
         elif path.exists():
             if DESKTOP_MARK not in path.read_text(encoding="utf-8", errors="replace"):
                 log.warning("otomatik başlatma dosyası bizim değil: %s", path)

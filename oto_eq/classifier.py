@@ -22,13 +22,42 @@ from urllib.parse import urlsplit, unquote
 from . import procinfo
 from .config import DEFAULTS_DIR, RULES_FILE
 from .i18n import N_, _
-from .models import (EQ_PROFILES, Category, Decision, MediaPlayer, ProcInfo,
-                     Stream)
+from .models import (EQ_PROFILES, PROFILE_LABELS, Category, Decision, MediaPlayer,
+                     ProcInfo, Stream)
 
 log = logging.getLogger("oto_eq.classifier")
 
 ALL_STEPS = ("kullanici", "cs2", "sesli", "sistem", "oyun", "oynatici", "rol",
              "uygulama", "tarayici")
+
+# Display names of the trace (explain / teshis); the keys stay the config ids ([genel] sira)
+_STEP_NAMES = {"atama": N_("atama"), "kullanici": N_("kullanıcı kuralı"), "cs2": "cs2",
+               "sesli": N_("sesli"), "sistem": N_("sistem"), "oyun": N_("oyun"),
+               "oynatici": N_("oynatıcı"), "rol": N_("rol"), "uygulama": N_("uygulama"),
+               "tarayici": N_("tarayıcı")}
+# labels of the process-ish names (_Ctx.names); the keys are internal ("flatpak" in _why)
+_NAME_LABELS = {"ikili": N_("ikili"), "uygulama": N_("uygulama"), "süreç": N_("süreç"),
+                "komut": N_("komut")}
+# same msgids as the GUI's category names (app.CATEGORY_LABELS)
+CATEGORY_NAMES = {"cs2": "CS2", "oyun": N_("Oyun"), "muzik": N_("Müzik"), "film": N_("Film"),
+                  "sesli": N_("Sesli sohbet"), "sistem": N_("Sistem"),
+                  "bilinmeyen": N_("Bilinmeyen")}
+
+
+def step_label(step: str) -> str:
+    """Trace name of a classifier step ("tarayici" → "tarayıcı" / "browser")."""
+    return _(_STEP_NAMES.get(step, step))
+
+
+def category_label(cat: "Category | str") -> str:
+    """UI name of a category value ("muzik" → "Müzik" / "Music")."""
+    v = cat.value if isinstance(cat, Category) else str(cat)
+    return _(CATEGORY_NAMES.get(v, v))
+
+
+def profile_label(profile: str | None) -> str:
+    """UI name of an EQ profile; None/"" = no EQ."""
+    return PROFILE_LABELS.get(profile, profile) if profile else _("EQ yok")
 
 STEAM_ID_KEYS = ("SteamAppId", "SteamGameId", "STEAM_COMPAT_APP_ID")
 APPID_RE = re.compile(r"\bAppId=(\d+)")
@@ -148,9 +177,7 @@ def _compile_full(patterns, what: str) -> re.Pattern | _AnyOf | None:
     classifier fail to build (every stream without EQ)."""
     good = []
     for p in _as_list(patterns):
-        m = _GLOBAL_FLAGS.match(p)
-        if m:
-            p = f"(?{m.group(1)}:{p[m.end():]})"
+        p = _scoped(p)
         try:
             re.compile(f"(?:{p})", re.I)
             good.append(f"(?:{p})")
@@ -163,6 +190,23 @@ def _compile_full(patterns, what: str) -> re.Pattern | _AnyOf | None:
     except re.error as e:             # e.g. one named group used by two patterns
         log.warning("Desenler birleştirilemedi (%s): %s; tek tek denenecek", what, e)
         return _AnyOf([re.compile(g, re.I) for g in good])
+
+
+def _scoped(p: str) -> str:
+    """A leading global flag group ("(?i)x", the kulaklik_desen idiom) as a scoped one
+    ("(?i:x)"): a global flag inside (?:…) / an alternation is an error."""
+    m = _GLOBAL_FLAGS.match(p)
+    return f"(?{m.group(1)}:{p[m.end():]})" if m else p
+
+
+def _rule_pattern(v) -> str:
+    """One [[kural]] value → one regex source. A TOML list (``ikili = ["a", "b"]``, the form
+    of the name lists above) is "any of them": str(list) used to become a character class
+    ("['a', 'b']") that matched nearly every name (search fields) or none (full fields)."""
+    items = [str(x) for x in v] if isinstance(v, (list, tuple)) else [str(v)]
+    if not items:
+        raise ValueError("boş liste")         # journal only (log messages stay Turkish)
+    return "|".join(f"(?:{_scoped(p)})" for p in items)
 
 
 def _compile_each(patterns, what: str) -> list[re.Pattern]:
@@ -201,6 +245,17 @@ def _ext(path: str) -> str:
     return base.rsplit(".", 1)[-1].lower()
 
 
+# HLS manifest: a local .m3u8 is a music playlist, a remote one a live stream (IPTV, Twitch
+# via streamlink, TV channels…) — the shipped ses_uzantilari list sent those to Müzik
+_HLS_EXTS = frozenset({"m3u8"})
+
+
+def _remote(path: str) -> bool:
+    """A network address (http, https, rtmp …), not a local file / file:// URL."""
+    p = (path or "").strip().lower()
+    return "://" in p and not p.startswith("file:")
+
+
 _TITLE_SUFFIX = re.compile(
     r"\s+[-–—|•·]\s+(youtube music|youtube|spotify|soundcloud|netflix|twitch|"
     r"mozilla firefox|firefox|chromium|google chrome)\s*$", re.I)
@@ -224,7 +279,8 @@ def _fmt_vals(names: list[tuple[str, str]]) -> str:
 
 
 def _fmt_names(names: list[tuple[str, str]]) -> str:
-    return ", ".join(f"{label}={value}" for label, value in names if value) or "-"
+    return ", ".join(f"{_(_NAME_LABELS.get(label, label))}={value}"
+                     for label, value in names if value) or "-"
 
 
 class _SiteList:
@@ -236,12 +292,15 @@ class _SiteList:
         self.domains: list[str] = []
         self.regexes: list[re.Pattern] = []
         for e in _as_list(entries):
-            e = e.strip().lower()
+            e = e.strip()
             if not e:
                 continue
             if self._META.search(e):
+                # as written (case-insensitive anyway): lower() turned \S \D \W \B into
+                # \s \d \w \b, i.e. their opposites
                 self.regexes.extend(_compile_each([e], what))
             else:
+                e = e.lower()
                 self.domains.append(e[4:] if e.startswith("www.") else e)
 
     def match(self, host: str) -> str | None:
@@ -490,18 +549,18 @@ class Classifier:
         try:
             for f in self._RULE_FULL:
                 if f in raw:
-                    cr[f] = re.compile(f"(?:{raw[f]})", re.I)
+                    cr[f] = re.compile(f"(?:{_rule_pattern(raw[f])})", re.I)
                     n += 1
             for f in self._RULE_SEARCH:
                 if f in raw:
-                    cr[f] = re.compile(str(raw[f]), re.I)
+                    cr[f] = re.compile(_rule_pattern(raw[f]), re.I)
                     n += 1
             for f in self._RULE_TABLES:
                 if f in raw:
                     tbl = raw[f]
                     if not isinstance(tbl, dict) or not tbl:
                         raise ValueError(f"{f} bir tablo olmalı")
-                    cr[f] = {str(k): re.compile(str(v), re.I) for k, v in tbl.items()}
+                    cr[f] = {str(k): re.compile(_rule_pattern(v), re.I) for k, v in tbl.items()}
                     n += 1
         except (re.error, ValueError) as e:
             log.warning("kural %s: geçersiz desen (%s), atlandı", name, e)
@@ -620,7 +679,7 @@ class Classifier:
 
     def explain(self, stream: Stream, players: list[MediaPlayer] | None = None
                 ) -> tuple[Decision, list[str]]:
-        """Same decision as classify() plus a Turkish trace of every check."""
+        """Same decision as classify() plus a trace of every check (UI language)."""
         trace: list[str] = []
         try:
             d = self._classify(stream, [p for p in (players or ()) if isinstance(p, MediaPlayer)],
@@ -631,7 +690,7 @@ class Classifier:
                          _("hata: {tur}").format(tur=type(e).__name__))
             trace.append("✘ " + _("hata: {tur}: {hata}").format(tur=type(e).__name__, hata=e))
         trace.append("→ " + _("karar: {kategori} / {profil} ({neden})").format(
-            kategori=d.category.value, profil=d.profile or _("EQ yok"), neden=d.reason))
+            kategori=category_label(d.category), profil=profile_label(d.profile), neden=d.reason))
         return d, trace
 
     def _classify(self, stream: Stream, players: list[MediaPlayer],
@@ -752,8 +811,8 @@ class Classifier:
     @staticmethod
     def _trace_line(step: str, d: Decision | None, seen: str) -> str:
         if d is None:
-            return f"✘ {step}: {seen}"
-        return f"✔ {step}: {seen} ⇒ {d.category.value} ({d.reason})"
+            return f"✘ {step_label(step)}: {seen}"
+        return f"✔ {step_label(step)}: {seen} ⇒ {category_label(d.category)} ({d.reason})"
 
     def _seen_kullanici(self, ctx: _Ctx, players) -> str:
         if not self.user_rules:
@@ -813,10 +872,33 @@ class Classifier:
         return _("sekme '{sekme}'; bağlı MPRIS: {mpris}").format(
             sekme=(ctx.stream.media_name or "")[:60], mpris=ps or _("yok"))
 
+    def _media_app(self, ctx: _Ctx) -> bool:
+        """A browser / music / video app of the rule lists: never a game, whatever it
+        inherited. A browser first opened by a game's link (winebrowser → xdg-open, a
+        launcher's "news") keeps the game's WINEPREFIX / SteamAppId / ancestors for the
+        whole session: everything it played went to Oyun (SteamAppId=730: CS2)."""
+        return any(self._match(rx, ctx.names) for rx in
+                   (self.browser_apps, self.music_apps, self.movie_apps, self.player_apps))
+
+    def media_app(self, stream: Stream, proc: ProcInfo | None = None) -> bool:
+        """Public (tur.content_id): ``stream`` belongs to a browser / music / video app."""
+        try:
+            if proc is not None:
+                ctx = _Ctx(stream, proc.pid, proc, (proc.env or {}).get("FLATPAK_ID", "")
+                           or procinfo._stream_flatpak_hint(stream))
+            else:
+                ctx = _Ctx(stream, *self.process_of(stream))
+            return self._media_app(ctx)
+        except Exception:
+            log.exception("media_app hatası")
+            return False
+
     def _step_cs2(self, ctx: _Ctx, players) -> Decision | None:
         hit = self._match(self.cs2_bin, ctx.proc_names)
         if hit:
             return self._decision(Category.CS2, _("ikili '{ad}'").format(ad=hit[1]))
+        if self._media_app(ctx):
+            return None                  # an inherited SteamAppId=730 (see _media_app)
         for label, v in ctx.steam_ids():
             if v in self.cs2_ids:
                 return self._decision(Category.CS2, label)
@@ -846,11 +928,10 @@ class Classifier:
         hit = self._match(self.game_apps, ctx.names)
         if hit:
             return self._decision(Category.GAME, self._why(N_("bilinen oyun '{ad}'"), hit))
-        # a program the rules list as a music / video player (foobar2000.exe, mpc-hc.exe under
-        # Wine) is not a game, whatever its .exe name or Wine environment says: the later
-        # steps (oynatici / uygulama) classify it
-        if any(self._match(rx, ctx.names) for rx in
-               (self.music_apps, self.movie_apps, self.player_apps)):
+        # a program the rules list as a browser or a music / video player (foobar2000.exe,
+        # mpc-hc.exe under Wine; a browser that inherited a game's environment) is not a
+        # game, whatever its .exe name or environment says: the later steps classify it
+        if self._media_app(ctx):
             return None
         for _label, v in ctx.names:
             if v and v.lower().endswith(".exe"):
@@ -977,7 +1058,7 @@ class Classifier:
             if not p.url:
                 continue
             ext = _ext(p.url)
-            d = self._ext_decision(ext, "mpris")
+            d = self._ext_decision(ext, "mpris", remote=_remote(p.url))
             if d:
                 return d
             host = _host(p.url)
@@ -997,14 +1078,16 @@ class Classifier:
         for a in args:
             if a in ("--no-video", "--vid=no", "--video=no", "--no-vid", "-vn", "--novideo"):
                 return self._decision(Category.MUSIC, _("oynatıcı: görüntüsüz ({arguman})").format(arguman=a))
-        arg_exts = [_ext(a) for a in args if not a.startswith("-")]
+        arg_exts = [_ext(a) for a in args if not a.startswith("-")
+                    and not (_remote(a) and _ext(a) in _HLS_EXTS)]
         if any(e in self.video_ext for e in arg_exts):
             e = next(e for e in arg_exts if e in self.video_ext)
             return self._decision(Category.MOVIE, _("oynatıcı: video dosyası (.{uzanti})").format(uzanti=e))
         if any(e in self.audio_ext for e in arg_exts):
             e = next(e for e in arg_exts if e in self.audio_ext)
             return self._decision(Category.MUSIC, _("oynatıcı: ses dosyası (.{uzanti})").format(uzanti=e))
-        d = self._ext_decision(_ext(ctx.stream.media_name), "baslik")
+        # a title "index.m3u8" is the name of an HLS stream (a local playlist shows its tracks)
+        d = self._ext_decision(_ext(ctx.stream.media_name), "baslik", remote=True)
         if d:
             return d
         for a in args:
@@ -1024,7 +1107,12 @@ class Classifier:
                    N_("oynatıcı: başlık ses dosyası (.{uzanti})")),
     }
 
-    def _ext_decision(self, ext: str, kaynak: str) -> Decision | None:
+    def _ext_decision(self, ext: str, kaynak: str, remote: bool = False) -> Decision | None:
+        """``remote``: the extension comes from a network address (or a stream title):
+        an HLS manifest (.m3u8) is then a live stream, video as often as radio → no
+        decision (later evidence: site, media role, default)."""
+        if remote and ext in _HLS_EXTS:
+            return None
         video, audio = self._EXT_WHY[kaynak]
         if ext in self.video_ext:
             return self._decision(Category.MOVIE, _(video).format(uzanti=ext))
@@ -1201,7 +1289,12 @@ class Classifier:
         except Exception:
             known = None
         if known:
-            return self._decision(Category.MUSIC, _("tarayıcı: bilinen sanatçı '{sanatci}'").format(sanatci=artist))
+            # weak: the first word of a title may only SHARE a known artist's name ("Gece -
+            # Uyku İçin Hikaye", "Boston - Travel Guide", "Queen - … Explained"); the content
+            # check (icerik, YAMNet) verifies weak decisions and flips a talk to Film
+            return replace(self._decision(
+                Category.MUSIC, _("tarayıcı: bilinen sanatçı '{sanatci}'").format(sanatci=artist)),
+                zayif=True)
         return None
 
 
@@ -1210,7 +1303,10 @@ _VIDEO_WORDS = re.compile(
     r"\b(trailer|teaser|fragman|review|inceleme|gameplay|walkthrough|let'?s play|"
     r"episode \d+|\d+\. b[öo]l[üu]m|b[öo]l[üu]m \d+|sezon finali|season finale|"
     r"g[üu]ndem [öo]zeti|g[üu]n[üu]n [öo]zeti|ma[çc] [öo]zeti|haber b[üu]lteni|"
-    r"r[öo]portaj|interview|tutorial|full movie|tam film|reaction|highlights|vlog|podcast)\b",
+    r"r[öo]portaj|interview|tutorial|full movie|tam film|reaction|highlights|vlog|podcast|"
+    # not "how to" ("How to Save a Life") nor single words a song may be named after
+    r"documentary|belgesel|explained|travel guide|itinerary|full course|"
+    r"nas[ıi]l yap[ıi]l[ıi]r|kurulum rehberi)\b",
     re.I)
 
 
@@ -1220,8 +1316,18 @@ def _shared_artist_lookup(name: str) -> bool | None:
     return tur.shared_resolver().known_artist(name, request=True)
 
 
-def load_classifier() -> Classifier:
-    """Classifier from the user's (or shipped) kurallar.toml."""
+def _cached_artist_lookup(name: str) -> bool | None:
+    """The same, cache only: no network, no worker thread (read-only tools)."""
+    from . import tur
+    return tur.shared_resolver().known_artist(name, request=False)
+
+
+def load_classifier(online: bool = True) -> Classifier:
+    """Classifier from the user's (or shipped) kurallar.toml.
+
+    ``online=False`` (teshis, ``python3 -m oto_eq.classifier``): the "known artist" check
+    reads the genre cache only — a read-only tool must not start lookups or write the
+    cache file from its own short-lived process."""
     from . import config
     try:
         if hasattr(config, "load_rules"):
@@ -1231,7 +1337,9 @@ def load_classifier() -> Classifier:
     except (OSError, tomllib.TOMLDecodeError, ValueError) as e:
         log.error("kurallar.toml okunamadı, varsayılanlar kullanılıyor: %s", e)
         rules = {}
-    return Classifier(rules)
+    if online:
+        return Classifier(rules)
+    return Classifier(rules, artist_lookup=_cached_artist_lookup)
 
 
 def main() -> None:   # pragma: no cover - manual debugging aid
@@ -1247,13 +1355,14 @@ def main() -> None:   # pragma: no cover - manual debugging aid
     w = MprisWatcher()
     w.start()
     time.sleep(0.5)
-    c = load_classifier()
+    c = load_classifier(online=False)
     t0 = time.perf_counter()
     rows = [(s, c.classify(s, w.players())) for s in pulse.list_streams()]
     dt = (time.perf_counter() - t0) * 1000
     for s, d in rows:
         sys.stdout.write(f"#{s.index:<5} {s.app_name[:20]:20} {s.binary[:18]:18} "
-                         f"-> {d.category.value:10} {str(d.profile):6} {d.reason}\n")
+                         f"-> {category_label(d.category):12} {profile_label(d.profile):8} "
+                         f"{d.reason}\n")
     sys.stdout.write(_("({n} akış, {sure:.1f} ms)").format(n=len(rows), sure=dt) + "\n")
     w.stop()
 

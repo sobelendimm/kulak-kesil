@@ -32,6 +32,7 @@ import logging
 import math
 import os
 import re
+import select
 import shutil
 import subprocess
 import sys
@@ -43,10 +44,11 @@ from pathlib import Path
 
 import numpy as np
 
-from . import config
+from . import config, eklenti
 from .eqgen import (FILTER_TYPES, _controls_str, _db2lin, _fmt, _live_params_from_dump,
                     _node_ids, _params_pod, comp_static_gain_db, dumps_toml, response_db)
 from .i18n import N_, _, h_
+from .yedek import atomik_yaz
 
 log = logging.getLogger("oto_eq.micgen")
 
@@ -58,10 +60,10 @@ TEST_PREFIX = "oto_eq_mikrofon_test"
 MISSING_TARGET = "oto_eq_mikrofon_hedef_yok"   # placeholder: linger, never fall back
 DESCRIPTION = f"{APP_NAME} · Mikrofon"
 
-RNNOISE_SO = "librnnoise_ladspa.so"
+RNNOISE_SO = eklenti.RNNOISE_SO
 RNNOISE_LABEL = "noise_suppressor_mono"
 LSP_MONO_URI = "http://lsp-plug.in/plugins/lv2/compressor_mono"
-LSP_MONO_TTL = "lsp-plugins.lv2/compressor_mono.ttl"
+LSP_MONO_TTL = eklenti.LSP_MONO_TTL
 DETECTION = {"tepe": 0, "rms": 1}
 HPF_OFF_HZ = 5.0                      # "disabled" high-pass = far below audio band
 
@@ -83,6 +85,8 @@ COMP_DEFAULTS = {
              "tepki_ms": 1.0},
 }
 SECTIONS = ("genel", "giris", "bas_filtre", "gurultu", "eq", "netlik", "kompresor", "tepe")
+# display names of built-in modes (a [mod.X] name the user chose is shown as written)
+MOD_ADLARI = {"tam": N_("tam (varsayılan)")}
 COMPS = ("kompresor", "tepe")          # section name == graph node name
 
 
@@ -259,7 +263,7 @@ def load_mic(path: Path | None = None) -> dict:
 
 SAVE_HEADER = """\
 # Kulak Kesil (oto-eq) — mikrofon ayarları. Bu dosya uygulama tarafından kaydedildi.
-# Ayrıntılı açıklamalı örnek: ~/.local/src/oto-eq/config/mikrofon.toml
+# Ayrıntılı açıklamalı örnek: @ORNEK@
 #
 # [genel]       aktif (false = düz geçiş), mod ("tam" | [mod.X] adı),
 #               giris_desen (HS80 mikrofonu düzenli ifadesi), giris_sabit (elle kaynak adı)
@@ -272,6 +276,7 @@ SAVE_HEADER = """\
 # [mod.X]       hazır mod: yalnız yazılan değerleri değiştirir (ör. mod.discord.gurultu.aktif)
 # EQ filtre SAYISI/TİPİ değişirse servis yeniden başlar; diğer her şey canlı uygulanır.
 """
+SAVE_HEADER = SAVE_HEADER.replace("@ORNEK@", str(config.DEFAULTS_DIR / MIC_FILE))
 
 
 def save_mic(data: dict, path: Path | None = None) -> Path:
@@ -285,9 +290,7 @@ def save_mic(data: dict, path: Path | None = None) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
         shutil.copy2(path, path.with_name(path.name + ".bak"))
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(text, encoding="utf-8")
-    os.replace(tmp, path)
+    atomik_yaz(path, text)
     log.info("Mikrofon ayarları kaydedildi: %s", path)
     return path
 
@@ -296,25 +299,13 @@ def save_mic(data: dict, path: Path | None = None) -> Path:
 # Plugins
 # --------------------------------------------------------------------------
 
-def _find_plugin(rel: str, env: str, dirs: list[str]) -> Path | None:
-    cand = [d for d in os.environ.get(env, "").split(":") if d] + dirs
-    for d in cand:
-        p = Path(d) / rel
-        if p.exists():
-            return p
-    return None
-
-
 def rnnoise_path() -> Path | None:
-    return _find_plugin(RNNOISE_SO, "LADSPA_PATH",
-                        [str(Path.home() / ".ladspa"), "/usr/local/lib/ladspa", "/usr/lib/ladspa",
-                         "/usr/lib64/ladspa"])
+    """librnnoise_ladspa.so (LADSPA_PATH, system / multiarch / NixOS dirs: oto_eq.eklenti)."""
+    return eklenti.bul(RNNOISE_SO, "ladspa")
 
 
 def lsp_mono_available() -> bool:
-    return _find_plugin(LSP_MONO_TTL, "LV2_PATH",
-                        [str(Path.home() / ".lv2"), "/usr/local/lib/lv2", "/usr/lib/lv2",
-                         "/usr/lib64/lv2"]) is not None
+    return eklenti.bul(LSP_MONO_TTL, "lv2") is not None
 
 
 # --------------------------------------------------------------------------
@@ -345,6 +336,11 @@ def comp_mono_controls(d: dict) -> dict[str, float]:
         "g_in": 1.0,
         "g_out": 1.0,
     }
+
+
+def mod_etiketi(mod: str) -> str:
+    """Mode name for display: "tam" translated, the user's own [mod.X] names as written."""
+    return _(MOD_ADLARI[mod]) if mod in MOD_ADLARI else str(mod)
 
 
 def is_wired(source_name: str | None) -> bool:
@@ -454,6 +450,79 @@ def resolve_target(data: dict, sources: list[str] | None = None,
     return (wired or cands)[0]
 
 
+def _real_source(name: str | None) -> bool:
+    """A source the chain may capture: not a monitor, not one of our own oto_eq* nodes
+    (capturing "Kulak Kesil · Mikrofon" itself would be a feedback loop)."""
+    return bool(name) and not name.endswith(".monitor") and not name.startswith("oto_eq")
+
+
+def default_source() -> str:
+    try:
+        return _run(["pactl", "get-default-source"]).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def _pattern_device_seen(data: dict) -> bool:
+    """Did the router last record a headphone whose mic matches giris_desen? (an HS80 user
+    whose HS80 is just off now; the output name → its input name)"""
+    from . import kulaklik
+    ad = str(kulaklik.durum_oku().get("ad") or "")
+    if not ad.startswith("alsa_output."):
+        return False
+    g = (data if "mod" in data else normalize_mic(data))["genel"]
+    return bool(re.search(g["giris_desen"], "alsa_input." + ad[len("alsa_output."):]))
+
+
+def conf_target(data: dict, sources: list[str] | None = None, default: str | None = None,
+                default_sink: str | None = None) -> str | None:
+    """Capture target written into mikrofon.conf (None = MISSING_TARGET: follow the default).
+
+    1. ``resolve_target`` (giris_sabit / the HS80 / giris_desen).
+    2. No such mic (another headset, a webcam, a desk mic): a REAL mic by name. Falling
+       back to the default source is not enough: once the user makes "Kulak Kesil ·
+       Mikrofon" the default input (the normal way to use it) the fallback would be the
+       chain's own output — WirePlumber refuses that link (same link-group), so no loop,
+       but the virtual mic would stay silent. Pick the default source if it is a real
+       mic, else the first real ALSA / Bluetooth input.
+    3. Exception: the last headphone the router saw has a mic matching giris_desen (an HS80
+       user with the HS80 off right now) → None, the old behaviour: the capture follows the
+       default, which is the HS80 again when it comes back.
+    """
+    t = resolve_target(data, sources=sources, default_sink=default_sink)
+    if t:
+        return t
+    if _pattern_device_seen(data):
+        return None
+    if sources is None:
+        sources = list_source_names()
+    if default is None:
+        default = default_source()
+    if _real_source(default) and default in sources:
+        return default
+    real = [s for s in sources if _real_source(s)]
+    hw = [s for s in real if s.startswith(("alsa_input.", "bluez_input."))]
+    return (hw or real or [None])[0]
+
+
+def kayit_kaynagi(data: dict, dump: list[dict] | None = None) -> str | None:
+    """The raw mic behind the chain (mic test / calibration): ``resolve_target`` → the
+    source currently linked into ``oto_eq_mikrofon_giris`` → the default source; never one
+    of our own nodes. None = no microphone at all."""
+    t = resolve_target(data)
+    if t:
+        return t
+    try:
+        linked = _capture_state(dump if dump is not None else _pw_dump(), PREFIX)[1]
+    except (OSError, subprocess.SubprocessError, ValueError):
+        linked = []
+    real = [s for s in linked if _real_source(s) and s != "?"]
+    if real:
+        return real[0]
+    d = default_source()
+    return d if _real_source(d) else None
+
+
 # --------------------------------------------------------------------------
 # Config generation
 # --------------------------------------------------------------------------
@@ -517,7 +586,7 @@ def generate_conf(data: dict, prefix: str = PREFIX, target: str | None = None,
     tgt = target or MISSING_TARGET
     lv, tp = eff["kompresor"], eff["tepe"]
     L = [
-        f"# {DESCRIPTION}: HS80 mikrofonu için işlenmiş sanal mikrofon — OTOMATİK ÜRETİLDİ.",
+        f"# {DESCRIPTION}: işlenmiş sanal mikrofon — OTOMATİK ÜRETİLDİ.",
         "# Kaynak: mikrofon.toml  →  python3 -m oto_eq.micgen generate",
         "# Çalıştırma: pipewire -c <bu dosya>  (oto-eq-mic.service)",
         "#",
@@ -527,7 +596,7 @@ def generate_conf(data: dict, prefix: str = PREFIX, target: str | None = None,
         f"# kompresör {lv['oran']:g}:1 eşik {lv['esik']:g} dBFS telafi {lv['telafi']:+g} dB"
         f" ({'açık' if lv['aktif'] else 'kapalı'}); tepe {tp['esik']:g} dBFS {tp['oran']:g}:1"
         f" ({'açık' if tp['aktif'] else 'kapalı'})",
-        f"# giriş: {' '.join(str(tgt).split())}" + ("  (HS80 mikrofonu bulunamadı)"
+        f"# giriş: {' '.join(str(tgt).split())}" + ("  (mikrofon bulunamadı)"
                                                      if target is None else "")
         + f"  giriş kazancı {input_trim_db(data, target):+g} dB",
         "# Hedef yoksa varsayılan mikrofona düşer; kablosuz/kablolu geçişte",
@@ -593,18 +662,15 @@ def generate_conf(data: dict, prefix: str = PREFIX, target: str | None = None,
 
 def write_conf(path: Path = MIC_CONF, data: dict | None = None,
                target: str | None = "auto") -> Path:
-    """Generate (target auto-resolved) and atomically write mikrofon.conf."""
+    """Generate (target auto-resolved: ``conf_target``) and atomically write mikrofon.conf."""
     path = Path(path)
     data = data if data is not None else load_mic()
     if target == "auto":
-        target = resolve_target(data)
+        target = conf_target(data)
     text = generate_conf(data, target=target)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(text, encoding="utf-8")
     from .eqgen import keep_previous           # lazy: micgen must not need eqgen at import
     keep_previous(path)
-    os.replace(tmp, path)
+    atomik_yaz(path, text)
     log.info("Mikrofon yapılandırması yazıldı: %s (giriş: %s)", path, target or MISSING_TARGET)
     return path
 
@@ -780,18 +846,26 @@ TEST_PROPS = {"application.name": "oto-eq-mic-check",
               "state.restore-props": "false", "state.restore-target": "false"}
 
 
-def _record(source: str, seconds: float) -> np.ndarray:
-    """Capture float32 mono from a source into RAM only (parec → pipe)."""
+def _record(source: str, seconds: float, popen=subprocess.Popen) -> np.ndarray:
+    """Capture float32 mono from a source into RAM only (parec → pipe).
+
+    Never blocks past ``seconds``: each read waits for data with select() and the remaining
+    time as its timeout (a parec that delivers nothing — source stuck, server hung — used
+    to block the calibration forever)."""
     env = {**config.C_ENV, "PULSE_PROP": 'application.name="oto-eq-mic-check" '
            'state.restore-props="false" state.restore-target="false"'}
-    p = subprocess.Popen(["parec", f"--device={source}", "--raw", "--format=float32le",
-                          "--channels=1", "--rate=48000", "--latency-msec=20"],
-                         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env)
+    p = popen(["parec", f"--device={source}", "--raw", "--format=float32le",
+               "--channels=1", "--rate=48000", "--latency-msec=20"],
+              stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env, bufsize=0)
     buf = bytearray()
-    t0 = time.monotonic()
+    end = time.monotonic() + seconds
     try:
-        while time.monotonic() - t0 < seconds:
-            chunk = p.stdout.read1(65536) if hasattr(p.stdout, "read1") else p.stdout.read(4096)
+        fd = p.stdout.fileno()
+        while (left := end - time.monotonic()) > 0:
+            ready, _w, _x = select.select([fd], [], [], left)
+            if not ready:
+                break                       # no data within the time left
+            chunk = os.read(fd, 65536)
             if not chunk:
                 break
             buf += chunk
@@ -997,9 +1071,9 @@ def check(say=print, real_mic: bool = True) -> bool:
                 hedef=MISSING_TARGET, bagli=got[1] or _("yok (bekliyor)")))
         # ---- 3. real HS80 mic (RAM only)
         if real_mic:
-            tgt = resolve_target(data)
+            tgt = kayit_kaynagi(data)
             if tgt is None:
-                say("- " + _("gerçek mikrofon testi atlandı (HS80 mikrofonu yok)"))
+                say("- " + _("gerçek mikrofon testi atlandı (mikrofon yok)"))
             elif not retarget(tgt, prefix=TEST_PREFIX, data=dry):
                 fail(_("gerçek mikrofona ({kaynak}) bağlanamadı").format(kaynak=tgt))
             else:
@@ -1110,7 +1184,8 @@ def suggest(levels: dict, data: dict, source_name: str | None = None) -> dict:
 
 
 def calibrate(seconds: float = 5.0, apply: bool = False) -> dict:
-    """Measure the RAW HS80 mic while the user speaks; suggest (and optionally apply) levels.
+    """Measure the RAW mic (``kayit_kaynagi``: the HS80, else the mic the chain captures)
+    while the user speaks; suggest (and optionally apply) levels.
 
     Audio stays in RAM (parec → pipe) and is discarded; nothing is written to
     disk. ``apply=True`` → ``save_mic`` + ``set_live`` (no restart).
@@ -1122,9 +1197,9 @@ def calibrate(seconds: float = 5.0, apply: bool = False) -> dict:
     except (MicError, OSError) as e:
         return out | {"hata": _("{dosya} okunamadı: {hata}").format(dosya="mikrofon.toml", hata=e),
                       "kod": "ayar"}
-    src = resolve_target(data)
+    src = kayit_kaynagi(data)
     if src is None:
-        return out | {"hata": _("HS80 mikrofonu bulunamadı (kulaklık açık ve bağlı mı?)"),
+        return out | {"hata": _("Mikrofon bulunamadı (takılı ve açık mı?)"),
                       "kod": "mikrofon_yok"}
     x = _record(src, float(seconds) + 0.1)
     if x.size < int(0.2 * float(seconds) * 48000):     # parec gave (almost) nothing
@@ -1235,13 +1310,16 @@ def apply_suggestion(oneri: dict, data: dict | None = None, conf_path: Path | No
 def summary(data: dict) -> str:
     eff = effective(data)
     rn, lsp = rnnoise_path(), lsp_mono_available()
-    tgt = resolve_target(data)
+    tgt = kayit_kaynagi(data)
     g = data["genel"]
     vol = source_volume_db(tgt) if tgt else None
     if not tgt:
-        giris = _("Giriş: {kaynak}").format(kaynak=_("HS80 mikrofonu bulunamadı"))
+        giris = _("Giriş: {kaynak}").format(kaynak=_("mikrofon bulunamadı"))
     elif vol is None:
         giris = _("Giriş: {kaynak}").format(kaynak=tgt)
+    elif not re.search(g["giris_desen"], tgt):       # not the HS80: no wired/wireless mode
+        giris = _("Giriş: {kaynak} (kaynak sesi {ses:+.1f} dB, giriş kazancı {kazanc:+g} dB)").format(
+            kaynak=tgt, ses=vol, kazanc=input_trim_db(data, tgt))
     else:
         giris = (_("Giriş: {kaynak} (kablolu, kaynak sesi {ses:+.1f} dB, giriş kazancı {kazanc:+g} dB)")
                  if is_wired(tgt) else
@@ -1249,7 +1327,7 @@ def summary(data: dict) -> str:
                  ).format(kaynak=tgt, ses=vol, kazanc=input_trim_db(data, tgt))
     gu = eff["gurultu"]
     lines = [(_("Mod: {mod}   işlem: açık") if g["aktif"]
-              else _("Mod: {mod}   işlem: KAPALI (düz geçiş)")).format(mod=g["mod"]),
+              else _("Mod: {mod}   işlem: KAPALI (düz geçiş)")).format(mod=mod_etiketi(g["mod"])),
              giris,
              _("Bas filtresi: {fc:g} Hz").format(fc=eff["bas_filtre"]["fc"]) if eff["bas_filtre"]["aktif"]
              else _("Bas filtresi: kapalı"),
@@ -1295,9 +1373,9 @@ def main(argv: list[str] | None = None) -> int:
     g.add_argument("--stdout", action="store_true", help=h_(_("dosyaya değil ekrana yaz")))
     c = sub.add_parser("check", help=h_(_("test kopyasıyla canlı doğrula (canlı mikrofona dokunmaz)")))
     c.add_argument("--gercek-mikrofon-yok", action="store_true",
-                   help=h_(_("gerçek HS80 mikrofonuyla 1,5 sn'lik (yalnız bellek) testi atla")))
+                   help=h_(_("gerçek mikrofonla 1,5 sn'lik (yalnız bellek) testi atla")))
     sub.add_parser("ozet", help=h_(_("zincir özetini göster")))
-    sub.add_parser("hedef", help=h_(_("çalışan zinciri şu anki HS80 mikrofonuna taşı")))
+    sub.add_parser("hedef", help=h_(_("çalışan zinciri şu anki mikrofona taşı")))
     sub.add_parser("izle", help=h_(_("kablosuz/kablolu geçişlerde girişi otomatik taşı (sürekli)")))
     sub.add_parser("canli", help=h_(_("{dosya}'u çalışan zincire canlı uygula").format(dosya="mikrofon.toml")))
     k = sub.add_parser("kalibre", help=h_(_("konuşarak seviye ölç, kompresör/VAD öner")))
@@ -1305,8 +1383,12 @@ def main(argv: list[str] | None = None) -> int:
     k.add_argument("--saniye", type=float, default=5.0)
     k.add_argument("--json", action="store_true",
                    help=h_(_("sonucu tek satır JSON yaz (pencere bunu kullanır)")))
+    ap.add_argument("-v", "--ayrinti", action="store_true",
+                    help=h_(_("ayrıntılı günlük (INFO satırları) göster")))
     a = ap.parse_args(argv)
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    # quiet by default (install.sh / kulak show our own result lines); -v = the INFO log
+    logging.basicConfig(level=logging.INFO if a.ayrinti else logging.WARNING,
+                        format="%(levelname)s %(name)s: %(message)s")
     try:
         data = load_mic()
     except (MicError, OSError) as e:
@@ -1317,7 +1399,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if a.cmd == "generate":
         if a.stdout:
-            print(generate_conf(data, target=resolve_target(data)))
+            print(generate_conf(data, target=conf_target(data)))
         else:
             print(_("Yazıldı: {yol}").format(yol=write_conf(a.output, data)))
         return 0
@@ -1328,10 +1410,10 @@ def main(argv: list[str] | None = None) -> int:
         print(summary(data))
         return 0 if check(real_mic=not a.gercek_mikrofon_yok) else 1
     if a.cmd == "hedef":
-        t = resolve_target(data)
+        t = conf_target(data)
         ok = retarget(t, data=data) if t else False
         print(_("Giriş: {kaynak}").format(kaynak=t) if ok
-              else _("HS80 mikrofonu bulunamadı ya da zincir çalışmıyor"))
+              else _("Mikrofon bulunamadı ya da zincir çalışmıyor"))
         return 0 if ok else 1
     if a.cmd == "canli":
         return 0 if set_live(data) else 1

@@ -366,11 +366,11 @@ class TestRecentApps(AppTestBase):
         self.win.show_page(3)
         self.assertFalse(rp.recent_card.isHidden())
         self.assertEqual(len(rp.recent_rows), 2)
-        self.assertEqual(rp.recent_count.text(), "2 uygulama")
+        self.assertEqual(rp.recent_count.text(), "uygulama: 2")      # no plural forms needed
         r0 = rp.recent_rows[0]
         self.assertEqual(r0.stream["app"], "Spotify")
         texts = [w.text() for w in r0.findChildren(appmod.QLabel)]
-        self.assertIn("4 kez · 5 dk önce", texts)
+        self.assertIn("5 dk önce · çalma: 4", texts)
         self.assertIn("spotify · Müzik", texts)
         # Ata ▾ -> Film on the wine game assigns by app name, not wine64-preloader
         r1 = rp.recent_rows[1]
@@ -528,6 +528,38 @@ class TestMicPage(AppTestBase):
         self.assertIn(["systemctl", "--user", "restart", "oto-eq-mic.service"], self.runner.calls)
         self.assertFalse(page.param_changed(("netlik", "kazanc"), 5.0))  # unchanged -> no-op
 
+    def test_params_keep_outside_changes(self):
+        gen = FakeMicgen()
+        with mock.patch.object(appmod, "load_micgen", return_value=gen):
+            page = appmod.MicPage(self.win)
+        self.assertEqual(page.cfg["kompresor"]["esik"], -30)
+        # meanwhile `kulak mikrofon kalibre --uygula` writes a new threshold
+        gen.cfg = {**gen.load_mic(), "kompresor": {"esik": -31.0, "telafi": 6.0}}
+        self.assertTrue(page.param_changed(("netlik", "kazanc"), 5.0))
+        self.assertEqual(gen.saved[-1]["kompresor"]["esik"], -31.0)    # not reverted to -30
+        self.assertEqual(gen.saved[-1]["netlik"]["kazanc"], 5.0)
+        ctl, val, _k, step = page.controls[("kompresor", "esik")]
+        self.assertEqual(ctl.value() * step, -31.0)                     # the page shows it too
+        # the same value already in the file: nothing to write, but the controls catch up
+        gen.cfg = {**gen.load_mic(), "netlik": {"kazanc": 6.0}}
+        n = len(gen.saved)
+        self.assertFalse(page.param_changed(("netlik", "kazanc"), 6.0))
+        self.assertEqual(len(gen.saved), n)
+        self.assertEqual(page.cfg["netlik"]["kazanc"], 6.0)
+
+    def test_stop_process_does_not_block(self):
+        # a child that ignores SIGTERM: SIGKILL follows after the grace time, the GUI never waits
+        proc = appmod.QProcess(self.win)
+        proc.start(sys.executable, ["-c", "import signal, time; signal.signal(signal.SIGTERM, "
+                                          "signal.SIG_IGN); print('ok', flush=True); time.sleep(30)"])
+        self.assertTrue(proc.waitForStarted(5000))
+        self.assertTrue(proc.waitForReadyRead(5000))
+        t0 = time.monotonic()
+        appmod.stop_process(proc, 200)
+        self.assertLess(time.monotonic() - t0, 0.1)
+        self.assertTrue(wait_until(lambda: proc.state() == appmod.QProcess.ProcessState.NotRunning, 5.0))
+        appmod.stop_process(None)                    # no process: nothing to do
+
     def test_failed_live_set_falls_back_to_restart(self):
         gen = FakeMicgen()
         gen.live_ok = False                        # running graph did not take the value
@@ -598,6 +630,18 @@ class TestMicPage(AppTestBase):
 
 
 class TestGuideAndCs2Card(AppTestBase):
+    def test_welcome_fits_screen_and_scrolls(self):
+        dlg = self.win.show_welcome()
+        self.addCleanup(dlg.deleteLater)
+        self.assertIs(dlg.checks["ses"].window(), dlg)
+        self.assertIsNotNone(dlg.scroll.widget())
+        self.assertTrue(dlg.scroll.widget().isAncestorOf(dlg.checks["mikrofon"]))
+        self.assertFalse(dlg.scroll.isAncestorOf(dlg.btn_close))          # "Tamam" never scrolls away
+        avail = dlg.screen().availableGeometry().height()
+        self.assertLessEqual(dlg.height(), max(avail - 60, dlg.minimumHeight()))
+        self.assertGreater(dlg.content_height, 300)
+        self.assertLessEqual(dlg.minimumHeight(), 360)
+
     def test_welcome_once_and_persist(self):
         self.assertTrue(self.win.maybe_show_welcome())
         dlg = self.win.findChild(appmod.WelcomeDialog)
@@ -845,7 +889,7 @@ class TestCalibration(AppTestBase):
     # --- errors
     def test_error_kinds(self):
         cases = [({"hata": "HS80 mikrofonu bulunamadı (kulaklık açık ve bağlı mı?)",
-                   "kod": "mikrofon_yok"}, "HS80 mikrofonu bulunamadı", "Kulaklığı aç"),
+                   "kod": "mikrofon_yok"}, "Mikrofon bulunamadı", "Kulaklığı ya da mikrofonu"),
                  ({"hata": "Konuşma algılanmadı. Mikrofon açık mı?", "kod": "sessiz",
                    "konusma_dbfs": -240.0, "gurultu_dbfs": -70.0, "tepe_dbfs": -60.0},
                   "Konuşma algılanmadı", "sessize alma"),
@@ -1011,7 +1055,7 @@ class TestCalibration(AppTestBase):
     def test_helpers(self):
         self.assertIsNone(appmod.parse_calib_output("bozuk\n{yarım"))
         self.assertEqual(appmod.parse_calib_output('x\n{"a": 1}\n'), {"a": 1})
-        self.assertEqual(appmod.calib_error_kind({"hata": "HS80 mikrofonu bulunamadı"}), "mikrofon_yok")
+        self.assertEqual(appmod.calib_error_kind({"hata": "Mikrofon bulunamadı"}), "mikrofon_yok")
         self.assertEqual(appmod.calib_error_kind({"hata": "garip"}), "kayit")
         rows = appmod.calib_rows({"oneri": {"kompresor.oran": 4.0, "yeni.anahtar": 1}},
                                  {"kompresor": {"oran": 3.0}})
@@ -1256,6 +1300,32 @@ class TestSettingsPage(AppTestBase):
         self.assertTrue("oto_eq.tray" in text or "kulak-tepsi" in text)
         sp.sw_autostart.click()
         self.assertFalse(ui.AUTOSTART_FILE.exists())
+
+    def test_autostart_entry_localized_and_old_entry_still_ours(self):
+        self.assertTrue(ui.set_autostart(True))
+        text = ui.AUTOSTART_FILE.read_text(encoding="utf-8")
+        for line in ("Name=Kulak Kesil Tray", "Name[tr]=Kulak Kesil Tepsisi",
+                     "GenericName=Smart Equalizer", "GenericName[tr]=Akıllı Ekolayzır",
+                     "Comment=Headphone EQ status in the system tray", "Comment[tr]=Kulaklık EQ'sunu"):
+            self.assertIn(line, text)
+        # an entry written by an older version (Turkish only, same marker) is removed too
+        ui.AUTOSTART_FILE.write_text("[Desktop Entry]\nType=Application\nName=Kulak Kesil Tepsisi\n"
+                                     "Exec=kulak-tepsi\nX-OtoEQ-Installed=true\n", encoding="utf-8")
+        self.assertTrue(ui.set_autostart(False))
+        self.assertFalse(ui.AUTOSTART_FILE.exists())
+
+    def test_regenerate_child_speaks_window_language(self):
+        from oto_eq import i18n
+        envs = []
+        self.runner.run = lambda args, on_done=None, env=None, timeout_ms=0: envs.append((args, env))
+        i18n.sifirla("de", {})
+        self.addCleanup(i18n.sifirla)
+        self.win.page_settings.regenerate()
+        args, env = envs[-1]
+        self.assertEqual(args[-1], "eq-uret")
+        self.assertEqual(env["OTO_EQ_DIL"], "de")       # not English via LC_ALL=C + "otomatik"
+        self.assertEqual(env["LC_ALL"], "C")
+        self.assertEqual(env["PYTHONPATH"], str(config.SRC_DIR))
 
     def test_foreign_autostart_not_deleted(self):
         ui.AUTOSTART_FILE.parent.mkdir(parents=True)
@@ -1680,7 +1750,7 @@ class TestLanguage(AppTestBase):
         from oto_eq import i18n
         i18n.sifirla("de", {"Ayarlar": "Einstellungen", "Kulaklık aktif değil": "Kopfhörer nicht aktiv",
                             "Kaydet": "Speichern",
-                            "{n} dk önce": "vor {n} Min.",
+                            "{zaman} önce": "vor {zaman}", "{n} dk": "{n} Min.",
                             "Özet: {tamam} tamam, {uyari} uyarı, {hata} hata":
                                 "Übersicht: {tamam} ok, {uyari} Warnung, {hata} Fehler"})
         self.addCleanup(i18n.sifirla)

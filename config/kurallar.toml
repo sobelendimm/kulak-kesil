@@ -102,6 +102,9 @@ sistem = ""
 #    kategori    ZORUNLU: cs2 / oyun / muzik / film / sesli / sistem
 #    profil      İSTEĞE BAĞLI: kategorinin profilini ezer ("" = EQ'suz)
 #
+#  Bir alana liste de yazılabilir: ikili = ["mpv", "vlc"] = "bunlardan biri".
+#  Büyük/küçük harf zaten duyarsız; "(?i)" gerekmez (yazılırsa da çalışır).
+#
 #  Örnekler (başındaki # işaretini kaldırarak açın):
 #
 #  [[kural]]
@@ -232,6 +235,8 @@ ses_uzantilari = [
   "alac", "aiff", "aif", "dsf", "dff", "mka", "wma", "mpc", "tta", "mid",
   "midi", "m3u", "m3u8", "pls", "cue",
 ]
+# (Ağ adresindeki .m3u8 bir HLS canlı yayınıdır, video da olabilir: ona göre karar
+#  verilmez; yerel .m3u8 çalma listesi müzik sayılır.)
 video_uzantilari = [
   "mkv", "mp4", "avi", "webm", "mov", "m4v", "wmv", "flv", "mpg", "mpeg",
   "ts", "m2ts", "mts", "vob", "ogv", "3gp", "divx", "rmvb", "iso",

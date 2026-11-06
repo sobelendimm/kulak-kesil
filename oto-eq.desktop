@@ -1,11 +1,14 @@
 [Desktop Entry]
 Type=Application
 Name=Kulak Kesil
-GenericName=Akıllı Ekolayzır
-Comment=Kulaklık için bağlama göre otomatik ekolayzır (CS2, oyun, müzik, film)
+GenericName=Smart Equalizer
+GenericName[tr]=Akıllı Ekolayzır
+Comment=Automatic per-app headphone EQ for PipeWire
+Comment[tr]=Kulaklık için bağlama göre otomatik ekolayzır (CS2, oyun, müzik, film)
 Exec=kulak-app
 Icon=audio-headphones
 Terminal=false
 Categories=AudioVideo;Audio;
-Keywords=eq;ekolayzır;equalizer;kulaklık;hs80;ses;
+Keywords=equalizer;eq;headphones;audio;pipewire;
+Keywords[tr]=eq;ekolayzır;equalizer;kulaklık;hs80;ses;
 StartupWMClass=oto-eq-app

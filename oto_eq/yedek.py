@@ -25,6 +25,7 @@ import hashlib
 import io
 import json
 import os
+import shlex
 import socket
 import sys
 import tarfile
@@ -46,6 +47,11 @@ MAX_BOYUT = 4 * 1024 * 1024        # per member; config files are a few KB
 OTO_ONEK = "otomatik-yukleme-oncesi-"
 OTO_SAKLA = 10                     # automatic pre-restore backups kept
 
+# regenerating mikrofon.conf from anywhere (`kulak` has no such subcommand; `python3 -m
+# oto_eq.micgen` alone only works inside the source dir): the source dir on PYTHONPATH
+MIC_URET = (f"PYTHONPATH={shlex.quote(str(config.SRC_DIR))} python3 -m oto_eq.micgen generate"
+            " && systemctl --user restart oto-eq-mic")
+
 # what to run after a file changed (shown once per command)
 SONRAKI = {
     "kurallar.toml": "kulak yenile",
@@ -54,7 +60,7 @@ SONRAKI = {
     "kisma.json": "kulak yenile",
     "profiller.toml": "kulak eq-uret",
     "kisisel.json": "kulak eq-uret",
-    "mikrofon.toml": "python3 -m oto_eq.micgen generate && systemctl --user restart oto-eq-mic",
+    "mikrofon.toml": MIC_URET,
 }
 
 
@@ -67,7 +73,7 @@ def config_dizini() -> Path:
 
 
 def yedek_dizini() -> Path:
-    base = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share"))
+    base = config._xdg("XDG_DATA_HOME", Path.home() / ".local/share")
     return base / "oto-eq" / "yedekler"
 
 
@@ -96,6 +102,8 @@ def dogrula(ad: str, data: bytes) -> None:
             raise YedekHatasi(_("{dosya}: TOML tablosu bekleniyordu").format(dosya=ad))
         if ad == config.PROFILES_FILE:
             _profiller_dogrula(text)
+        elif ad == "mikrofon.toml":
+            _mikrofon_dogrula(raw)
         return
     try:
         raw = json.loads(text)
@@ -121,6 +129,21 @@ def _profiller_dogrula(text: str) -> None:
         except Exception as e:  # noqa: BLE001 - e.g. AttributeError for `genel = 1`
             raise YedekHatasi(_("{dosya}: geçersiz profil ayarı: {hata}").format(
                 dosya=config.PROFILES_FILE, hata=e)) from e
+
+
+def _mikrofon_dogrula(raw: dict) -> None:
+    """mikrofon.toml through micgen's validator (an invalid one would be restored and then
+    `micgen generate` / the router's retarget fail with it)."""
+    try:
+        from . import micgen
+        norm = getattr(micgen, "normalize_mic")
+    except Exception:  # noqa: BLE001 - validator unavailable: TOML parse is enough
+        return
+    try:
+        norm(raw)
+    except Exception as e:  # noqa: BLE001 - MicError, or e.g. TypeError for `genel = 1`
+        raise YedekHatasi(_("{dosya}: geçersiz mikrofon ayarı: {hata}").format(
+            dosya="mikrofon.toml", hata=e)) from e
 
 
 # ----------------------------------------------------------------- create
@@ -239,7 +262,13 @@ def oku(kaynak: str | Path) -> tuple[dict, dict[str, bytes]]:
     return manifest, uyeler
 
 
-def _yaz_atomik(path: Path, data: bytes) -> None:
+def atomik_yaz(path: Path | str, data: bytes | str) -> None:
+    """Write ``data`` (str = UTF-8) to ``path`` atomically: a unique temp file in the same
+    dir + fsync + os.replace (the mode of an existing file is kept, new files 0644).
+    Shared by eqgen / micgen config writers."""
+    path = Path(path)
+    if isinstance(data, str):
+        data = data.encode("utf-8")
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
     try:
@@ -295,7 +324,7 @@ def yukle(kaynak: str | Path, dene: bool = False, cdir: Path | None = None,
     yazilan: list[str] = []
     try:
         for ad in degisen + yeni:
-            _yaz_atomik(cdir / ad, uyeler[ad])
+            atomik_yaz(cdir / ad, uyeler[ad])
             yazilan.append(ad)
     except OSError as e:
         # put back what was already written (each file is atomic, the set was not)
@@ -303,7 +332,7 @@ def yukle(kaynak: str | Path, dene: bool = False, cdir: Path | None = None,
         for ad in yazilan:
             try:
                 if ad in simdiki:
-                    _yaz_atomik(cdir / ad, simdiki[ad])
+                    atomik_yaz(cdir / ad, simdiki[ad])
                 else:
                     (cdir / ad).unlink()
             except OSError:

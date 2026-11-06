@@ -60,9 +60,12 @@ through both.
 
 ## Requirements
 
-- Linux with **PipeWire** + `pipewire-pulse`, and a systemd user session
+- Linux with **PipeWire** as the sound server (`pipewire-pulse`, not PulseAudio itself),
+  the `pactl` / `pw-*` command-line tools and a systemd user session
 - Python **3.11+**, **PyQt6**, **numpy**
 - **LSP plugins** (LV2), used for the compressor, limiter and loudness matching
+- Recommended: **matplotlib** (EQ curve plot, `kulak eq-ciz`) and **jeepney** (recognises
+  music players and the browser over MPRIS)
 - **noise-suppression-for-voice** (RNNoise LADSPA) for the microphone (optional)
 - `onnxruntime` + the [optional models](docs/MODELS.md) for audio analysis (optional)
 
@@ -70,12 +73,25 @@ Arch / CachyOS:
 
 ```bash
 sudo pacman -S --needed pipewire-pulse lsp-plugins-lv2 python-pyqt6 python-numpy \
-    noise-suppression-for-voice python-onnxruntime
+    python-matplotlib python-jeepney noise-suppression-for-voice python-onnxruntime
 ```
 
-Fedora / Debian / Ubuntu: `lsp-plugins-lv2`, `python3-pyqt6`, `python3-numpy`
-(RNNoise: build or download from
-[werman/noise-suppression-for-voice](https://github.com/werman/noise-suppression-for-voice)).
+Fedora:
+
+```bash
+sudo dnf install pipewire-pulseaudio pulseaudio-utils pipewire-utils lsp-plugins-lv2 \
+    python3-pyqt6 python3-numpy python3-matplotlib python3-jeepney
+```
+
+Debian / Ubuntu:
+
+```bash
+sudo apt install pipewire-pulse pulseaudio-utils pipewire-bin lsp-plugins-lv2 \
+    python3-pyqt6 python3-numpy python3-matplotlib python3-jeepney
+```
+
+RNNoise on Fedora / Debian / Ubuntu: build or download from
+[werman/noise-suppression-for-voice](https://github.com/werman/noise-suppression-for-voice).
 `install.sh` checks for everything and tells you what is missing.
 
 > Developed and tested on **CachyOS (Arch) + KDE Plasma 6**. Other distros and
@@ -91,7 +107,8 @@ Fedora / Debian / Ubuntu: `lsp-plugins-lv2`, `python3-pyqt6`, `python3-numpy`
 
 ## Install
 
-The services expect the source at `~/.local/src/oto-eq`:
+Clone it anywhere (the example uses `~/.local/src/oto-eq`) and run the installer as
+your normal user, not with `sudo`:
 
 ```bash
 git clone https://github.com/sobelendimm/kulak-kesil.git ~/.local/src/oto-eq
@@ -102,12 +119,16 @@ cd ~/.local/src/oto-eq
 
 This installs three systemd **user** services (EQ outputs, router, microphone),
 the `kulak`, `kulak-app` and `kulak-tepsi` commands in `~/.local/bin`, tray
-autostart and a menu entry. Nothing is installed system-wide and no root is needed.
+autostart, a menu entry and a desktop shortcut. Nothing is installed system-wide.
+The services point at the folder you installed from: if you move it, run
+`./install.sh` again.
 
 Optional audio-analysis models: `./tools/download_models.sh` (see [docs/MODELS.md](docs/MODELS.md)).
 
-Update: `git pull && ./install.sh`. Uninstall: `./uninstall.sh` (keeps your settings)
-or `./uninstall.sh --purge`.
+Update: `git pull && ./install.sh` (if you turned off tray autostart or deleted the
+desktop shortcut, an update leaves them that way). Uninstall: `./uninstall.sh` (keeps
+your settings) or `./uninstall.sh --purge` (also deletes settings, state and downloaded
+models; backups from `kulak yedek` stay in `~/.local/share/oto-eq/yedekler`).
 
 ## Usage
 
@@ -127,9 +148,9 @@ The CLI command words are Turkish. Here is a cheat sheet:
 | `kulak sabitle cs2\|oyun\|muzik\|film` | fix one profile (oyun = game, muzik = music) |
 | `kulak tur` | detected genre of the current song/game and where it came from |
 | `kulak saglik` | health check (changes nothing) |
-| `kulak mikrofon test\|kalibre\|varsayilan` | mic test / calibrate / make default |
+| `kulak mikrofon test\|kalibre\|varsayilan\|hs80` | mic test / calibrate / make default / back to the real mic |
 | `kulak ab` | blind A/B test to find your personal tone |
-| `kulak gunluk` | live service log |
+| `kulak gunluk` | live service log (router, EQ outputs, microphone) |
 
 Is an app in the wrong profile? Click **⋯** next to it in the window and choose
 "Always play this app with…". Or add a rule to `~/.config/oto-eq/kurallar.toml`.
@@ -151,14 +172,22 @@ Settings live in `~/.config/oto-eq/`:
 - `atamalar.json`: your per-app choices (from the window)
 - `kurallar.toml`: classification rules (`kulak yenile` reloads)
 - `profiller.toml`: EQ curves (`kulak eq-uret` rebuilds, `kulak eq-ciz` plots)
-- `mikrofon.toml`: microphone chain. Set `giris_desen` / `giris_sabit` to use a mic other
-  than the HS80's.
+- `mikrofon.toml`: microphone chain. It is created when you change a microphone setting
+  in the window; to edit it by hand first copy the commented default:
+  `cp config/mikrofon.toml ~/.config/oto-eq/`. Set `giris_desen` (regex) / `giris_sabit`
+  (source name) to use a mic other than the HS80's, then `python3 -m oto_eq.micgen generate`
+  (from the source folder) and `systemctl --user restart oto-eq-mic`.
 
 ## Development
 
 ```bash
-python3 -m unittest discover -s tests     # ~1150 tests, a minute, touches no real config
+python3 -m unittest discover -s tests     # ~1150 tests, about a minute
 ```
+
+The tests never write to your `~/.config`. A few live tests do use the running
+PipeWire: they load temporary null sinks and play test streams through them (they are
+skipped when `pactl` / `pipewire-pulse` is missing). Test-only dependencies: `scipy`
+(`python-scipy` / `python3-scipy`) and `jeepney`.
 
 Architecture in one line: `oto_eq/router.py` watches PipeWire streams, `classifier.py`
 picks a profile, `eqgen.py` renders the filter-chain config for the virtual outputs,

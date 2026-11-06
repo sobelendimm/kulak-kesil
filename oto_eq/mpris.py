@@ -109,7 +109,8 @@ class MprisWatcher:
         self._conn = None
         self._stop = threading.Event()
         self._started = threading.Event()
-        self.mode = "kapali"          # "sinyal" | "yoklama" | "kapali"
+        self.mode = "kapali"          # "sinyal" | "yoklama" | "kapali" | "yok" (no jeepney)
+        self.hata: str | None = None  # why MPRIS is unavailable for good (missing module)
 
     # ------------------------------------------------------------ public
     def start(self) -> None:
@@ -136,6 +137,16 @@ class MprisWatcher:
 
     # ------------------------------------------------------------ thread
     def _run(self) -> None:
+        try:                          # a missing module is permanent, not a lost bus: say so
+            import jeepney  # noqa: F401  # once and stop (it used to warn every 30 s forever)
+            import jeepney.io.blocking  # noqa: F401
+        except ImportError as e:
+            self.hata = str(e)
+            self.mode = "yok"
+            log.error("MPRIS izleyici kapalı: Python 'jeepney' modülü yok (%s); tarayıcıda ne "
+                      "çaldığı anlaşılamaz. Paket: python-jeepney / python3-jeepney", e)
+            self._started.set()
+            return
         backoff = 1.0
         first = True
         while not self._stop.is_set():

@@ -56,10 +56,11 @@ from pathlib import Path
 
 import numpy as np
 
-from . import config, i18n, kisisel, kulaklik
+from . import config, eklenti, i18n, kisisel, kulaklik
 from .i18n import N_, _, h_, veri_metni
 from .models import (ALL_SINK_PROFILES, EQ_PROFILES, FLAT_PROFILE, GROUP_LABELS, GROUP_NAMES,
                      PROFILE_LABELS, PROFILE_NAMES, SINK_PREFIX, VARIANT_PROFILES, variant_groups)
+from .yedek import atomik_yaz
 
 log = logging.getLogger("oto_eq.eqgen")
 
@@ -74,6 +75,7 @@ LSP_AG_URI = "http://lsp-plug.in/plugins/lv2/autogain_stereo"
 # 7: state.restore-props = false on every sink node (WirePlumber kept a ducked -6 dB)
 CONF_VERSION = 7
 CONF_VERSION_MARK = "# oto-eq yapı sürümü:"
+CONF_LSP_MARK = "# oto-eq LSP eklentileri:"
 
 FILTER_TYPES = {"PK": "bq_peaking", "LSC": "bq_lowshelf", "HSC": "bq_highshelf"}
 
@@ -188,6 +190,25 @@ def _num(v, where: str) -> float:
     return float(v)
 
 
+def _flag(v, where: str) -> bool:
+    """A true/false setting. ``bool()`` would turn the TOML string "false" into True (the
+    opposite of what was meant): only booleans (and 0/1) are accepted."""
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, int) and v in (0, 1):
+        return bool(v)
+    raise ProfileError(_("{alan}: true ya da false olmalı").format(alan=where))
+
+
+def _table(v, where: str) -> dict:
+    """A TOML table (missing = empty); ``genel = 1`` → ProfileError instead of AttributeError."""
+    if v is None:
+        return {}
+    if not isinstance(v, dict):
+        raise ProfileError(_("{alan}: bir tablo olmalı").format(alan=where))
+    return v
+
+
 def _norm_filter(f: dict, where: str, rate: float) -> dict:
     if not isinstance(f, dict):
         raise ProfileError(_("{alan}: filtre bir tablo olmalı {ornek}").format(
@@ -201,7 +222,7 @@ def _norm_filter(f: dict, where: str, rate: float) -> dict:
         "fc": _num(f.get("fc"), f"{where}.fc"),
         "kazanc": _num(f.get("kazanc", 0.0), f"{where}.kazanc"),
         "q": _num(f.get("q", 0.7), f"{where}.q"),
-        "aktif": bool(f.get("aktif", True)),
+        "aktif": _flag(f.get("aktif", True), f"{where}.aktif"),
     }
     if not 1.0 <= out["fc"] < rate / 2:
         raise ProfileError(_("{alan}: fc {fc} Hz geçersiz (1 .. {en_cok:.0f} Hz)").format(
@@ -221,7 +242,7 @@ def _norm_dinamik(d: dict, where: str) -> dict:
         if k not in DINAMIK_DEFAULTS:
             raise ProfileError(_("{alan}: bilinmeyen anahtar '{anahtar}'").format(alan=where, anahtar=k))
         if k == "aktif":
-            out[k] = bool(v)
+            out[k] = _flag(v, f"{where}.{k}")
         elif k == "algilama":
             if v not in DETECTION:
                 raise ProfileError(_("{alan}.algilama: 'tepe' ya da 'rms' olmalı").format(alan=where))
@@ -314,14 +335,18 @@ def _norm_variants(name: str, raw: dict, where: str, rate: float) -> dict:
 
 def normalize_profiles(raw: dict) -> dict:
     """Validate a parsed profiller.toml and fill defaults. Raises ProfileError."""
+    if not isinstance(raw, dict):
+        raise ProfileError(_("{alan}: bir tablo olmalı").format(alan="profiller.toml"))
     genel = dict(GENEL_DEFAULTS)
-    for k, v in (raw.get("genel") or {}).items():
+    for k, v in _table(raw.get("genel"), "genel").items():
         genel[k] = v
     for k in ("pay_db", "tavan_dbfs", "esitleme_alt_hz", "esitleme_ust_hz", "referans_seviye_db"):
         genel[k] = _num(genel[k], f"genel.{k}")
-    genel["ses_esitleme"] = bool(genel["ses_esitleme"])
-    genel["ortak_link_grubu"] = bool(genel["ortak_link_grubu"])
+    genel["ses_esitleme"] = _flag(genel["ses_esitleme"], "genel.ses_esitleme")
+    genel["ortak_link_grubu"] = _flag(genel["ortak_link_grubu"], "genel.ortak_link_grubu")
     genel["orneklem_hz"] = int(_num(genel["orneklem_hz"], "genel.orneklem_hz"))
+    if not 8000 <= genel["orneklem_hz"] <= 192000:
+        raise ProfileError(_("{alan} 8000 .. 192000 arasında olmalı").format(alan="genel.orneklem_hz"))
     if genel["pay_db"] < 0:
         raise ProfileError(_("{alan} negatif olamaz").format(alan="genel.pay_db"))
     if not -12.0 <= genel["tavan_dbfs"] <= 0.0:
@@ -330,9 +355,9 @@ def normalize_profiles(raw: dict) -> dict:
         raise ProfileError(_("{alan} geçersiz").format(alan="genel.esitleme_alt_hz/ust_hz"))
     rate = genel["orneklem_hz"]
 
-    d_raw = raw.get("duzeltme") or {}
+    d_raw = _table(raw.get("duzeltme"), "duzeltme")
     corr = {k: v for k, v in d_raw.items() if k != "filtreler"}
-    corr["aktif"] = bool(d_raw.get("aktif", True))
+    corr["aktif"] = _flag(d_raw.get("aktif", True), "duzeltme.aktif")
     corr["filtreler"] = [_norm_filter(f, f"duzeltme.filtreler[{i + 1}]", rate)
                         for i, f in enumerate(d_raw.get("filtreler") or [])]
     # CHANGE 7: the headphone model(s) the curve was measured for (other headphones: flat)
@@ -344,23 +369,23 @@ def normalize_profiles(raw: dict) -> dict:
     except re.error as e:
         raise ProfileError(_("{alan} geçersiz: {hata}").format(alan="duzeltme.cihaz_desen", hata=e)) from None
 
-    p_raw = raw.get("profil") or {}
+    p_raw = _table(raw.get("profil"), "profil")
     unknown = set(p_raw) - set(EQ_PROFILES)
     if unknown:
         raise ProfileError(_("bilinmeyen profil(ler): {profiller}").format(
             profiller=", ".join(sorted(unknown))))
     profil = {}
     for name in EQ_PROFILES:
-        p = p_raw.get(name) or {}
         where = f"profil.{name}"
+        p = _table(p_raw.get(name), where)
         q = {k: v for k, v in p.items()
              if k not in ("filtreler", "dinamik", "seviye", "sinirlayici", "crossfeed")}
         q.setdefault("aciklama", PROFILE_NAMES[name])              # stored: language independent
         q.setdefault("odak", "")
-        q["aktif"] = bool(p.get("aktif", True))
-        q["sifir_gecikme"] = bool(p.get("sifir_gecikme", name == "cs2"))
+        q["aktif"] = _flag(p.get("aktif", True), f"{where}.aktif")
+        q["sifir_gecikme"] = _flag(p.get("sifir_gecikme", name == "cs2"), f"{where}.sifir_gecikme")
         # Kişisel ton opt-out: cs2 off by default (footstep tuning stays exact)
-        q["kisisel_ton"] = bool(p.get("kisisel_ton", name != "cs2"))
+        q["kisisel_ton"] = _flag(p.get("kisisel_ton", name != "cs2"), f"{where}.kisisel_ton")
         q["filtreler"] = [_norm_filter(f, f"{where}.filtreler[{i + 1}]", rate)
                           for i, f in enumerate(p.get("filtreler") or [])]
         q.pop("tur", None)
@@ -388,10 +413,10 @@ def normalize_profiles(raw: dict) -> dict:
                                          CROSSFEED_DEFAULTS, CROSSFEED_LIMITS)
         profil[name] = q
 
-    f_raw = raw.get(FLAT_PROFILE) or {}
+    f_raw = _table(raw.get(FLAT_PROFILE), FLAT_PROFILE)
     flat = dict(DUZ_DEFAULTS)
     flat.update(f_raw)
-    flat["aktif"] = bool(flat["aktif"])
+    flat["aktif"] = _flag(flat["aktif"], f"{FLAT_PROFILE}.aktif")
     flat["aciklama"] = str(flat["aciklama"])
     flat["ek_kazanc_db"] = _num(flat["ek_kazanc_db"], f"{FLAT_PROFILE}.ek_kazanc_db")
     if not -20.0 <= flat["ek_kazanc_db"] <= 12.0:
@@ -518,11 +543,35 @@ def response_db(filters, freqs, rate: float = 48000) -> np.ndarray:
 # Gain staging: preamp, dynamics, loudness matching
 # --------------------------------------------------------------------------
 
-def lsp_available() -> bool:
-    """True if the LSP Compressor Stereo LV2 plugin is installed."""
-    dirs = [d for d in os.environ.get("LV2_PATH", "").split(":") if d]
-    dirs += [str(Path.home() / ".lv2"), "/usr/local/lib/lv2", "/usr/lib/lv2", "/usr/lib64/lv2"]
-    return any((Path(d) / LSP_COMP_TTL).exists() for d in dirs)
+LSP_KEYS = ("comp", "lim", "ag")      # [dinamik] / [sinirlayici] / [seviye] (eklenti.LSP_TTL)
+LSP_ADLARI = {"comp": N_("kompresör"), "lim": N_("sınırlayıcı"), "ag": N_("seviye eşitleyici")}
+
+
+def lsp_available() -> bool | frozenset[str]:
+    """Which LSP stereo plugins are installed: True = all three (compressor, limiter,
+    autogain), False = none, else the frozenset of the present keys ("comp"/"lim"/"ag").
+
+    Every function taking ``lsp`` accepts any of these (``_lsp_has``). Each plugin is
+    checked on its own: an older LSP may lack the autogain, and ONE LV2 node PipeWire
+    cannot load makes it reject the whole sinks conf (no EQ sink at all)."""
+    found = eklenti.lsp_eklentileri()
+    if found == frozenset(LSP_KEYS):
+        return True
+    return found or False
+
+
+def _lsp_has(lsp, key: str) -> bool:
+    """``lsp`` (None = detect, bool = all/none, set = present keys) provides plugin ``key``."""
+    if lsp is None:
+        lsp = lsp_available()
+    if isinstance(lsp, (set, frozenset)):
+        return key in lsp
+    return bool(lsp)
+
+
+def lsp_missing(lsp=None) -> list[str]:
+    """Keys of the LSP plugins that are NOT available (LSP_KEYS order)."""
+    return [k for k in LSP_KEYS if not _lsp_has(lsp, k)]
 
 
 def variant_filters(profiles: dict, name: str, group: str) -> list[dict]:
@@ -695,9 +744,7 @@ def _dyn_used(profiles: dict, name: str, lsp: bool | None) -> dict | None:
     d = profiles["profil"][name].get("dinamik")
     if d is None:
         return None
-    if lsp is None:
-        lsp = lsp_available()
-    return d if lsp else None
+    return d if _lsp_has(lsp, "comp") else None
 
 
 def _dyn_active(profiles: dict, name: str, lsp: bool | None) -> dict | None:
@@ -707,6 +754,9 @@ def _dyn_active(profiles: dict, name: str, lsp: bool | None) -> dict | None:
     return d
 
 
+_BLOCK_PLUGIN = {"dinamik": "comp", "sinirlayici": "lim", "seviye": "ag"}
+
+
 def _block_used(profiles: dict, name: str, key: str, lsp: bool | None) -> dict | None:
     """An LSP-plugin block (sinirlayici / seviye) that is present AND will be generated."""
     if name not in EQ_PROFILES:
@@ -714,9 +764,7 @@ def _block_used(profiles: dict, name: str, key: str, lsp: bool | None) -> dict |
     b = profiles["profil"][name].get(key)
     if b is None:
         return None
-    if lsp is None:
-        lsp = lsp_available()
-    return b if lsp else None
+    return b if _lsp_has(lsp, _BLOCK_PLUGIN[key]) else None
 
 
 def _lim_used(profiles: dict, name: str, lsp: bool | None) -> dict | None:
@@ -1298,9 +1346,9 @@ def generate_conf(profiles: dict, prefix: str = SINK_PREFIX, lsp: bool | None = 
         pr = profiles["profil"][name]
         for key, what in (("dinamik", "kompresörsüz"), ("seviye", "seviye eşitleyicisiz"),
                           ("sinirlayici", "sınırlayıcısız")):
-            if pr.get(key) is not None and not lsp:
-                log.warning("LSP eklentileri (lsp-plugins-lv2) bulunamadı: '%s' profili %s "
-                            "üretiliyor", name, what)
+            if pr.get(key) is not None and not _lsp_has(lsp, _BLOCK_PLUGIN[key]):
+                log.warning("LSP eklentisi (%s, lsp-plugins-lv2) bulunamadı: '%s' profili %s "
+                            "üretiliyor", eklenti.LSP_TTL[_BLOCK_PLUGIN[key]], name, what)
     staging = gain_staging(profiles, lsp)
     link_group = prefix.rstrip("_") or LINK_GROUP
     if shared_link_group is None:
@@ -1310,6 +1358,9 @@ def generate_conf(profiles: dict, prefix: str = SINK_PREFIX, lsp: bool | None = 
         "# Kaynak: profiller.toml  →  python3 -m oto_eq.eqgen generate",
         "# Çalıştırma: pipewire -c <bu dosya>  (oto-eq-sinks.service)",
         f"{CONF_VERSION_MARK} {CONF_VERSION}",
+        # the LSP plugins this file was generated with: installing / removing one later makes
+        # conf_outdated() (→ needs_restart, kulak saglik) ask for a regeneration + restart
+        f"{CONF_LSP_MARK} {','.join(k for k in LSP_KEYS if _lsp_has(lsp, k)) or '-'}",
         "#",
     ]
     for name in ALL_SINK_PROFILES:
@@ -1433,11 +1484,10 @@ def write_conf(path: Path = config.SINKS_CONF, profiles: dict | None = None) -> 
     path = Path(path)
     profiles = profiles if profiles is not None else load_profiles()
     text = generate_conf(profiles)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(text, encoding="utf-8")
     keep_previous(path)
-    os.replace(tmp, path)
+    # own temp name + fsync: two writers (GUI + `kulak eq-uret`) never install a half file,
+    # a power cut never leaves an empty conf (= no EQ sinks at the next start)
+    atomik_yaz(path, text)
     log.info("EQ yapılandırması yazıldı: %s", path)
     return path
 
@@ -1448,7 +1498,7 @@ def write_conf(path: Path = config.SINKS_CONF, profiles: dict | None = None) -> 
 
 SAVE_HEADER = """\
 # Kulak Kesil (oto-eq) — EQ profilleri. Bu dosya uygulama tarafından kaydedildi.
-# Ayrıntılı açıklamalı örnek: ~/.local/src/oto-eq/config/profiller.toml
+# Ayrıntılı açıklamalı örnek: @ORNEK@
 #
 # [genel]      pay_db (kırpılma payı dB), tavan_dbfs (en kötü durum tepe tavanı),
 #              ortak_link_grubu (true = güvenli bağlama, false = daha az CPU),
@@ -1458,7 +1508,8 @@ SAVE_HEADER = """\
 #              orneklem_hz
 # [duz]        düz çıkış (sohbet/sistem/kapalı mod): aktif (seviye eşitleme),
 #              ek_kazanc_db (otomatik kazanca elle ekleme)
-# [duzeltme]   HS80 AutoEq düzeltmesi, tüm profillerin tabanı. aktif, filtreler
+# [duzeltme]   kulaklık düzeltmesi (AutoEq), tüm profillerin tabanı. aktif, filtreler,
+#              cihaz_desen (bu eğrinin ait olduğu kulaklık; başka kulaklıkta nötr)
 # [profil.X]   X = cs2 | oyun | muzik | film. aciklama, odak, aktif (false = düz),
 #              sifir_gecikme (true = lookahead zorla 0), filtreler,
 #              kisisel_ton (true = kişisel ton bantları uygulanır; cs2 varsayılanı false)
@@ -1471,12 +1522,15 @@ SAVE_HEADER = """\
 #              en_cok_yukseltme_db, yukselme_db_sn, dusme_db_sn, olcum_ms,
 #              sessizlik_lufs, ani_tepki_db
 # [profil.muzik.crossfeed]  aktif (canlı), seviye_db, kesim_hz, gecikme_us
-#              Ayrıntı: docs/NOTES-seviye.md
 # Filtre: { tip = "PK"|"LSC"|"HSC", fc = Hz, kazanc = dB, q = genişlik, aktif }
 # Filtre SAYISI/TİPİ veya [dinamik]/[sinirlayici]/[seviye]/[crossfeed] bloğu
 # eklenir/silinirse servis yeniden başlar;
 # diğer her şey canlı uygulanır.
+# [sinirlayici]/[seviye]/[crossfeed] bloklarına yalnız paket varsayılanından farklı
+# değerler yazılır; yazılmayanlar paketteki dosyadan gelir.
 """
+# the commented example is the shipped file of THIS checkout (the source can live anywhere)
+SAVE_HEADER = SAVE_HEADER.replace("@ORNEK@", str(config.DEFAULTS_DIR / config.PROFILES_FILE))
 
 _BARE_KEY = re.compile(r"^[A-Za-z0-9_-]+$")
 
@@ -1528,19 +1582,50 @@ def dumps_toml(data: dict, header: str = "") -> str:
     return "\n".join(out).lstrip("\n") + "\n"
 
 
+def _save_view(profiles: dict) -> dict:
+    """What save_profiles writes: the CHANGE 6 blocks ([sinirlayici]/[seviye]/[crossfeed])
+    only with the keys that differ from the shipped defaults, so later shipped tweaks still
+    reach a user who once pressed "Kaydet" (load_profiles fills the rest back in, so
+    load→save→load stays equal). A [seviye] hedef_lufs equal to genel.referans_seviye_db
+    is the implicit "follow referans_seviye_db" (normalize_profiles fills it in) and is
+    not frozen into the file either."""
+    import tomllib
+    out = copy.deepcopy(profiles)
+    shipped = config.DEFAULTS_DIR / config.PROFILES_FILE
+    try:
+        with open(shipped, "rb") as f:
+            dp = tomllib.load(f).get("profil") or {}
+    except (OSError, ValueError):
+        dp = {}
+    ref = (out.get("genel") or {}).get("referans_seviye_db", GENEL_DEFAULTS["referans_seviye_db"])
+    for name, prof in (out.get("profil") or {}).items():
+        if not isinstance(prof, dict):
+            continue
+        for b in NEW_BLOCKS:
+            blk = prof.get(b)
+            if not isinstance(blk, dict):
+                continue
+            sb = (dp.get(name) or {}).get(b)
+            sb = sb if isinstance(sb, dict) else {}
+            if b == "seviye" and "hedef_lufs" not in sb and blk.get("hedef_lufs") == ref:
+                blk.pop("hedef_lufs")
+            for k in [k for k in blk if k in sb and blk[k] == sb[k]
+                      and isinstance(blk[k], bool) == isinstance(sb[k], bool)]:
+                del blk[k]
+    return out
+
+
 def save_profiles(profiles: dict, path: Path | None = None) -> Path:
-    """Validate and write profiles to TOML (previous file kept as .bak)."""
+    """Validate and write profiles to TOML (previous file kept as .bak, atomic + fsync)."""
     path = Path(path) if path else config.CONFIG_DIR / config.PROFILES_FILE
     normalize_profiles(profiles)  # validate before touching disk
-    text = dumps_toml(profiles, SAVE_HEADER)
+    text = dumps_toml(_save_view(profiles), SAVE_HEADER)
     import tomllib
     tomllib.loads(text)  # self-check
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
         shutil.copy2(path, path.with_name(path.name + ".bak"))
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(text, encoding="utf-8")
-    os.replace(tmp, path)
+    atomik_yaz(path, text)
     log.info("Profiller kaydedildi: %s", path)
     return path
 
@@ -1573,7 +1658,9 @@ def conf_outdated(path: Path | None = None) -> bool:
 
     CHANGE 5: no k-bands; CHANGE 6: no version mark >= CONF_VERSION (no limiter /
     leveller / crossfeed nodes). Such a running graph lacks controls: one
-    regeneration + sinks restart is needed. Missing/unreadable file → False.
+    regeneration + sinks restart is needed. Also True when the LSP plugins found now
+    differ from the ones the file was generated with (CONF_LSP_MARK). Missing/unreadable
+    file → False.
     """
     p = Path(path) if path else config.SINKS_CONF
     try:
@@ -1581,7 +1668,21 @@ def conf_outdated(path: Path | None = None) -> bool:
     except (OSError, UnicodeDecodeError):
         return False
     last = f"name = k{len(TONE_SLOTS)}_r label = {FILTER_TYPES[TONE_SLOTS[-1][0]]}"
-    return txt.count(last) < len(EQ_PROFILES) or conf_version(txt) < CONF_VERSION
+    if txt.count(last) < len(EQ_PROFILES) or conf_version(txt) < CONF_VERSION:
+        return True
+    # LSP installed / removed since the file was generated: its LV2 nodes do not match
+    # what a regeneration would write (no compressor although installed, or a node
+    # PipeWire can no longer load)
+    had = conf_lsp(txt)
+    return had is not None and had != frozenset(k for k in LSP_KEYS if _lsp_has(None, k))
+
+
+def conf_lsp(txt: str) -> frozenset[str] | None:
+    """LSP plugin keys a generated conf was made with (None = no mark, older file)."""
+    m = re.search(re.escape(CONF_LSP_MARK) + r"[ \t]*(\S*)", txt)
+    if not m:
+        return None
+    return frozenset(k for k in m.group(1).split(",") if k in LSP_KEYS)
 
 
 def needs_restart(old: dict, new: dict, conf_path=_DEFAULT_CONF) -> bool:
@@ -1590,7 +1691,8 @@ def needs_restart(old: dict, new: dict, conf_path=_DEFAULT_CONF) -> bool:
 
     Also True while the generated sinks conf (``conf_path``, default
     config.SINKS_CONF read at call time; None = skip the check) predates the
-    current structure (k-bands, CONF_VERSION).
+    current structure (k-bands, CONF_VERSION) or the installed LSP plugins
+    (``conf_outdated``: e.g. lsp-plugins installed after the first generation).
     """
     if _structure(normalize_profiles(old)) != _structure(normalize_profiles(new)):
         return True
@@ -2018,6 +2120,17 @@ PLOT_COLORS = {"cs2": "#F28C28", "oyun": "#8E5CD9", "muzik": "#22A559", "film": 
                "duz": "#9AA0A6"}
 
 
+def _kulaklik_adi() -> str:
+    """The headphone the router recorded last (cihaz.json) or a generic word."""
+    d = kulaklik.durum_oku()
+    return str(d.get("aciklama") or d.get("ad") or "") or _("kulaklık")
+
+
+def _duzeltme_adi(profiles: dict) -> str:
+    """What the [duzeltme] curve is (its aciklama: a shipped msgid or the user's text)."""
+    return veri_metni(profiles["duzeltme"].get("aciklama")) or "AutoEq"
+
+
 def plot(path: Path = config.PLOT_FILE, profiles: dict | None = None) -> Path:
     """Render the curves (dark theme, Turkish labels) to a PNG."""
     import matplotlib
@@ -2036,7 +2149,9 @@ def plot(path: Path = config.PLOT_FILE, profiles: dict | None = None) -> Path:
     corr = response_db(profiles["duzeltme"]["filtreler"] if correction_on(profiles) else [],
                        f, rate)
     ax1.plot(f, corr, color="#d0d0d0", lw=1.6, ls="--",
-             label=_("HS80 düzeltmesi (AutoEq → Harman), ön kazançsız"))
+             label=_("Kulaklık düzeltmesi ({ad}), ön kazançsız").format(ad=_duzeltme_adi(profiles))
+             if correction_on(profiles) else
+             _("Kulaklık düzeltmesi: bu kulaklıkta nötr"))
     for name in EQ_PROFILES:
         p = profiles["profil"][name]
         s = staging[name]
@@ -2069,8 +2184,8 @@ def plot(path: Path = config.PLOT_FILE, profiles: dict | None = None) -> Path:
     ax1.axvspan(2000, 4500, color="#ff6b6b", alpha=0.07)
     ax1.text(2050, ax1.get_ylim()[1] - 1.2, _("adım sesi bandı"),
              color="#ff9b9b", fontsize=9)
-    ax1.set_title(_("{ad} — HS80 EQ eğrileri (kulağa giden toplam, seviye eşitlenmiş)").format(
-        ad=APP_NAME), fontsize=13)
+    ax1.set_title(_("{ad} — EQ eğrileri: {kulaklik} (kulağa giden toplam, seviye eşitlenmiş)").format(
+        ad=APP_NAME, kulaklik=_kulaklik_adi()), fontsize=13)
     ax1.set_ylabel(_("Kazanç (dB)"))
     ax2.set_title(_("Profillerin düzeltmenin üstüne eklediği"), fontsize=11)
     ax2.set_ylabel(_("Kazanç (dB)"))
@@ -2910,9 +3025,15 @@ def _ozet_satir(name: str, vals, dyn: str) -> str:
 def _summary(profiles: dict) -> str:
     lsp = lsp_available()
     st = gain_staging(profiles, lsp)
-    lines = [_("LSP kompresör eklentisi: var") if lsp else
-             _("LSP kompresör eklentisi: YOK (yalnız EQ)"),
-             _ozet_baslik()]
+    missing = lsp_missing(lsp)
+    if not missing:
+        head = _("LSP kompresör eklentisi: var")
+    elif len(missing) == len(LSP_KEYS):
+        head = _("LSP kompresör eklentisi: YOK (yalnız EQ)")
+    else:
+        head = _("LSP eklentileri eksik: {eksik} (bu bloklar üretilmez)").format(
+            eksik=", ".join(_(LSP_ADLARI[k]) for k in missing))
+    lines = [head, _ozet_baslik()]
     for n in ALL_SINK_PROFILES:
         s = st[n]
         d = _dyn_active(profiles, n, lsp)
@@ -2953,7 +3074,8 @@ def _summary(profiles: dict) -> str:
         for grp, v in s.get("variants", {}).items():
             vf = ", ".join(f"{f['tip']} {f['fc']:g} {f['kazanc']:+g}"
                            for f in variant_filters(profiles, n, grp))
-            lines.append(f"  └ {grp:18s} {v['peak_db']:+6.2f}         {v['match_db']:+7.2f} "
+            lines.append(f"  └ {i18n.sola(GROUP_LABELS.get(grp, grp), 22)} {v['peak_db']:+6.2f}"
+                         f"         {v['match_db']:+7.2f} "
                          f"{v['preamp_db'] + v['match_db']:+7.2f} {v['worst_peak_dbfs']:+7.2f}  {vf}")
     extra = -st["cs2"]["safety_db"]
     lines.append(_("tavan {tavan:+.1f} dBFS; ek güvenlik kısması {db:.2f} dB (tüm çıkışlara eşit); "
@@ -2980,8 +3102,12 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--olcumsuz", action="store_true",
                    help=h_(_("en kötü durum / gecikme / işlemci ölçümünü atla")))
     sub.add_parser("ozet", help=h_(_("profil kazanç özetini göster")))
+    ap.add_argument("-v", "--ayrinti", action="store_true",
+                    help=h_(_("ayrıntılı günlük (INFO satırları) göster")))
     a = ap.parse_args(argv)
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    # quiet by default (install.sh / kulak show our own result lines); -v = the INFO log
+    logging.basicConfig(level=logging.INFO if a.ayrinti else logging.WARNING,
+                        format="%(levelname)s %(name)s: %(message)s")
     try:
         profiles = load_profiles()
     except (ProfileError, OSError) as e:

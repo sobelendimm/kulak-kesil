@@ -20,9 +20,13 @@ links it anywhere else. It only copies the stream: routing and sound are untouch
 Decisions only switch Müzik ↔ Film for browser streams; calls, games, user rules and sure
 site decisions (Netflix, Spotify…) are never touched. Hysteresis: a flip needs two
 agreeing probes (one when very clear); "karışık" (speech over music, film scenes) keeps the
-metadata decision. A stream that resumes after a pause is probed again from scratch
-(Chromium hands an idle stream to the next tab); a metadata change only triggers an early
-re-check (the shared media session moves between tabs on its own).
+metadata decision. A stream that resumes after a pause is probed again at once (Chromium
+hands an idle stream to the next tab), but its verdict stays until a new probe says
+otherwise; a metadata change only triggers an early re-check (the shared media session
+moves between tabs on its own). A verdict is only forgotten with its stream: a decision
+that is briefly not a candidate (MPRIS flipping between tabs) keeps it (6 Kas live:
+dropping it made the stream fall back to Film until the next probe → Film ↔ Müzik every
+~5 s until the router parked it).
 """
 from __future__ import annotations
 
@@ -172,7 +176,6 @@ class StreamTap:
 
     def capture(self, serial: int, seconds: float = PROBE_S):
         """Mono float32 samples at TAP_RATE, or None (stream gone / pw tools failed)."""
-        import numpy as np
         dump = self._dump()
         node = self._node_of(dump, serial)
         if node is None:
@@ -186,6 +189,13 @@ class StreamTap:
         name = f"{TAP_PREFIX}{serial}_{os.getpid()}"
         raw = _tap_dir() / f"{name}.raw"
         raw.unlink(missing_ok=True)
+        try:
+            return self._record(serial, seconds, name, raw, src)
+        finally:
+            raw.unlink(missing_ok=True)   # also on every early return (6 Kas: 0-byte leftovers)
+
+    def _record(self, serial: int, seconds: float, name: str, raw: Path, src: dict[str, int]):
+        import numpy as np
         tap_props = {"node.name": name, "node.description": "Kulak Kesil · içerik denetimi",
                      "media.class": TAP_CLASS, "node.autoconnect": "false",
                      "node.dont-reconnect": "true", "media.role": "Production",
@@ -232,8 +242,6 @@ class StreamTap:
             x = np.fromfile(raw, dtype=np.float32)
         except OSError:
             return None
-        finally:
-            raw.unlink(missing_ok=True)
         x = x[: x.size // 2 * 2].reshape(-1, 2).mean(axis=1)
         return x
 
@@ -298,14 +306,15 @@ class ContentProber:
                make: Callable[[Category, str], Decision]) -> Decision:
         """The decision to route ``st`` with (``d`` or a content-based override)."""
         eligible = d.zayif or ambiguous
-        # nameless (Chromium) streams are measured even while their metadata looks sure:
-        # the shared media session can jump to another tab any moment, and then a verdict
-        # must already be there (no 4 s detour through the wrong EQ)
-        if not self.enabled or d.kaynak != "tarayici" or d.category not in SWITCHABLE \
-                or not (eligible or d.grup):
+        if not self.enabled:              # "Ses analizi" off: forget every verdict
             with self._lock:
                 self._states.pop(st.index, None)
             return d
+        # nameless (Chromium) streams are measured even while their metadata looks sure:
+        # the shared media session can jump to another tab any moment, and then a verdict
+        # must already be there (no 4 s detour through the wrong EQ)
+        if d.kaynak != "tarayici" or d.category not in SWITCHABLE or not (eligible or d.grup):
+            return d                      # not a candidate NOW: keep its state (prune drops it)
         now = self.clock()
         probe = False
         with self._lock:
@@ -323,9 +332,8 @@ class ContentProber:
             else:
                 if s.corked:                  # resumed: maybe another tab now (Chromium reuse)
                     s.corked = False
-                    s.verdicts.clear()
-                    s.applied = None
-                    s.next_at = now
+                    s.verdicts.clear()        # measure again at once; the verdict (applied)
+                    s.next_at = now           # stays until a new probe disagrees (_probe)
                 if now >= s.next_at and not s.busy:
                     s.busy = True
                     s.probed_at = now

@@ -29,7 +29,7 @@ STATUS = {
     ],
 }
 
-# status["kulaklik"] samples (CONTRACT CHANGE 7: kulaklik.Aygit.durum())
+# status["kulaklik"] samples (kulaklik.Aygit.durum())
 KULAKLIK_HS80 = {"ad": "alsa_output.usb-Corsair_HS80", "tur": "usb", "etiket": "USB kulaklık",
                  "aciklama": "CORSAIR HS80 RGB Wireless Gaming Receiver", "kulaklik": True,
                  "duzeltme": True, "neden": "USB, adından kulaklık", "baglanti": "usb",
@@ -214,7 +214,7 @@ class TestDurum(CliTestBase):
 
 
 class TestKulaklikText(unittest.TestCase):
-    """ui_text helpers for status["kulaklik"] (CHANGE 7)."""
+    """ui_text helpers for status["kulaklik"]."""
 
     def test_texts(self):
         self.assertEqual(tx.kulaklik_text({"kulaklik": KULAKLIK_HS80}),
@@ -438,7 +438,8 @@ class TestFilesAndLaunchers(CliTestBase):
         with mock.patch("oto_eq.cli.os.execvpe") as ex:
             self.run_cli("gunluk")
         args = ex.call_args.args
-        self.assertEqual(args[1], ["journalctl", "--user", "-u", "oto-eq", "-u", "oto-eq-sinks", "-f"])
+        self.assertEqual(args[1], ["journalctl", "--user", "-u", "oto-eq", "-u", "oto-eq-sinks",
+                                   "-u", "oto-eq-mic", "-f"])
 
     def test_eq_ciz(self):
         plot = self.dir / "egriler.png"
@@ -452,6 +453,24 @@ class TestFilesAndLaunchers(CliTestBase):
         self.assertEqual(rc, 0)
         self.assertEqual(run.call_args.args[0][-2:], ["oto_eq.eqgen", "plot"])
         self.assertEqual(popen.call_args.args[0], ["xdg-open", str(plot)])
+
+    def test_eq_ciz_keeps_ui_language(self):
+        # the child runs with LC_ALL=C (C_ENV); without OTO_EQ_DIL it would draw in English
+        from oto_eq import i18n
+        plot = self.dir / "egriler.png"
+        def fake_run(cmd, **kw):
+            plot.write_bytes(b"png")
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+        for dil in ("tr", "de"):
+            i18n.sifirla(dil, {})
+            self.addCleanup(i18n.sifirla)
+            with mock.patch.object(config, "PLOT_FILE", plot), \
+                 mock.patch("oto_eq.cli.subprocess.run", side_effect=fake_run) as run:
+                rc, _, _ = self.run_cli("eq-ciz", "--acma")
+            self.assertEqual(rc, 0)
+            env = run.call_args.kwargs["env"]
+            self.assertEqual(env["OTO_EQ_DIL"], dil)
+            self.assertEqual(env["LC_ALL"], "C")
 
 
 class TestMikrofon(CliTestBase):
@@ -685,7 +704,7 @@ class TestSourceText(unittest.TestCase):
 
 
 class TestUiTextI18n(unittest.TestCase):
-    """CHANGE 8: ui_text helpers translate through the active catalog."""
+    """ui_text helpers translate through the active catalog."""
 
     def test_forced_catalog(self):
         from oto_eq import i18n, ui_text as tx
@@ -1047,7 +1066,7 @@ class TestUnitsAndScripts(unittest.TestCase):
 
 
 class TestI18n(unittest.TestCase):
-    """CHANGE 8: a forced catalog reaches `kulak durum` / --help; widths follow the text."""
+    """A forced catalog reaches `kulak durum` / --help; widths follow the text."""
     DE = {"Kulak Kesil — durum": "Kulak Kesil — Status",
           "Varsayılan çıkış": "Standard-Audioausgabe",     # longer than every Turkish label
           "Mod": "Modus", "hazır": "bereit",

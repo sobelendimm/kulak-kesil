@@ -47,13 +47,21 @@ from pathlib import Path
 from typing import Any
 
 from . import config, procinfo
+from .i18n import _
 from .models import (GAME_GROUPS, MUSIC_GROUPS, ContentId, GenreResult, MediaPlayer,
                      ProcInfo, Stream)
 
 log = logging.getLogger("oto_eq.tur")
 
+try:
+    from . import __version__ as _SURUM
+except ImportError:
+    _SURUM = "0.1"
 # ASCII only: urllib writes headers as latin-1 ("ş"/"ı" raise UnicodeEncodeError).
-USER_AGENT = "KulakKesil/0.1 (kisisel kullanim)"
+# MusicBrainz / Wikimedia etiquette: "<app>/<version> (+<contact URL>)" — the public repo,
+# not an e-mail address.
+REPO_URL = "https://github.com/sobelendimm/kulak-kesil"
+USER_AGENT = f"KulakKesil/{_SURUM} (+{REPO_URL})"
 HTTP_TIMEOUT = 8.0
 MIN_INTERVAL = 1.1            # seconds between two requests to the same host (default)
 HOST_INTERVALS: dict[str, float] = {    # per-host minimum spacing (documented limits / courtesy)
@@ -69,6 +77,7 @@ NEGATIVE_TTL = 7 * 86400
 AUDIO_TTL = 30 * 86400        # remember_audio entries
 YOUTUBE_MAX_BYTES = 2_500_000 # the keywords sit ~0.8 MB into the watch page
 ERROR_RETRY = 600.0           # after a network error, do not retry the same key for 10 min
+ERRORS_MAX = 256              # failed-lookup memory: expired entries pruned past this size
 BUSY_RETRIES = (2.5, 5.0)     # HTTP 503/429 (MusicBrainz "busy"): transient, wait and retry
 MIN_SCORE = 1.0               # map_tags: below this the result is "" (unknown)
 
@@ -951,7 +960,11 @@ def content_id(stream: Stream, players: list[MediaPlayer] | None, proc: ProcInfo
         if info is None:
             _pid, info, _fp = clf.process_of(stream)
         if kind is None:
-            kind = "oyun" if _looks_like_game(stream, info) else "muzik"
+            # a browser / player that inherited a game's environment is not a game (the
+            # classifier decides it the same way: Classifier._media_app)
+            media = getattr(clf, "media_app", None)
+            kind = "oyun" if _looks_like_game(stream, info) and not (
+                callable(media) and media(stream, info)) else "muzik"
         if kind == "oyun":
             return _game_id(stream, info)
         player = clf.player_for(stream, players, proc=info)
@@ -997,6 +1010,10 @@ STORE_SEARCH = "https://store.steampowered.com/api/storesearch/?term={q}&cc=us&l
 
 # source names (shown to the user: "iTunes: Turkish Rock") and how far one hit is trusted
 SRC_ITUNES, SRC_DEEZER, SRC_YOUTUBE, SRC_MB = "iTunes", "Deezer", "YouTube etiketleri", "MusicBrainz"
+# stored (untranslated) source keys; the shown text is built in the UI language by
+# GenreResolver._entry_result: "Steam: mağazada bulunamadı", "Deezer: Rap (sanatçının …)"
+SRC_STEAM_SEARCH = "Steam araması"           # negative: the store search found no game
+OTHER_SONGS = "sanatçının diğer şarkıları"   # suffix: the artist's OTHER songs in a store
 SOURCE_TRUST = {SRC_ITUNES: 0.85, SRC_DEEZER: 0.8, SRC_YOUTUBE: 0.65}
 OTHER_TRACK_TRUST = 0.6       # artist entry from the artist's OTHER songs in a store
 
@@ -1351,8 +1368,8 @@ class GenreResolver:
         detail = ", ".join(e.genres)
         conf = min(DB_CONF_CAP, e.confidence)
         if cut:
-            detail = (f"{detail} (zayıf, kesik ad: {cid.display})" if detail
-                      else f"zayıf, kesik ad: {cid.display}")
+            kesik = _("zayıf, kesik ad: {ad}").format(ad=cid.display)
+            detail = f"{detail} ({kesik})" if detail else kesik
             conf = min(conf, DB_CUT_CONF)
         elif not is_sure:
             detail = f"{detail} (zayıf)" if detail else "zayıf"
@@ -1462,10 +1479,17 @@ class GenreResolver:
 
     @staticmethod
     def _entry_result(kind: str, e: dict) -> GenreResult:
+        """Cache entry → result; the source text in the UI language with the source NAME
+        first ("iTunes: …", the key ui_text.source_text / source_short read)."""
         src = str(e.get("source") or "çevrimiçi")
+        note = ""
+        if src.endswith(f" ({OTHER_SONGS})"):                 # stored form (also old caches)
+            src, note = src[: -len(OTHER_SONGS) - 3], _("sanatçının diğer şarkıları")
         tags = e.get("tags") or []
         if e.get("negatif") or not tags:
-            return GenreResult("", f"{src}: tür bulunamadı", 0.0)
+            if src == SRC_STEAM_SEARCH:
+                return GenreResult("", "Steam: " + _("mağazada bulunamadı"), 0.0)
+            return GenreResult("", f"{src}: " + _("tür bulunamadı"), 0.0)
         group = map_tags(kind, tags)
         names = [t[0] if isinstance(t, (list, tuple)) else str(t) for t in tags]
         if not group and kind == "muzik" and any(_WEAK_TURKISH.search(n) for n in names):
@@ -1476,7 +1500,10 @@ class GenreResolver:
         conf = _confidence(kind, tags, group)
         if group and isinstance(e.get("guven"), (int, float)):
             conf = round(min(conf, float(e["guven"])), 2)
-        return GenreResult(group, f"{src}: {', '.join(shown)}" if shown else src, conf)
+        text = ", ".join(shown)
+        if note:
+            text = f"{text} ({note})" if text else note
+        return GenreResult(group, f"{src}: {text}" if text else src, conf)
 
     def cached(self, cid: ContentId | None) -> GenreResult | None:
         """Sync, no network. Order: user override → title hint → built-in list → sure
@@ -1668,7 +1695,11 @@ class GenreResolver:
             except Exception as e:
                 log.warning("Tür sorgusu başarısız (%s): %s", cid.display, e)
                 with self._lock:
-                    self._errors[lk] = time.monotonic()
+                    now = time.monotonic()
+                    if len(self._errors) >= ERRORS_MAX:   # long offline runs: drop expired keys
+                        self._errors = {k: t for k, t in self._errors.items()
+                                        if now - t < ERROR_RETRY}
+                    self._errors[lk] = now
                 # network error: still deliver what is known offline (audio memory, weak
                 # database entry); cached() no longer waits for this failed lookup
                 res = self.cached(cid)
@@ -1789,7 +1820,7 @@ class GenreResolver:
             negative = str(e) or SRC_MB
         for tags, src, name in evidence:
             if map_tags("muzik", tags):
-                self._store(cid.key, tags, f"{src} (sanatçının diğer şarkıları)", name,
+                self._store(cid.key, tags, f"{src} ({OTHER_SONGS})", name,
                             trust=OTHER_TRACK_TRUST)
                 return
         if not cid.track:
@@ -1945,7 +1976,7 @@ class GenreResolver:
         if not appid:
             appid = self._store_search(cid)
             if not appid:
-                raise _Negative("Steam araması")
+                raise _Negative(SRC_STEAM_SEARCH)
         tags: dict[str, float] = {}
         name = ""
         try:

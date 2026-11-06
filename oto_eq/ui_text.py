@@ -447,7 +447,7 @@ def tone_tile(data: dict | None, status: dict | None = None) -> dict | None:
     if key in tur:
         lines.append(_("bu tür için ayrıca: {ton}").format(ton=tone_changes_text(tur[key])))
     elif tur:
-        lines.append(_("{n} türe özel ayar var").format(n=len(tur)))
+        lines.append(_("türe özel ayar: {n}").format(n=len(tur)))
     else:
         lines.append(_("Tüm profillerde (CS2 hariç)"))
     lines.append(_("Değiştir →"))

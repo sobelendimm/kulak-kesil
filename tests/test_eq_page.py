@@ -23,6 +23,7 @@ from oto_eq import eq_page  # noqa: E402
 
 APP = QApplication.instance() or QApplication([])
 ORIG_LOAD_KISISEL = eq_page.load_kisisel
+ORIG_IPC = eq_page.ipc_request
 
 STATUS = {"ok": True, "active": True, "mode": "auto", "fixed_profile": None, "dominant": "cs2",
           "sinks_ready": True,
@@ -215,6 +216,85 @@ class GraphTests(PageTestBase):
         self.assertEqual(len(self.bands()), n)
 
 
+class RobustnessTests(PageTestBase):
+    def test_odd_router_fields(self):
+        p = self.page
+        p.select_profile("muzik")
+        for st in ({**STATUS, "streams": None, "variants": None},
+                   {**STATUS, "streams": [None, "x", {"profile": "muzik", "app": "Spotify"}],
+                    "variants": {"muzik": "bozuk", "oyun": None}}):
+            p.set_status(st)                       # no TypeError / ValueError
+            p.reload_tone()
+        self.assertEqual(p._router_variant("muzik"), {})
+        self.assertEqual(p.apps_lbl.text(), "Şu an kullanan: Spotify")
+        p.set_status({**STATUS, "streams": None})
+        self.assertEqual(p.apps_lbl.text(), "Şu an bu çıkışı kullanan uygulama yok")
+
+    def test_graph_menu_freed_after_use(self):
+        from PyQt6.QtWidgets import QMenu
+        g = self.page.graph
+        before = len(g.findChildren(QMenu))
+        g._menu(0, QPoint(10, 10))
+        menus = [m for m in g.findChildren(QMenu) if m.parent() is g]
+        self.assertGreater(len(g.findChildren(QMenu)), before)
+        for m in menus:
+            m.hide()
+        pump(timeout=0.1)
+        self.assertEqual(len([m for m in g.findChildren(QMenu) if m.parent() is g]), 0)
+
+    def test_drag_does_not_recompute_staging_per_move(self):
+        p = self.page
+        real = eqgen.gain_staging
+        with mock.patch.object(eqgen, "gain_staging", side_effect=real) as gs:
+            for k in range(10):                    # 10 mouse moves of a drag
+                self.bands()[0]["kazanc"] = -3.0 - k * 0.1
+                p._graph_band_changed(0)
+            self.assertEqual(gs.call_count, 0)     # gain label debounced
+            self.assertTrue(p.save_btn.isEnabled())              # cheap state is immediate
+            self.assertTrue(pump(lambda: gs.call_count >= 1, timeout=1.0))
+            pump(timeout=0.2)
+            self.assertLessEqual(gs.call_count, 1)
+            n = gs.call_count
+            p._update_info()                       # same data: memoised
+            self.assertEqual(gs.call_count, n)
+        self.assertIn("Ön kazanç", p.gain_lbl.text())
+
+    def test_ipc_timeout_outlasts_router_wait(self):
+        from oto_eq import router, ui_common as ui
+        with mock.patch("oto_eq.ipc.request", return_value={"ok": True}) as req:
+            ORIG_IPC({"cmd": "status"})          # the real helper, not the setUp mock
+        self.assertEqual(req.call_args.kwargs["timeout"], ui.IPC_TIMEOUT)
+        self.assertGreaterEqual(ui.IPC_TIMEOUT, router.COMMAND_WAIT + 1.0)
+
+
+class LayoutTests(PageTestBase):
+    """Long translations wrap instead of forcing a horizontal scroll bar (de/ru: 1050–1150 px
+    before, at a 980 px window)."""
+
+    LONG = {"Varsayılana dön": "Zurück zu den Standardeinstellungen der Anwendung",
+            "A/B karşılaştır": "Mit der flachen Ausgabe vergleichen (A/B)",
+            "Kör test": "Blindtest mit acht Durchgängen",
+            "Canlı dinle": "Live anhören, ohne zu speichern",
+            "Seviyeyi koru": "Lautstärkeangleichung beibehalten",
+            "Kör A/B dinle…": "Blinden A/B-Hörtest im Terminal starten…",
+            "Tüm profiller (genel)": "Alle Profile (allgemein, gilt überall ausser CS2)"}
+
+    def test_no_horizontal_scroll_when_narrow(self):
+        from oto_eq import i18n
+        from PyQt6.QtWidgets import QScrollArea
+        self.addCleanup(i18n.sifirla)
+        i18n.sifirla("de", self.LONG)
+        p = eq_page.EqPage()
+        self.addCleanup(lambda: (p.applier.stop(), p.tone_applier.stop(), p.close(), p.deleteLater()))
+        p.resize(740, 900)                         # a 980 px window minus the sidebar
+        p.show()
+        pump()
+        sa = p.findChildren(QScrollArea)[0]
+        self.assertLessEqual(sa.widget().minimumSizeHint().width(), sa.viewport().width())
+        self.assertGreater(p.save_btn.y(), p.live_on.y())          # the button row wrapped
+        self.assertTrue(p.save_btn.isVisible())
+
+
 class TableAndDynTests(PageTestBase):
     def test_delegate_edit(self):
         t = self.page.table
@@ -384,9 +464,31 @@ class SaveTests(PageTestBase):
         self.assertFalse((config.CONFIG_DIR / config.PROFILES_FILE).exists())
         with mock.patch.object(QMessageBox, "question", return_value=QMessageBox.StandardButton.Yes):
             self.assertTrue(self.page.save())
+        # the restart runs on a thread (systemctl waits for the new process): the page answers
+        self.assertTrue(pump(lambda: self.restart.called and not self.page._restarting))
         self.restart.assert_called_once()
+        self.assertEqual(self.page.state_lbl.text(), "Kayıtlı")
         saved = eqgen.load_profiles(config.CONFIG_DIR / config.PROFILES_FILE)
         self.assertEqual(len(saved["profil"]["cs2"]["filtreler"]), len(self.bands()))
+
+    def test_save_restart_async_and_failure(self):
+        import threading
+        gate = threading.Event()
+
+        def slow_restart():
+            gate.wait(5)
+            return False, "Job for oto-eq-sinks.service failed"
+        self.page.add_band(900.0, 1.0)
+        with mock.patch.object(eq_page, "restart_sinks_service", slow_restart), \
+                mock.patch.object(QMessageBox, "question", return_value=QMessageBox.StandardButton.Yes):
+            t0 = time.monotonic()
+            self.assertTrue(self.page.save())
+            self.assertLess(time.monotonic() - t0, 2.0)            # save() did not wait for it
+            self.assertIn("yeniden başlatılıyor", self.page.state_lbl.text())
+            gate.set()
+            self.assertTrue(pump(lambda: not self.page._restarting))
+        self.assertIn("Servis yeniden başlatılamadı", self.page.state_lbl.text())
+        self.assertIn("failed", self.page.state_lbl.text())
 
     def test_revert_and_defaults(self):
         orig = copy.deepcopy(self.page.saved)

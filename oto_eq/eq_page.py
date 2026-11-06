@@ -161,7 +161,7 @@ def restart_sinks_service() -> tuple[bool, str]:
 def ipc_request(obj: dict) -> dict:
     """IPC request to the router (mocked in tests)."""
     from . import ipc
-    return ipc.request(obj, timeout=1.5)
+    return ipc.request(obj, timeout=ui.IPC_TIMEOUT)
 
 
 def label(text: str, name: str | None = None, wrap: bool = False) -> QLabel:
@@ -908,6 +908,7 @@ class ResponseGraph(QWidget):
     def _menu(self, i: int, gpos) -> None:
         b = self.bands()[i]
         m = QMenu(self)
+        m.aboutToHide.connect(m.deleteLater)       # one menu per right click: free it after use
         t = m.addAction(_("Kapat") if b.get("aktif", True) else _("Aç"))
         t.triggered.connect(lambda: self.bandToggleRequested.emit(i))
         if self.variant_bands is not None:     # fixed slot types: only reset
@@ -1522,6 +1523,9 @@ class TestGuideDialog(QDialog):
 class EqPage(QWidget):
     """Ekolayzır page (see module docstring)."""
 
+    sinksRestarted = pyqtSignal(bool, str)     # from the restart thread (see save())
+    INFO_DEBOUNCE_MS = 120                     # gain label while dragging (staging ~30 ms)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("page")
@@ -1545,6 +1549,13 @@ class EqPage(QWidget):
         self.live_timer.setInterval(LIVE_DEBOUNCE_MS)
         self.live_timer.timeout.connect(self._apply_live)
         self.destroyed.connect(self.applier.stop)
+        self._stg_cache: dict[str, tuple] = {}   # "work"/"saved" -> (key, gain staging)
+        self.info_timer = QTimer(self)
+        self.info_timer.setSingleShot(True)
+        self.info_timer.setInterval(self.INFO_DEBOUNCE_MS)
+        self.info_timer.timeout.connect(self._update_info)
+        self._restarting = False
+        self.sinksRestarted.connect(self._restart_done)
         # "Kişisel ton": saved = kisisel.json, draft = sliders; _tone_live = what the
         # preview pushed to each sink (profile -> (group, values)) and must be undone
         self.kisisel = load_kisisel()
@@ -1586,7 +1597,7 @@ class EqPage(QWidget):
         titles.setSpacing(2)
         titles.addWidget(label(_("Ekolayzır"), "pageTitle"))
         titles.addWidget(label(_("Her modun eğrisi: HS80 düzeltmesi (yalnız HS80'de) + profil "
-                                 "bantları + dinamik."), "muted"))
+                                 "bantları + dinamik."), "muted", wrap=True))
         head.addLayout(titles, 1)
         seg = QFrame()
         seg.setObjectName("segment")
@@ -1619,7 +1630,7 @@ class EqPage(QWidget):
         il.addWidget(self.color_bar)
         texts = QVBoxLayout()
         texts.setSpacing(1)
-        self.title_lbl = label("", "sectionTitle")
+        self.title_lbl = label("", "sectionTitle", wrap=True)
         self.desc_lbl = label("", "muted", wrap=True)
         self.apps_lbl = label("", "small", wrap=True)
         texts.addWidget(self.title_lbl)
@@ -1674,6 +1685,9 @@ class EqPage(QWidget):
                                       "farkını profilin üstünde düzenlersin (en çok 4 bant: 1 LSC, "
                                       "2 PK, 1 HSC; ±{limit:g} dB).")
                                     .format(limit=eqgen.VARIANT_GAIN_LIMIT))
+        self.variant_box.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.variant_box.setMinimumContentsLength(16)
         self.variant_box.currentIndexChanged.connect(self._variant_selected)
         vr.addWidget(self.variant_box)
         self.variant_lbl = label("", "small", wrap=True)
@@ -1682,10 +1696,11 @@ class EqPage(QWidget):
         gl.addWidget(self.variant_row)
         gl.addWidget(self.graph, 1)
         foot = QHBoxLayout()
-        self.gain_lbl = label("", "small")
+        # both wrap: long translations (ru: ~1000 px) must not widen the page
+        self.gain_lbl = label("", "small", wrap=True)
         self.hint_lbl = hint = label(_("Sürükle: frekans/kazanç · Tekerlek: Q · Shift: yalnız "
                                        "kazanç · Ctrl: ince · Çift tık: bant ekle/aç-kapa · "
-                                       "Sağ tık: menü"), "small")
+                                       "Sağ tık: menü"), "small", wrap=True)
         self._hint_bands = hint.text()
         hint.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         hint.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
@@ -1702,14 +1717,16 @@ class EqPage(QWidget):
         bl = QVBoxLayout(self.bands_card)
         bl.setContentsMargins(16, 12, 16, 12)
         bh = QHBoxLayout()
-        bh.addWidget(label(_("Bantlar"), "sectionTitle"))
-        bh.addStretch(1)
+        bh.addWidget(label(_("Bantlar"), "sectionTitle"), 0, Qt.AlignmentFlag.AlignTop)
         self.add_btn = button(_("＋ Bant ekle"))
         self.add_btn.clicked.connect(lambda: self.add_band(1000.0, 0.0))
         self.del_btn = button(_("Seçiliyi sil"))
         self.del_btn.clicked.connect(lambda: self.remove_band(self.graph.selected))
-        bh.addWidget(self.add_btn)
-        bh.addWidget(self.del_btn)
+        band_btns = QWidget()                 # beside the dynamics card: wrap when narrow
+        bfl = ui.FlowLayout(band_btns, spacing=6, right=True)
+        bfl.addWidget(self.add_btn)
+        bfl.addWidget(self.del_btn)
+        bh.addWidget(band_btns, 1)
         bl.addLayout(bh)
         self.table = QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels(["", _("Açık"), _("Tip"), _("Frekans"), _("Kazanç"),
@@ -1736,8 +1753,7 @@ class EqPage(QWidget):
         dl = QVBoxLayout(self.dyn_card)
         dl.setContentsMargins(16, 12, 16, 12)
         dh = QHBoxLayout()
-        dh.addWidget(label(_("Dinamik (kompresör)"), "sectionTitle"))
-        dh.addStretch(1)
+        dh.addWidget(label(_("Dinamik (kompresör)"), "sectionTitle", wrap=True), 1)
         self.dyn_on = Switch(_("Açık"))
         self.dyn_on.toggled.connect(self._toggle_dyn)
         dh.addWidget(self.dyn_on)
@@ -1785,9 +1801,11 @@ class EqPage(QWidget):
 
         # action bar
         bar = card()
-        al = QHBoxLayout(bar)
-        al.setContentsMargins(16, 10, 16, 10)
-        al.setSpacing(12)
+        bar_v = QVBoxLayout(bar)
+        bar_v.setContentsMargins(16, 10, 16, 10)
+        bar_v.setSpacing(6)
+        al = ui.FlowLayout(spacing=12)        # wraps instead of a horizontal scroll bar
+        bar_v.addLayout(al)
         self.live_on = Switch(_("Canlı dinle"))
         self.live_on.setToolTip(_("Değişiklikler çalışan sanal çıkışlara anında uygulanır "
                                   "(kaydetmeden). Yeniden başlatma gerekmez."))
@@ -1819,9 +1837,7 @@ class EqPage(QWidget):
         al.addWidget(self.abx_btn)
         self.abx: AbxDialog | None = None
         self._abx_variants: dict[str, str] | None = None
-        self.state_lbl = label("", "small")
-        self.state_lbl.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
-        al.addWidget(self.state_lbl, 1)
+        self.state_lbl = label("", "small", wrap=True)
         self.defaults_btn = button(_("Varsayılana dön"))
         self.defaults_btn.clicked.connect(self.reset_defaults)
         self.revert_btn = button(_("Geri al"))
@@ -1831,6 +1847,7 @@ class EqPage(QWidget):
         al.addWidget(self.defaults_btn)
         al.addWidget(self.revert_btn)
         al.addWidget(self.save_btn)
+        bar_v.addWidget(self.state_lbl)
         body.addWidget(bar)
 
     # ------------------------------------------------------------- state
@@ -1840,7 +1857,17 @@ class EqPage(QWidget):
         (eqgen.correction_on → kulaklik.duzeltme_acik, i.e. cihaz.json), which changes when
         the default headphone changes while the page is open (a cached copy went stale and
         live edits then wrote the old device's gains to every sink)."""
-        return eqgen.gain_staging(self.saved, self.lsp)
+        return self._staging_of("saved", self.saved)
+
+    def _staging_of(self, kind: str, profiles: dict) -> dict:
+        """eqgen.gain_staging (~30 ms) memoised by the profiles' content and the device
+        (cihaz.json), so refreshes/live jobs that see the same data do not recompute it."""
+        key = (repr(profiles), self.lsp, self._cihaz_duzeltme())
+        hit = self._stg_cache.get(kind)
+        if hit is None or hit[0] != key:
+            hit = (key, eqgen.gain_staging(profiles, self.lsp))
+            self._stg_cache[kind] = hit
+        return copy.deepcopy(hit[1])
 
     @staticmethod
     def _profiles_stamp() -> tuple[str, int] | None:
@@ -1873,13 +1900,13 @@ class EqPage(QWidget):
             return None
 
     def staging(self) -> dict:
-        return eqgen.gain_staging(self.work, self.lsp)
+        return self._staging_of("work", self.work)
 
     def live_staging(self) -> dict | None:
         """None = recompute (Seviyeyi koru); else saved gain stages + anti-clip only."""
         if self.keep_level.isChecked():
             return None
-        st = copy.deepcopy(self.base_staging)
+        st = self.base_staging                  # already a fresh copy
         pay = self.work["genel"]["pay_db"]
         for prof in EQ_PROFILES:
             flt = eqgen.effective_filters(self.work, prof)
@@ -2007,7 +2034,8 @@ class EqPage(QWidget):
         self._update_variant_lbl()
 
     def _router_variant(self, prof: str) -> dict:
-        return dict((((self.status or {}).get("variants") or {}).get(prof)) or {})
+        v = tx.variant_of(self.status, prof)          # None for a missing / non-dict entry
+        return dict(v) if v else {}
 
     def _update_variant_lbl(self) -> None:
         prof = self.profile
@@ -2085,7 +2113,27 @@ class EqPage(QWidget):
         self.applier.submit(p, self.work if live else self.saved,
                             self.live_staging() if live else None, self._live_variants())
 
-    def _update_info(self) -> None:
+    def _update_info(self, gains: bool = True) -> None:
+        """Gain label + save state. ``gains=False``: only the cheap state part (a drag calls
+        this per mouse move; the gain label follows INFO_DEBOUNCE_MS later)."""
+        if gains:
+            self.info_timer.stop()
+            self._update_gains()
+        d = self.dirty()
+        self.save_btn.setEnabled(d)
+        self.revert_btn.setEnabled(d)
+        if self._restarting:
+            self.state_lbl.setText(_("EQ çıkışları yeniden başlatılıyor…"))
+        elif self._live_error:
+            self.state_lbl.setText("⚠ " + self._live_error)
+        elif d:
+            restart = eqgen.needs_restart(self.saved, self.work)
+            self.state_lbl.setText(_("● Kaydedilmemiş değişiklik (kaydedince servis yeniden "
+                                     "başlar)") if restart else _("● Kaydedilmemiş değişiklik"))
+        else:
+            self.state_lbl.setText(_("Kayıtlı"))
+
+    def _update_gains(self) -> None:
         st = self.staging()[self.profile]
         if self.profile == FLAT_PROFILE:
             self.gain_lbl.setText(_("Seviye {db:+.1f} dB · en kötü tepe {tepe:+.1f} dBFS")
@@ -2099,17 +2147,6 @@ class EqPage(QWidget):
             peak = st.get("out_peak_dbfs", st["worst_peak_dbfs"])
             parts.append(_("en kötü tepe {tepe:+.1f} dBFS").format(tepe=peak))
             self.gain_lbl.setText(" · ".join(parts))
-        d = self.dirty()
-        self.save_btn.setEnabled(d)
-        self.revert_btn.setEnabled(d)
-        if self._live_error:
-            self.state_lbl.setText("⚠ " + self._live_error)
-        elif d:
-            restart = eqgen.needs_restart(self.saved, self.work)
-            self.state_lbl.setText(_("● Kaydedilmemiş değişiklik (kaydedince servis yeniden "
-                                     "başlar)") if restart else _("● Kaydedilmemiş değişiklik"))
-        else:
-            self.state_lbl.setText(_("Kayıtlı"))
 
     def _fill_table(self) -> None:
         bands = self._bands()
@@ -2214,7 +2251,8 @@ class EqPage(QWidget):
             self._refresh_all()
         else:
             self.graph.update()
-            self._update_info()
+            self._update_info(gains=False)
+            self.info_timer.start()
         if self.live_on.isChecked():
             self.live_timer.start()
 
@@ -2410,9 +2448,7 @@ class EqPage(QWidget):
         self._live_error = ""
         if restart:
             self._live_pushed.clear()
-            ok, msg = restart_sinks_service()
-            if not ok:
-                self._live_error = _("Servis yeniden başlatılamadı: {hata}").format(hata=msg)
+            self._start_restart()
         else:
             # make the running sinks match what was saved (cheap, no restart): EVERY edited
             # profile (set_live writes bands/dynamics only for the profile it is given); a
@@ -2438,6 +2474,28 @@ class EqPage(QWidget):
             self.applier.submit(items, self.saved, None)
         self._refresh_all()
         return True
+
+    def _start_restart(self) -> None:
+        """systemctl restart of the sinks on a thread: it waits for the new pipewire process
+        (up to 20 s), the window must stay responsive meanwhile."""
+        self._restarting = True
+
+        def run():
+            try:
+                ok, msg = restart_sinks_service()
+            except Exception as e:  # noqa: BLE001 - report, never lose the result
+                ok, msg = False, str(e)
+            try:
+                self.sinksRestarted.emit(bool(ok), str(msg or ""))
+            except RuntimeError:       # page already gone
+                pass
+        threading.Thread(target=run, name="oto-eq-sinks-restart", daemon=True).start()
+
+    def _restart_done(self, ok: bool, msg: str) -> None:
+        self._restarting = False
+        if not ok:
+            self._live_error = _("Servis yeniden başlatılamadı: {hata}").format(hata=msg)
+        self._update_info(gains=False)
 
     def revert(self) -> None:
         self.work = copy.deepcopy(self.saved)
@@ -2622,10 +2680,12 @@ class EqPage(QWidget):
         head.setSpacing(10)
         head.addWidget(label(_("Kişisel ton"), "sectionTitle"))
         self.tone_head = QWidget()
-        hl = QHBoxLayout(self.tone_head)
-        hl.setContentsMargins(0, 0, 0, 0)
-        hl.setSpacing(10)
+        hl = ui.FlowLayout(self.tone_head, spacing=10, right=True)
         self.tone_scope_box = QComboBox()
+        # "Bu tür için (Müzik: Klasik / Caz / Akustik)" must not set the page width
+        self.tone_scope_box.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.tone_scope_box.setMinimumContentsLength(18)
         self.tone_scope_box.addItem(_("Tüm profiller (genel)"), "genel")
         self.tone_scope_box.addItem(_("Bu tür için"), "tur")
         self.tone_scope_box.setToolTip(_("Genel: her profilde geçerli. Bu tür için: yalnız şu an "
@@ -2633,7 +2693,6 @@ class EqPage(QWidget):
                                          "üstüne eklenir."))
         self.tone_scope_box.currentIndexChanged.connect(self._tone_scope_selected)
         hl.addWidget(self.tone_scope_box)
-        hl.addStretch(1)
         self.tone_ab_btn = button(_("Kör A/B dinle…"))
         self.tone_ab_btn.setToolTip(_("Terminalde `kulak ab` açılır: çalan müziğin üstünde iki "
                                       "hali hangisi olduğunu bilmeden dinler, beğendiğini "
@@ -3118,10 +3177,11 @@ class EqPage(QWidget):
             self.apps_lbl.setText(_("Servis durumu bilinmiyor"))
             return
         prof = self.profile
+        streams = [s for s in st.get("streams") or [] if isinstance(s, dict)]   # null / odd items
         if prof == FLAT_PROFILE:
-            apps = [s for s in st.get("streams", []) if s.get("sink") == sink_name(FLAT_PROFILE)]
+            apps = [s for s in streams if s.get("sink") == sink_name(FLAT_PROFILE)]
         else:
-            apps = [s for s in st.get("streams", []) if s.get("profile") == prof]
+            apps = [s for s in streams if s.get("profile") == prof]
         names = list(dict.fromkeys((s.get("app") or s.get("binary") or f"#{s.get('index')}")
                                    for s in apps))
         self.apps_lbl.setText(_("Şu an kullanan: {uygulamalar}").format(

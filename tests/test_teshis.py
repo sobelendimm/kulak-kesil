@@ -55,8 +55,9 @@ class TestTeshis(unittest.TestCase):
         self.assertIn("app.name", out)
         self.assertIn("process.binary = firefox", out)
         self.assertIn("firefox.instance_1_280 [Playing] 'Haber'", out)
-        self.assertIn("KARAR      : film → film", out)
-        self.assertIn("✔ tarayici", out)
+        self.assertIn("KARAR      : Film → Film", out)
+        self.assertIn("✔ tarayıcı", out)
+        self.assertIn("adlar: ikili=firefox, uygulama=Firefox, süreç=firefox", out)
         self.assertIn("çıkış: alsa_output.usb-Corsair_HS80", out)
 
     def test_block_color_and_unresolved(self):
@@ -64,13 +65,13 @@ class TestTeshis(unittest.TestCase):
         out = teshis.format_block(d, color=True)
         self.assertIn("\x1b[", out)
         self.assertIn("bulunamadı", out)
-        self.assertIn("bilinmeyen", out)
+        self.assertIn("Bilinmeyen → Müzik", out)
 
     def test_format_line(self):
         d = teshis.collect(stream(2, "Firefox", "firefox", FIREFOX_PID, "Haber - YouTube"),
                            self.c, [self.ff_player], self.sinks)
         line = teshis.format_line(d)
-        self.assertTrue(line.startswith("↻ #2 Firefox: film → film"))
+        self.assertTrue(line.startswith("↻ #2 Firefox: Film → Film"), line)
 
     def test_main_once_with_fakes(self):
         fake_pulse = mock.MagicMock()
@@ -85,12 +86,13 @@ class TestTeshis(unittest.TestCase):
             with mock.patch.dict("sys.modules", {"oto_eq.pulse": fake_pulse}), \
                     mock.patch("oto_eq.teshis.sys.stdout", buf), \
                     mock.patch("oto_eq.mpris.MprisWatcher", watcher), \
-                    mock.patch("oto_eq.classifier.load_classifier", return_value=self.c), \
+                    mock.patch("oto_eq.classifier.load_classifier", return_value=self.c) as lc, \
                     mock.patch("oto_eq.pulse", fake_pulse, create=True):
                 rc = teshis.main(["--json", str(jpath), "--renk", "hayir"])
+            lc.assert_called_once_with(online=False)        # read-only: no genre lookups
             data = json.loads(jpath.read_text())
         self.assertEqual(rc, 0)
-        self.assertIn("cs2 → cs2", buf.getvalue())
+        self.assertIn("CS2 → CS2", buf.getvalue())
         self.assertEqual(data["akislar"][0]["decision"]["category"], "cs2")
         fake_pulse.move_stream.assert_not_called()               # read-only
 
@@ -113,6 +115,27 @@ class TestTeshisCeviri(TestTeshis):
             stream(2, "Firefox", "firefox", FIREFOX_PID, "Haber - YouTube"), self.c, [], self.sinks))
         self.assertIn("ENTSCHEIDUNG", out)
         self.assertIn("Browser: YouTube-Video", out)
+
+    def test_verdict_labels_translated(self):
+        # 6 Kas: "film → film" / "bilinmeyen" ids were shown in every language
+        from oto_eq import i18n
+        i18n.sifirla("en", {"Film": "Movie", "Bilinmeyen": "Unknown", "Müzik": "Music"})
+        d = teshis.collect(stream(2, "Firefox", "firefox", FIREFOX_PID, "Haber - YouTube"),
+                           self.c, [self.ff_player], self.sinks)
+        self.assertIn("Movie → Movie", teshis.format_block(d))
+        self.assertTrue(teshis.format_line(d).startswith("↻ #2 Firefox: Movie → Movie"))
+        self.assertEqual(d["decision"]["category"], "film")         # JSON keeps the ids
+        u = teshis.collect(stream(3, "mystery", "mystery", 424242), self.c, [], self.sinks)
+        self.assertIn("Unknown → Music", teshis.format_block(u))
+
+    def test_watcher_mode_translated(self):
+        from oto_eq import i18n
+        self.assertEqual(teshis._watcher_mode("kapali"), "kapalı")
+        i18n.sifirla("en", {"sinyal": "signals", "yoklama": "polling",
+                            "yok (jeepney kurulu değil)": "none (jeepney not installed)"})
+        self.assertEqual(teshis._watcher_mode("sinyal"), "signals")
+        self.assertEqual(teshis._watcher_mode("yok"), "none (jeepney not installed)")
+        self.assertEqual(teshis._watcher_mode("yeni_kip"), "yeni_kip")      # unknown: as is
 
 
 if __name__ == "__main__":

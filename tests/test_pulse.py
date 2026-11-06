@@ -200,6 +200,29 @@ class FallbackTest(unittest.TestCase):
                 pulse.default_sink_name()
             self.assertFalse(pulse.move_stream(1, "x"))
 
+    def test_errors_are_in_the_ui_language(self):
+        # `kulak teshis` shows PulseError text ("Akışlar okunamadı: {hata}")
+        from oto_eq import i18n
+        self.addCleanup(i18n.sifirla)
+        i18n.sifirla("en", {"pactl bulunamadı: {hata}": "pactl not found: {hata}",
+                            "pactl zaman aşımı ({sn} sn): {komut}": "pactl timed out ({sn} s): {komut}",
+                            "pactl {komut} başarısız (kod {kod}): {hata}":
+                            "pactl {komut} failed (code {kod}): {hata}"})
+        with mock.patch.object(pulse, "PACTL", "/nonexistent/pactl"):
+            with self.assertRaises(pulse.PulseError) as cm:
+                pulse.default_sink_name()
+        self.assertTrue(str(cm.exception).startswith("pactl not found: "))
+        with mock.patch.object(pulse.subprocess, "run",
+                               side_effect=subprocess.TimeoutExpired(["pactl"], 3)):
+            with self.assertRaises(pulse.PulseError) as cm:
+                pulse.default_sink_name()
+        self.assertEqual(str(cm.exception), "pactl timed out (3 s): get-default-sink")
+        with mock.patch.object(pulse, "_run", return_value=_cp("", 1, "Connection failure")):
+            with self.assertRaises(pulse.PulseError) as cm:
+                pulse.default_sink_name()
+        self.assertEqual(str(cm.exception),
+                         "pactl get-default-sink failed (code 1): Connection failure")
+
     def test_listener_stops_while_backing_off(self):
         with mock.patch.object(pulse, "PACTL", "/nonexistent/pactl"):
             lst = pulse.EventListener(lambda ev: None)

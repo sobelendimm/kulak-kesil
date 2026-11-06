@@ -742,6 +742,95 @@ class TestCeviri(unittest.TestCase):
         i18n.sifirla("de", {"vokal ağırlıklı orta bölge": "gesangsbetonte Mitten"})
         self.assertEqual(sa._evidence("pop_vokal", {}), "gesangsbetonte Mitten")
 
+    def test_capture_stream_name_translated(self):
+        # 6 Kas: pavucontrol / the KDE applet showed "Kulak Kesil ses analizi" in every language
+        from unittest import mock
+        from oto_eq import i18n
+        i18n.sifirla("en", {"Kulak Kesil ses analizi": "Kulak Kesil audio analysis"})
+        with mock.patch.object(sa.shutil, "which", side_effect=lambda n: "/usr/bin/" + n):
+            argv = sa.capture_argv("x.monitor", 22050)
+        self.assertIn("--client-name=Kulak Kesil audio analysis", argv)
+        self.assertIn("--stream-name=Kulak Kesil audio analysis", argv)
+
+
+# ================================================================ 6 Kas hata avı
+class TestRates(unittest.TestCase):
+    """The DSP rules are calibrated at 22050 Hz: other rates are resampled; the band
+    ratios cover 20 Hz – Nyquist at any rate (the "high" band stopped at 11025 Hz)."""
+
+    def test_band_ratios_sum_to_one_at_any_rate(self):
+        rng = np.random.default_rng(3)
+        for rate in (22050, 44100, 48000):
+            f = sa.features((0.1 * rng.standard_normal(4 * rate)).astype(np.float32), rate)
+            tot = sum(f[f"r_{b}"] for b, _lo, _hi in sa.BANDS)
+            self.assertAlmostEqual(tot, 1.0, delta=0.01, msg=rate)
+
+    def test_default_rate_unchanged(self):
+        # the Nyquist bin stays outside the bands at 22050 Hz (calibrated values)
+        x = kick_track(seconds=6.0)
+        f = sa.features(x, R)
+        freqs = np.fft.rfftfreq(2048, 1.0 / R)
+        self.assertEqual(freqs[-1], R / 2)
+        self.assertLess(sum(f[f"r_{b}"] for b, _lo, _hi in sa.BANDS), 1.0 + 1e-9)
+
+    def test_classify_resamples_to_calibration_rate(self):
+        for sig in (kick_track(seconds=8.0), strings_like(seconds=8.0), speech_like(seconds=8.0)):
+            d22, d48 = {}, {}
+            g22 = sa.classify(sig, R, detail=d22)
+            up = sa.resample(sig, R, 48000)
+            self.assertEqual(len(up), round(len(sig) * 48000 / R))
+            g48 = sa.classify(up, 48000, detail=d48)
+            self.assertEqual(g22 and g22.group, g48 and g48.group)
+            for k in ("r_sub", "r_bass", "r_high", "centroid", "beat_low"):
+                self.assertAlmostEqual(d22["features"][k], d48["features"][k],
+                                       delta=0.05 * max(1.0, abs(d22["features"][k])), msg=k)
+
+    def test_resample_edges(self):
+        self.assertEqual(len(sa.resample(np.zeros(0, np.float32), 48000, R)), 0)
+        x = np.ones(10, np.float32)
+        self.assertIs(sa.resample(x, R, R).dtype, np.dtype(np.float32))
+        self.assertEqual(len(sa.resample(np.ones(1, np.float32), 48000, 1000)), 0)
+
+
+class TestTapStopRace(unittest.TestCase):
+    """6 Kas: stop() whose join timed out left _thread=None; the next start() cleared
+    _stop and the old thread lived on next to a new one (two writers, one ring buffer)."""
+
+    def test_no_second_thread_while_old_one_winds_down(self):
+        release = threading.Event()
+
+        class StuckStdout(FakeStdout):
+            def read(self, n):                 # ignores close(): a stuck capture process
+                release.wait(5)
+                return b""
+
+        class StuckRunner(FakeRunner):
+            def __call__(self, argv):
+                p = super().__call__(argv)
+                p.stdout = StuckStdout()
+                return p
+
+        runner = StuckRunner()
+        tap = sa.AudioTap(source="x", rate=1000, seconds=1.0, runner=runner, clock=Clock())
+        tap.JOIN_S = 0.05
+        tap.BACKOFF_MIN = tap.BACKOFF_MAX = 0.01
+        try:
+            tap.start()
+            runner.wait_spawn(1)
+            tap.stop()                          # join times out: the thread is still reading
+            self.assertTrue(tap.running)
+            tap.start()                         # must not revive / duplicate it
+            time.sleep(0.1)
+            self.assertEqual(len(runner.procs), 1)
+            self.assertEqual(sum(t.name == "oto_eq.ses_analiz.tap" for t in threading.enumerate()), 1)
+            release.set()
+            self.assertTrue(wait_until(lambda: not tap.running))
+            tap.start()                         # after it exited: a fresh capture
+            runner.wait_spawn(2)
+        finally:
+            release.set()
+            tap.stop()
+
 
 if __name__ == "__main__":
     unittest.main()
