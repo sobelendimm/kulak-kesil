@@ -13,3 +13,4 @@ docs/*
 *.yedek*
 *.bak
 oto_eq/i18n/.kaynak-motor.json
+!docs/img/

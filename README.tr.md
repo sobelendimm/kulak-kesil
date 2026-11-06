@@ -14,6 +14,11 @@ kendi ayarıyla duyulur.
 | 🎵 **Müzik** | doğal tını | Spotify, müzik çalarlar, tarayıcıda müzik |
 | 🎬 **Film** | diyalog net | VLC/mpv video, tarayıcıda dizi/film |
 
+<p align="center">
+  <img src="docs/img/eq.png" width="49%" alt="Ekolayzır sayfası">
+  <img src="docs/img/mic.png" width="49%" alt="Mikrofon sayfası">
+</p>
+
 **Discord, TeamSpeak, görüşmeler ve sistem/bildirim sesleri her zaman EQ'suz kalır.**
 Bunlar **Düz** çıkıştan geçer: EQ yok ama ses seviyesi EQ'lu seslerle dengeli.
 EQ yalnız varsayılan çıkış bir **kulaklıksa** (USB, Bluetooth ya da 3,5 mm) açılır; hoparlöre
