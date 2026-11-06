@@ -1,0 +1,33 @@
+# Kulak Kesil (oto-eq): 4 sanal EQ çıkışı (oto_eq_cs2/oyun/muzik/film).
+# Ayrı bir `pipewire -c` süreci (filter-chain.service örnek alındı).
+# Ayar dosyası `kulak eq-uret` ile üretilir.
+[Unit]
+Description=Kulak Kesil - sanal EQ çıkışları (PipeWire filter-chain)
+Documentation=file://%h/.local/src/oto-eq/README.md
+After=pipewire.service pipewire-session-manager.service
+# PipeWire durursa/yeniden başlarsa bu da durur/yeniden başlar.
+BindsTo=pipewire.service
+# Yönlendirici (oto-eq.service) durur ya da kalıcı olarak çökerse EQ çıkışları da
+# kapanır; akışlar kendiliğinden varsayılan çıkışa düşer (sessiz kalmaz).
+# BİLEREK After=oto-eq.service YOK: yönlendirici After=oto-eq-sinks.service ile
+# bundan SONRA başlar (döngü olmaz) ve birlikte durdurulurken ÖNCE yönlendirici
+# durur (akışları varsayılana geri taşır), sonra bu.
+BindsTo=oto-eq.service
+ConditionPathExists=%h/.config/oto-eq/oto-eq-sinks.conf
+
+[Service]
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+NoNewPrivileges=yes
+RestrictNamespaces=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+Type=simple
+ExecStart=/usr/bin/pipewire -c %h/.config/oto-eq/oto-eq-sinks.conf
+Restart=on-failure
+RestartSec=2
+Slice=session.slice
+
+[Install]
+# pipewire.service her başladığında (girişte, çökme/yeniden başlatma sonrası) bunu da başlatır.
+WantedBy=pipewire.service

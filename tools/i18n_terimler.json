@@ -1,0 +1,1091 @@
+{
+ "_aciklama": "Kulak Kesil uygulama terimleri (CHANGE 8). 'tam': msgid tam olarak bu ise Google'a gitmeden bu çeviri yazılır. 'terim': metnin İÇİNDE geçen terim (büyük/küçük harf duyarlı, tam sözcük) çeviriden önce @N@ ile maskelenir ve hedef terimle geri konur; küçük harfli kullanım için ayrı girdi ekle. Bir dil yoksa o dilde zorlama yapılmaz (Google çevirir).",
+ "tam": {
+  "Düz": {
+   "en": "Flat",
+   "de": "Flach",
+   "es": "Plano",
+   "fr": "Plat",
+   "pt": "Plano",
+   "ru": "Ровный",
+   "zh": "平直",
+   "ja": "フラット"
+  },
+  "Oyun": {
+   "en": "Game",
+   "de": "Spiel",
+   "es": "Juego",
+   "fr": "Jeu",
+   "pt": "Jogo",
+   "ru": "Игра",
+   "zh": "游戏",
+   "ja": "ゲーム"
+  },
+  "Müzik": {
+   "en": "Music",
+   "de": "Musik",
+   "es": "Música",
+   "fr": "Musique",
+   "pt": "Música",
+   "ru": "Музыка",
+   "zh": "音乐",
+   "ja": "音楽"
+  },
+  "Film": {
+   "en": "Movie",
+   "de": "Film",
+   "es": "Película",
+   "fr": "Film",
+   "pt": "Filme",
+   "ru": "Фильм",
+   "zh": "电影",
+   "ja": "映画"
+  },
+  "Otomatik": {
+   "en": "Automatic",
+   "de": "Automatisch",
+   "es": "Automático",
+   "fr": "Automatique",
+   "pt": "Automático",
+   "ru": "Автоматически",
+   "zh": "自动",
+   "ja": "自動"
+  },
+  "Sabit": {
+   "en": "Fixed",
+   "de": "Fest",
+   "es": "Fijo",
+   "fr": "Fixe",
+   "pt": "Fixo",
+   "ru": "Фиксированный",
+   "zh": "固定",
+   "ja": "固定"
+  },
+  "Kapalı": {
+   "en": "Off",
+   "de": "Aus",
+   "es": "Desactivado",
+   "fr": "Désactivé",
+   "pt": "Desligado",
+   "ru": "Выкл.",
+   "zh": "关闭",
+   "ja": "オフ"
+  },
+  "Açık": {
+   "en": "On",
+   "de": "Ein",
+   "es": "Activado",
+   "fr": "Activé",
+   "pt": "Ligado",
+   "ru": "Вкл.",
+   "zh": "开启",
+   "ja": "オン"
+  },
+  "Kulaklık": {
+   "en": "Headphones",
+   "de": "Kopfhörer",
+   "es": "Auriculares",
+   "fr": "Casque",
+   "pt": "Fones de ouvido",
+   "ru": "Наушники",
+   "zh": "耳机",
+   "ja": "ヘッドホン"
+  },
+  "Kısma": {
+   "en": "Ducking",
+   "de": "Ducking",
+   "es": "Atenuación",
+   "fr": "Atténuation",
+   "pt": "Atenuação",
+   "ru": "Приглушение",
+   "zh": "音量闪避",
+   "ja": "ダッキング"
+  },
+  "Kişisel ton": {
+   "en": "Personal tone",
+   "de": "Persönlicher Klang",
+   "es": "Tono personal",
+   "fr": "Tonalité personnelle",
+   "pt": "Tom pessoal",
+   "ru": "Персональный тон",
+   "zh": "个人音色",
+   "ja": "パーソナルトーン"
+  },
+  "Kişisel model": {
+   "en": "Personal model",
+   "de": "Persönliches Modell",
+   "es": "Modelo personal",
+   "fr": "Modèle personnel",
+   "pt": "Modelo pessoal",
+   "ru": "Персональная модель",
+   "zh": "个人模型",
+   "ja": "パーソナルモデル"
+  },
+  "EQ yok": {
+   "en": "No EQ",
+   "de": "Kein EQ",
+   "es": "Sin EQ",
+   "fr": "Pas d'EQ",
+   "pt": "Sem EQ",
+   "ru": "Без EQ",
+   "zh": "无 EQ",
+   "ja": "EQなし"
+  },
+  "Ekolayzır": {
+   "en": "Equalizer",
+   "de": "Equalizer",
+   "es": "Ecualizador",
+   "fr": "Égaliseur",
+   "pt": "Equalizador",
+   "ru": "Эквалайзер",
+   "zh": "均衡器",
+   "ja": "イコライザー"
+  },
+  "Durum": {
+   "en": "Status",
+   "de": "Status",
+   "es": "Estado",
+   "fr": "État",
+   "pt": "Estado",
+   "ru": "Состояние",
+   "zh": "状态",
+   "ja": "ステータス"
+  },
+  "Ayarlar": {
+   "en": "Settings",
+   "de": "Einstellungen",
+   "es": "Ajustes",
+   "fr": "Paramètres",
+   "pt": "Configurações",
+   "ru": "Настройки",
+   "zh": "设置",
+   "ja": "設定"
+  },
+  "Kurallar": {
+   "en": "Rules",
+   "de": "Regeln",
+   "es": "Reglas",
+   "fr": "Règles",
+   "pt": "Regras",
+   "ru": "Правила",
+   "zh": "规则",
+   "ja": "ルール"
+  },
+  "Mikrofon": {
+   "en": "Microphone",
+   "de": "Mikrofon",
+   "es": "Micrófono",
+   "fr": "Microphone",
+   "pt": "Microfone",
+   "ru": "Микрофон",
+   "zh": "麦克风",
+   "ja": "マイク"
+  },
+  "Kaydet": {
+   "en": "Save",
+   "de": "Speichern",
+   "es": "Guardar",
+   "fr": "Enregistrer",
+   "pt": "Salvar",
+   "ru": "Сохранить",
+   "zh": "保存",
+   "ja": "保存"
+  },
+  "İptal": {
+   "en": "Cancel",
+   "de": "Abbrechen",
+   "es": "Cancelar",
+   "fr": "Annuler",
+   "pt": "Cancelar",
+   "ru": "Отмена",
+   "zh": "取消",
+   "ja": "キャンセル"
+  },
+  "Uygula": {
+   "en": "Apply",
+   "de": "Anwenden",
+   "es": "Aplicar",
+   "fr": "Appliquer",
+   "pt": "Aplicar",
+   "ru": "Применить",
+   "zh": "应用",
+   "ja": "適用"
+  },
+  "Tamam": {
+   "en": "OK",
+   "de": "OK",
+   "es": "Aceptar",
+   "fr": "OK",
+   "pt": "OK",
+   "ru": "ОК",
+   "zh": "确定",
+   "ja": "OK"
+  },
+  "Kapat": {
+   "en": "Close",
+   "de": "Schließen",
+   "es": "Cerrar",
+   "fr": "Fermer",
+   "pt": "Fechar",
+   "ru": "Закрыть",
+   "zh": "关闭",
+   "ja": "閉じる"
+  },
+  "Tür": {
+   "en": "Genre",
+   "de": "Genre",
+   "es": "Género",
+   "fr": "Genre",
+   "pt": "Gênero",
+   "ru": "Жанр",
+   "zh": "流派",
+   "ja": "ジャンル"
+  },
+  "Sohbet": {
+   "en": "Chat",
+   "de": "Chat",
+   "es": "Chat",
+   "fr": "Chat",
+   "pt": "Chat",
+   "ru": "Чат",
+   "zh": "聊天",
+   "ja": "チャット"
+  },
+  "Seviye": {
+   "en": "Level",
+   "de": "Pegel",
+   "es": "Nivel",
+   "fr": "Niveau",
+   "pt": "Nível",
+   "ru": "Уровень",
+   "zh": "电平",
+   "ja": "レベル"
+  },
+  "Onarım": {
+   "en": "Repair",
+   "de": "Reparatur",
+   "es": "Reparación",
+   "fr": "Réparation",
+   "pt": "Reparo",
+   "ru": "Восстановление",
+   "zh": "修复",
+   "ja": "修復"
+  },
+  "Yedek": {
+   "en": "Backup",
+   "de": "Sicherung",
+   "es": "Copia de seguridad",
+   "fr": "Sauvegarde",
+   "pt": "Backup",
+   "ru": "Резервная копия",
+   "zh": "备份",
+   "ja": "バックアップ"
+  },
+  "Sınırlayıcı": {
+   "en": "Limiter",
+   "de": "Limiter",
+   "es": "Limitador",
+   "fr": "Limiteur",
+   "pt": "Limitador",
+   "ru": "Лимитер",
+   "zh": "限制器",
+   "ja": "リミッター"
+  },
+  "Mod": {
+   "en": "Mode",
+   "de": "Modus",
+   "es": "Modo",
+   "fr": "Mode",
+   "pt": "Modo",
+   "ru": "Режим",
+   "zh": "模式",
+   "ja": "モード"
+  },
+  "Bu kulaklıkta ({model}) HS80 düzeltmesi uygulanmıyor; eğri HS80 için ölçüldü.": {
+   "en": "HS80 correction is not applied on this headphone ({model}); the curve was measured for the HS80.",
+   "de": "Auf diesem Kopfhörer ({model}) wird die HS80-Korrektur nicht angewendet; die Kurve wurde für den HS80 gemessen.",
+   "es": "La corrección HS80 no se aplica en estos auriculares ({model}); la curva se midió para los HS80.",
+   "fr": "La correction HS80 n'est pas appliquée sur ce casque ({model}) ; la courbe a été mesurée pour le HS80.",
+   "pt": "A correção HS80 não é aplicada neste fone ({model}); a curva foi medida para o HS80.",
+   "ru": "Коррекция HS80 не применяется к этим наушникам ({model}); кривая измерена для HS80.",
+   "zh": "此耳机（{model}）不应用 HS80 校正；该曲线是针对 HS80 测量的。",
+   "ja": "このヘッドホン（{model}）には HS80 補正を適用しません。カーブは HS80 用に測定されたものです。"
+  },
+  "Ekolayzır → CS2 → Kör test. 8 tur; her turda X'in A mı B mi olduğunu seç.": {
+   "en": "Equalizer → CS2 → Blind test. 8 rounds; in each round, choose whether X is A or B.",
+   "de": "Equalizer → CS2 → Blindtest. 8 Runden; wähle in jeder Runde, ob X A oder B ist.",
+   "es": "Ecualizador → CS2 → Prueba a ciegas. 8 rondas; en cada ronda, elige si X es A o B.",
+   "fr": "Égaliseur → CS2 → Test à l'aveugle. 8 manches ; à chaque manche, choisissez si X est A ou B.",
+   "pt": "Equalizador → CS2 → Teste às cegas. 8 rodadas; em cada rodada, escolha se X é A ou B.",
+   "ru": "Эквалайзер → CS2 → Слепой тест. 8 раундов; в каждом раунде выберите, X — это A или B.",
+   "zh": "均衡器 → CS2 → 盲听测试。共 8 轮；每轮选择 X 是 A 还是 B。",
+   "ja": "イコライザー → CS2 → ブラインドテスト。全 8 ラウンド。各ラウンドで X が A か B かを選んでください。"
+  },
+  "Müzik ve oyun için KDE ses ayarlarından Bluetooth aygıtının profilini A2DP (yüksek kalite) yapın": {
+   "en": "For music and games, set the Bluetooth device's profile to A2DP (high quality) in the KDE sound settings",
+   "de": "Für Musik und Spiele das Profil des Bluetooth-Geräts in den KDE-Audioeinstellungen auf A2DP (hohe Qualität) stellen",
+   "es": "Para música y juegos, configura el perfil del dispositivo Bluetooth en A2DP (alta calidad) en los ajustes de sonido de KDE",
+   "fr": "Pour la musique et les jeux, réglez le profil de l'appareil Bluetooth sur A2DP (haute qualité) dans les paramètres audio de KDE",
+   "pt": "Para música e jogos, defina o perfil do dispositivo Bluetooth como A2DP (alta qualidade) nas configurações de som do KDE",
+   "ru": "Для музыки и игр выберите для Bluetooth-устройства профиль A2DP (высокое качество) в настройках звука KDE",
+   "zh": "听音乐和玩游戏时，请在 KDE 声音设置中将蓝牙设备的配置文件设为 A2DP（高音质）",
+   "ja": "音楽やゲームには、KDE のサウンド設定で Bluetooth デバイスのプロファイルを A2DP（高音質）にしてください"
+  },
+  "Sesli sohbette kısma AÇIK · {db:g} dB · {cikislar}  (servis 1 sn içinde uygular)": {
+   "en": "Voice chat ducking ON · {db:g} dB · {cikislar}  (the service applies it within 1 s)",
+   "de": "Ducking bei Sprachchat AN · {db:g} dB · {cikislar}  (der Dienst übernimmt es innerhalb von 1 s)",
+   "es": "Atenuación en chat de voz ACTIVADA · {db:g} dB · {cikislar}  (el servicio lo aplica en 1 s)",
+   "fr": "Atténuation en chat vocal ACTIVÉE · {db:g} dB · {cikislar}  (le service l'applique en 1 s)",
+   "pt": "Atenuação no chat de voz ATIVADA · {db:g} dB · {cikislar}  (o serviço aplica em até 1 s)",
+   "ru": "Приглушение при голосовом чате ВКЛ · {db:g} dB · {cikislar}  (служба применит в течение 1 с)",
+   "zh": "语音聊天时音量闪避 已开启 · {db:g} dB · {cikislar}  （服务会在 1 秒内应用）",
+   "ja": "ボイスチャット時のダッキング オン · {db:g} dB · {cikislar}  （サービスが 1 秒以内に適用）"
+  },
+  "Ton canlı uygulanamadı: {hata}": {
+   "en": "Could not apply the tone live: {hata}",
+   "de": "Klang konnte nicht live angewendet werden: {hata}",
+   "es": "No se pudo aplicar el tono en directo: {hata}",
+   "fr": "Impossible d'appliquer la tonalité en direct : {hata}",
+   "pt": "Não foi possível aplicar o tom ao vivo: {hata}",
+   "ru": "Не удалось применить тон на лету: {hata}",
+   "zh": "无法实时应用音色：{hata}",
+   "ja": "トーンをリアルタイムで適用できませんでした: {hata}"
+  },
+  "baskın: {profil}": {
+   "en": "dominant: {profil}",
+   "de": "dominant: {profil}",
+   "es": "dominante: {profil}",
+   "fr": "dominant : {profil}",
+   "pt": "dominante: {profil}",
+   "ru": "преобладает: {profil}",
+   "zh": "主导：{profil}",
+   "ja": "優勢: {profil}"
+  },
+  "düz yol (RNNoise kapalı): 1 kHz −20 dBFS → {seviye:.1f} dBFS (model {model:.1f})": {
+   "en": "flat path (RNNoise off): 1 kHz −20 dBFS → {seviye:.1f} dBFS (model {model:.1f})",
+   "de": "direkter Pfad (RNNoise aus): 1 kHz −20 dBFS → {seviye:.1f} dBFS (Modell {model:.1f})",
+   "es": "ruta directa (RNNoise desactivado): 1 kHz −20 dBFS → {seviye:.1f} dBFS (modelo {model:.1f})",
+   "fr": "chemin direct (RNNoise désactivé) : 1 kHz −20 dBFS → {seviye:.1f} dBFS (modèle {model:.1f})",
+   "pt": "caminho direto (RNNoise desligado): 1 kHz −20 dBFS → {seviye:.1f} dBFS (modelo {model:.1f})",
+   "ru": "прямой путь (RNNoise выкл.): 1 kHz −20 dBFS → {seviye:.1f} dBFS (модель {model:.1f})",
+   "zh": "直通路径（RNNoise 关闭）：1 kHz −20 dBFS → {seviye:.1f} dBFS（模型 {model:.1f}）",
+   "ja": "直通経路（RNNoise オフ）: 1 kHz −20 dBFS → {seviye:.1f} dBFS（モデル {model:.1f}）"
+  },
+  "puanlar: {puanlar}": {
+   "en": "scores: {puanlar}",
+   "de": "Punkte: {puanlar}",
+   "es": "puntuaciones: {puanlar}",
+   "fr": "scores : {puanlar}",
+   "pt": "pontuações: {puanlar}",
+   "ru": "оценки: {puanlar}",
+   "zh": "得分：{puanlar}",
+   "ja": "スコア: {puanlar}"
+  },
+  "seviye eşitleyici → {lufs:g} LUFS (en çok +{db:g} dB, {yukselme:g}/{dusme:g} dB/sn)": {
+   "en": "level normalizer → {lufs:g} LUFS (max +{db:g} dB, {yukselme:g}/{dusme:g} dB/s)",
+   "de": "Pegelausgleich → {lufs:g} LUFS (max. +{db:g} dB, {yukselme:g}/{dusme:g} dB/s)",
+   "es": "nivelador de volumen → {lufs:g} LUFS (máx. +{db:g} dB, {yukselme:g}/{dusme:g} dB/s)",
+   "fr": "normaliseur de niveau → {lufs:g} LUFS (max +{db:g} dB, {yukselme:g}/{dusme:g} dB/s)",
+   "pt": "nivelador de volume → {lufs:g} LUFS (máx. +{db:g} dB, {yukselme:g}/{dusme:g} dB/s)",
+   "ru": "выравниватель уровня → {lufs:g} LUFS (макс. +{db:g} dB, {yukselme:g}/{dusme:g} dB/с)",
+   "zh": "电平均衡器 → {lufs:g} LUFS（最多 +{db:g} dB，{yukselme:g}/{dusme:g} dB/秒）",
+   "ja": "レベル均一化 → {lufs:g} LUFS（最大 +{db:g} dB、{yukselme:g}/{dusme:g} dB/秒）"
+  },
+  "{sinyal} net {net:+.1f} dB, tepe {tepe:+.1f}, sınırlayıcı %{yuzde:.0f} (>1 dB %{yuzde1:.0f}, en çok {en_cok:.1f} dB)": {
+   "en": "{sinyal} net {net:+.1f} dB, peak {tepe:+.1f}, limiter {yuzde:.0f}% (>1 dB {yuzde1:.0f}%, max {en_cok:.1f} dB)",
+   "de": "{sinyal} netto {net:+.1f} dB, Spitze {tepe:+.1f}, Begrenzer {yuzde:.0f} % (>1 dB {yuzde1:.0f} %, max. {en_cok:.1f} dB)",
+   "es": "{sinyal} neto {net:+.1f} dB, pico {tepe:+.1f}, limitador {yuzde:.0f} % (>1 dB {yuzde1:.0f} %, máx. {en_cok:.1f} dB)",
+   "fr": "{sinyal} net {net:+.1f} dB, crête {tepe:+.1f}, limiteur {yuzde:.0f} % (>1 dB {yuzde1:.0f} %, max {en_cok:.1f} dB)",
+   "pt": "{sinyal} líquido {net:+.1f} dB, pico {tepe:+.1f}, limitador {yuzde:.0f}% (>1 dB {yuzde1:.0f}%, máx. {en_cok:.1f} dB)",
+   "ru": "{sinyal} итог {net:+.1f} dB, пик {tepe:+.1f}, ограничитель {yuzde:.0f}% (>1 dB {yuzde1:.0f}%, макс. {en_cok:.1f} dB)",
+   "zh": "{sinyal} 净增益 {net:+.1f} dB，峰值 {tepe:+.1f}，限幅器 {yuzde:.0f}%（>1 dB {yuzde1:.0f}%，最大 {en_cok:.1f} dB）",
+   "ja": "{sinyal} 正味 {net:+.1f} dB、ピーク {tepe:+.1f}、リミッター {yuzde:.0f}%（>1 dB {yuzde1:.0f}%、最大 {en_cok:.1f} dB）"
+  },
+  "Ölçüm yapılamadı: {neden}": {
+   "en": "Measurement failed: {neden}",
+   "de": "Messung fehlgeschlagen: {neden}",
+   "es": "No se pudo medir: {neden}",
+   "fr": "Mesure impossible : {neden}",
+   "pt": "Não foi possível medir: {neden}",
+   "ru": "Не удалось выполнить измерение: {neden}",
+   "zh": "无法测量：{neden}",
+   "ja": "測定できませんでした: {neden}"
+  },
+  "ölçüm yapılamadı: {hata}": {
+   "en": "measurement failed: {hata}",
+   "de": "Messung fehlgeschlagen: {hata}",
+   "es": "no se pudo medir: {hata}",
+   "fr": "mesure impossible : {hata}",
+   "pt": "não foi possível medir: {hata}",
+   "ru": "не удалось выполнить измерение: {hata}",
+   "zh": "无法测量：{hata}",
+   "ja": "測定できませんでした: {hata}"
+  },
+  "Yönlendirici (oto-eq)": {
+   "en": "Router (oto-eq)",
+   "de": "Router (oto-eq)",
+   "es": "Enrutador (oto-eq)",
+   "fr": "Routeur (oto-eq)",
+   "pt": "Roteador (oto-eq)",
+   "ru": "Маршрутизатор (oto-eq)",
+   "zh": "路由器（oto-eq）",
+   "ja": "ルーター（oto-eq）"
+  },
+  "Eksik çıkışlar ({liste}) için {servis} yeniden başlatıldı.": {
+   "de": "{servis} wurde für die fehlenden Ausgänge ({liste}) neu gestartet."
+  },
+  "Kulaklık Bluetooth arama modunda ({profil}): mikrofon açık olduğu için ses dar bantlı ve kalitesiz. Müzik ve oyun için A2DP (yüksek kalite) profiline geç: KDE ses ayarları → Bluetooth aygıtı → Profil.": {
+   "es": "Los auriculares están en modo de llamada Bluetooth ({profil}): como el micrófono está activo, el sonido es de banda estrecha y de baja calidad. Para música y juegos, cambia al perfil A2DP (alta calidad): ajustes de sonido de KDE → dispositivo Bluetooth → Perfil.",
+   "fr": "Le casque est en mode appel Bluetooth ({profil}) : le micro étant actif, le son est en bande étroite et de mauvaise qualité. Pour la musique et les jeux, passez au profil A2DP (haute qualité) : paramètres audio de KDE → appareil Bluetooth → Profil.",
+   "pt": "O fone está no modo de chamada Bluetooth ({profil}): como o microfone está ativo, o som fica em banda estreita e com baixa qualidade. Para música e jogos, mude para o perfil A2DP (alta qualidade): configurações de som do KDE → dispositivo Bluetooth → Perfil.",
+   "ru": "Наушники в режиме Bluetooth-гарнитуры ({profil}): из-за включённого микрофона звук узкополосный и низкого качества. Для музыки и игр переключитесь на профиль A2DP (высокое качество): настройки звука KDE → Bluetooth-устройство → Профиль.",
+   "zh": "耳机处于蓝牙通话模式（{profil}）：由于麦克风已开启，声音为窄带且音质较差。听音乐和玩游戏时请切换到 A2DP（高音质）配置文件：KDE 声音设置 → 蓝牙设备 → 配置文件。",
+   "ja": "ヘッドホンが Bluetooth 通話モード（{profil}）です。マイクがオンのため、音声は狭帯域で音質が低下しています。音楽やゲームには A2DP（高音質）プロファイルに切り替えてください: KDE のサウンド設定 → Bluetooth デバイス → プロファイル。"
+  },
+  "Sesli sohbette kısma KAPALI · {db:g} dB · {cikislar}  (servis 1 sn içinde uygular)": {
+   "en": "Voice chat ducking OFF · {db:g} dB · {cikislar}  (the service applies it within 1 s)",
+   "de": "Ducking bei Sprachchat AUS · {db:g} dB · {cikislar}  (der Dienst übernimmt es innerhalb von 1 s)",
+   "es": "Atenuación en chat de voz DESACTIVADA · {db:g} dB · {cikislar}  (el servicio lo aplica en 1 s)",
+   "fr": "Atténuation en chat vocal DÉSACTIVÉE · {db:g} dB · {cikislar}  (le service l'applique en 1 s)",
+   "pt": "Atenuação no chat de voz DESATIVADA · {db:g} dB · {cikislar}  (o serviço aplica em até 1 s)",
+   "ru": "Приглушение при голосовом чате ВЫКЛ · {db:g} dB · {cikislar}  (служба применит в течение 1 с)",
+   "zh": "语音聊天时音量闪避 已关闭 · {db:g} dB · {cikislar}  （服务会在 1 秒内应用）",
+   "ja": "ボイスチャット時のダッキング オフ · {db:g} dB · {cikislar}  （サービスが 1 秒以内に適用）"
+  },
+  "Yön karışırsa %75–100 dene.": {
+   "en": "If directions blur together, try 75–100%.",
+   "de": "Wenn Richtungen verschwimmen, probiere 75–100 %.",
+   "es": "Si las direcciones se confunden, prueba 75–100 %.",
+   "fr": "Si les directions se confondent, essayez 75–100 %.",
+   "pt": "Se as direções se confundirem, tente 75–100%.",
+   "ru": "Если направления путаются, попробуйте 75–100 %.",
+   "zh": "如果方向感混乱，试试 75–100%。",
+   "ja": "方向が分かりにくい場合は 75–100% を試してください。"
+  },
+  "gerçek HS80 mikrofonuyla 1,5 sn'lik (yalnız bellek) testi atla": {
+   "pt": "pular o teste de 1,5 s com o microfone real do HS80 (só na memória)"
+  },
+  "önkaz.": {
+   "en": "preamp",
+   "de": "Vorverst.",
+   "es": "preamp",
+   "fr": "préampli",
+   "pt": "pré-amp.",
+   "ru": "предус.",
+   "zh": "前级",
+   "ja": "プリアンプ"
+  },
+  "Baskın profil": {
+   "en": "Dominant profile",
+   "de": "Dominantes Profil",
+   "es": "Perfil dominante",
+   "fr": "Profil dominant",
+   "pt": "Perfil dominante",
+   "ru": "Доминирующий профиль",
+   "zh": "主导配置文件",
+   "ja": "優勢プロファイル"
+  },
+  "Düz geçiş: sesli sohbet, sistem sesleri, kapalı mod (seviye eşitli)": {
+   "en": "Bypass: voice chat, system sounds, Off mode (level-matched)",
+   "de": "Durchleitung: Sprachchat, Systemklänge, Modus „Aus“ (pegelangeglichen)",
+   "es": "Paso directo: chat de voz, sonidos del sistema, modo Desactivado (nivel igualado)",
+   "fr": "Contournement : chat vocal, sons système, mode Désactivé (niveau aligné)",
+   "pt": "Passagem direta: chat de voz, sons do sistema, modo Desligado (nível igualado)",
+   "ru": "Обход: голосовой чат, системные звуки, режим «Выкл.» (с выравниванием уровня)",
+   "zh": "直通：语音聊天、系统声音、关闭模式（电平匹配）",
+   "ja": "バイパス：ボイスチャット、システム音、オフモード（レベル合わせ済み）"
+  },
+  "EQ kapalı (seviye eşitli düz geçiş)": {
+   "en": "EQ off (level-matched bypass)",
+   "de": "EQ aus (pegelangeglichene Durchleitung)",
+   "es": "EQ desactivado (paso directo con nivel igualado)",
+   "fr": "EQ désactivé (contournement à niveau aligné)",
+   "pt": "EQ desligado (passagem direta com nível igualado)",
+   "ru": "EQ выключен (обход с выравниванием уровня)",
+   "zh": "EQ 关闭（电平匹配直通）",
+   "ja": "EQオフ（レベル合わせ済みバイパス）"
+  },
+  "EQ'yu kapat (seviye eşitli düz geçiş)": {
+   "en": "Turn EQ off (level-matched bypass)",
+   "de": "EQ ausschalten (pegelangeglichene Durchleitung)",
+   "es": "Desactivar el EQ (paso directo con nivel igualado)",
+   "fr": "Désactiver l'EQ (contournement à niveau aligné)",
+   "pt": "Desligar o EQ (passagem direta com nível igualado)",
+   "ru": "Выключить EQ (обход с выравниванием уровня)",
+   "zh": "关闭 EQ（电平匹配直通）",
+   "ja": "EQをオフにする（レベル合わせ済みバイパス）"
+  },
+  "HS80 düzeltmesi, EQ ve kompresör YOK. Sesli sohbet (Discord), sistem sesleri ve Kapalı mod buradan geçer.\n\nKazanç: {kazanc:+.1f} dB — dört profilin ortak eşitlenmiş seviyesi (ek kazanç {ek:+.1f} dB). Böylece Discord ile oyun arasındaki denge bozulmaz ve A/B karşılaştırması adil olur.\n\nBu çıkış salt okunur; ek kazancı profiller.toml'daki [duz] bölümünden değiştirebilirsin.": {
+   "en": "NO HS80 correction, EQ or compressor. Voice chat (Discord), system sounds and Off mode go through here.\n\nGain: {kazanc:+.1f} dB — the common matched level of the four profiles (extra gain {ek:+.1f} dB). This keeps the balance between Discord and the game intact and makes A/B comparisons fair.\n\nThis output is read-only; you can change the extra gain in the [duz] section of profiller.toml.",
+   "de": "KEINE HS80-Korrektur, kein EQ und kein Kompressor. Sprachchat (Discord), Systemklänge und der Modus „Aus“ laufen hierüber.\n\nVerstärkung: {kazanc:+.1f} dB — der gemeinsame angeglichene Pegel der vier Profile (Zusatzverstärkung {ek:+.1f} dB). So bleibt die Balance zwischen Discord und Spiel erhalten, und der A/B-Vergleich ist fair.\n\nDiese Ausgabe ist schreibgeschützt; die Zusatzverstärkung kannst du im Abschnitt [duz] von profiller.toml ändern.",
+   "es": "SIN corrección HS80, EQ ni compresor. El chat de voz (Discord), los sonidos del sistema y el modo Desactivado pasan por aquí.\n\nGanancia: {kazanc:+.1f} dB — el nivel igualado común de los cuatro perfiles (ganancia extra {ek:+.1f} dB). Así no se altera el equilibrio entre Discord y el juego, y la comparación A/B es justa.\n\nEsta salida es de solo lectura; puedes cambiar la ganancia extra en la sección [duz] de profiller.toml.",
+   "fr": "AUCUNE correction HS80, ni EQ ni compresseur. Le chat vocal (Discord), les sons système et le mode Désactivé passent par ici.\n\nGain : {kazanc:+.1f} dB — le niveau aligné commun aux quatre profils (gain supplémentaire {ek:+.1f} dB). Ainsi, l'équilibre entre Discord et le jeu est préservé et la comparaison A/B reste équitable.\n\nCette sortie est en lecture seule ; tu peux modifier le gain supplémentaire dans la section [duz] de profiller.toml.",
+   "pt": "SEM correção HS80, EQ ou compressor. O chat de voz (Discord), os sons do sistema e o modo Desligado passam por aqui.\n\nGanho: {kazanc:+.1f} dB — o nível igualado comum aos quatro perfis (ganho extra {ek:+.1f} dB). Assim o equilíbrio entre o Discord e o jogo não se perde e a comparação A/B fica justa.\n\nEsta saída é somente leitura; você pode alterar o ganho extra na seção [duz] de profiller.toml.",
+   "ru": "БЕЗ коррекции HS80, EQ и компрессора. Здесь проходят голосовой чат (Discord), системные звуки и режим «Выкл.».\n\nУсиление: {kazanc:+.1f} dB — общий выровненный уровень четырёх профилей (дополнительное усиление {ek:+.1f} dB). Так баланс между Discord и игрой не нарушается, а сравнение A/B остаётся честным.\n\nЭтот выход только для чтения; дополнительное усиление можно изменить в разделе [duz] файла profiller.toml.",
+   "zh": "无 HS80 校正、EQ 和压缩器。语音聊天（Discord）、系统声音和关闭模式都经由此输出。\n\n增益：{kazanc:+.1f} dB — 四个配置文件共同的匹配电平（额外增益 {ek:+.1f} dB）。这样 Discord 与游戏之间的平衡不会被打破，A/B 比较也更公平。\n\n此输出为只读；可在 profiller.toml 的 [duz] 部分修改额外增益。",
+   "ja": "HS80補正・EQ・コンプレッサーなし。ボイスチャット（Discord）、システム音、オフモードはここを通ります。\n\nゲイン：{kazanc:+.1f} dB — 4つのプロファイル共通の揃えたレベル（追加ゲイン {ek:+.1f} dB）。これにより Discord とゲームのバランスが崩れず、A/B 比較も公平になります。\n\nこの出力は読み取り専用です。追加ゲインは profiller.toml の [duz] セクションで変更できます。"
+  },
+  "Mod: {mod}": {
+   "en": "Mode: {mod}",
+   "de": "Modus: {mod}",
+   "es": "Modo: {mod}",
+   "fr": "Mode : {mod}",
+   "pt": "Modo: {mod}",
+   "ru": "Режим: {mod}",
+   "zh": "模式：{mod}",
+   "ja": "モード: {mod}"
+  },
+  "Mod: {mod}   işlem: KAPALI (düz geçiş)": {
+   "en": "Mode: {mod}   processing: OFF (bypass)",
+   "de": "Modus: {mod}   Verarbeitung: AUS (Durchleitung)",
+   "es": "Modo: {mod}   procesamiento: DESACTIVADO (paso directo)",
+   "fr": "Mode : {mod}   traitement : DÉSACTIVÉ (contournement)",
+   "pt": "Modo: {mod}   processamento: DESLIGADO (passagem direta)",
+   "ru": "Режим: {mod}   обработка: ВЫКЛ. (обход)",
+   "zh": "模式：{mod}   处理：关闭（直通）",
+   "ja": "モード: {mod}   処理: オフ（バイパス）"
+  },
+  "Mod: {mod}   işlem: açık": {
+   "en": "Mode: {mod}   processing: on",
+   "de": "Modus: {mod}   Verarbeitung: ein",
+   "es": "Modo: {mod}   procesamiento: activado",
+   "fr": "Mode : {mod}   traitement : activé",
+   "pt": "Modo: {mod}   processamento: ligado",
+   "ru": "Режим: {mod}   обработка: вкл.",
+   "zh": "模式：{mod}   处理：开启",
+   "ja": "モード: {mod}   処理: オン"
+  },
+  "Mod: {mod} · Baskın profil: {profil}": {
+   "en": "Mode: {mod} · Dominant profile: {profil}",
+   "de": "Modus: {mod} · Dominantes Profil: {profil}",
+   "es": "Modo: {mod} · Perfil dominante: {profil}",
+   "fr": "Mode : {mod} · Profil dominant : {profil}",
+   "pt": "Modo: {mod} · Perfil dominante: {profil}",
+   "ru": "Режим: {mod} · Доминирующий профиль: {profil}",
+   "zh": "模式：{mod} · 主导配置文件：{profil}",
+   "ja": "モード: {mod} · 優勢プロファイル: {profil}"
+  },
+  "Modu geçici olarak bu profile sabitler; ikinci düğme ile seviye eşitli Düz çıkışla (Kapalı mod) karşılaştır.": {
+   "en": "Temporarily fixes the mode to this profile; use the second button to compare it with the level-matched Flat output (Off mode).",
+   "de": "Legt den Modus vorübergehend auf dieses Profil fest; mit der zweiten Schaltfläche vergleichst du es mit dem pegelangeglichenen Ausgang „Flach“ (Modus „Aus“).",
+   "es": "Fija temporalmente el modo en este perfil; con el segundo botón, compáralo con la salida Plano de nivel igualado (modo Desactivado).",
+   "fr": "Fixe temporairement le mode sur ce profil ; avec le second bouton, compare-le à la sortie Plat à niveau aligné (mode Désactivé).",
+   "pt": "Fixa temporariamente o modo neste perfil; com o segundo botão, compare-o com a saída Plano de nível igualado (modo Desligado).",
+   "ru": "Временно фиксирует режим на этом профиле; второй кнопкой сравните его с выходом «Ровный» с выровненным уровнем (режим «Выкл.»).",
+   "zh": "暂时将模式固定为此配置文件；用第二个按钮与电平匹配的“平直”输出（关闭模式）进行比较。",
+   "ja": "モードを一時的にこのプロファイルに固定します。2番目のボタンで、レベルを揃えた「フラット」出力（オフモード）と比較できます。"
+  },
+  "Seviye eşitli düz geçiş": {
+   "en": "Level-matched bypass",
+   "de": "Pegelangeglichene Durchleitung",
+   "es": "Paso directo con nivel igualado",
+   "fr": "Contournement à niveau aligné",
+   "pt": "Passagem direta com nível igualado",
+   "ru": "Обход с выравниванием уровня",
+   "zh": "电平匹配直通",
+   "ja": "レベル合わせ済みバイパス"
+  },
+  "Seviye eşitli düz geçiş: sesler EQ'suz ama dengeli.": {
+   "en": "Level-matched bypass: sounds without EQ, but balanced.",
+   "de": "Pegelangeglichene Durchleitung: Klänge ohne EQ, aber ausgewogen.",
+   "es": "Paso directo con nivel igualado: sonido sin EQ, pero equilibrado.",
+   "fr": "Contournement à niveau aligné : son sans EQ, mais équilibré.",
+   "pt": "Passagem direta com nível igualado: som sem EQ, mas equilibrado.",
+   "ru": "Обход с выравниванием уровня: звук без EQ, но сбалансированный.",
+   "zh": "电平匹配直通：声音不经 EQ，但保持平衡。",
+   "ja": "レベル合わせ済みバイパス：EQなしでも音量バランスは保たれます。"
+  },
+  "baskın profil: {profil}": {
+   "en": "dominant profile: {profil}",
+   "de": "dominantes Profil: {profil}",
+   "es": "perfil dominante: {profil}",
+   "fr": "profil dominant : {profil}",
+   "pt": "perfil dominante: {profil}",
+   "ru": "доминирующий профиль: {profil}",
+   "zh": "主导配置文件：{profil}",
+   "ja": "優勢プロファイル: {profil}"
+  },
+  "düz geçiş (EQ yok), seviye eşitli": {
+   "en": "bypass (no EQ), level-matched",
+   "de": "Durchleitung (kein EQ), pegelangeglichen",
+   "es": "paso directo (sin EQ), nivel igualado",
+   "fr": "contournement (pas d'EQ), niveau aligné",
+   "pt": "passagem direta (sem EQ), nível igualado",
+   "ru": "обход (без EQ), с выравниванием уровня",
+   "zh": "直通（无 EQ），电平匹配",
+   "ja": "バイパス（EQなし）、レベル合わせ済み"
+  },
+  "genel.mod: '{mod}' tanımlı değil (\"tam\" veya hiç [mod.X] yok)": {
+   "en": "genel.mod: '{mod}' is not defined (use \"tam\"; there is no [mod.X] table)",
+   "de": "genel.mod: '{mod}' ist nicht definiert (\"tam\" verwenden; es gibt keine [mod.X]-Tabelle)",
+   "es": "genel.mod: '{mod}' no está definido (usa \"tam\"; no hay ninguna tabla [mod.X])",
+   "fr": "genel.mod : '{mod}' n'est pas défini (utilise \"tam\" ; aucune table [mod.X])",
+   "pt": "genel.mod: '{mod}' não está definido (use \"tam\"; não há nenhuma tabela [mod.X])",
+   "ru": "genel.mod: '{mod}' не определён (используйте \"tam\"; таблиц [mod.X] нет)",
+   "zh": "genel.mod：'{mod}' 未定义（请使用 \"tam\"；没有任何 [mod.X] 表）",
+   "ja": "genel.mod: '{mod}' は未定義です（\"tam\" を使用してください。[mod.X] テーブルはありません）"
+  },
+  "genel.mod: '{mod}' tanımlı değil (\"tam\" veya {olanlar})": {
+   "en": "genel.mod: '{mod}' is not defined (\"tam\" or {olanlar})",
+   "de": "genel.mod: '{mod}' ist nicht definiert (\"tam\" oder {olanlar})",
+   "es": "genel.mod: '{mod}' no está definido (\"tam\" o {olanlar})",
+   "fr": "genel.mod : '{mod}' n'est pas défini (\"tam\" ou {olanlar})",
+   "pt": "genel.mod: '{mod}' não está definido (\"tam\" ou {olanlar})",
+   "ru": "genel.mod: '{mod}' не определён (\"tam\" или {olanlar})",
+   "zh": "genel.mod：'{mod}' 未定义（\"tam\" 或 {olanlar}）",
+   "ja": "genel.mod: '{mod}' は未定義です（\"tam\" または {olanlar}）"
+  },
+  "mod '{mod}' tanımlı değil": {
+   "en": "mode '{mod}' is not defined",
+   "de": "Modus '{mod}' ist nicht definiert",
+   "es": "el modo '{mod}' no está definido",
+   "fr": "le mode '{mod}' n'est pas défini",
+   "pt": "o modo '{mod}' não está definido",
+   "ru": "режим '{mod}' не определён",
+   "zh": "模式 '{mod}' 未定义",
+   "ja": "モード '{mod}' は未定義です"
+  },
+  "mod kapalı": {
+   "en": "mode off",
+   "de": "Modus aus",
+   "es": "modo desactivado",
+   "fr": "mode désactivé",
+   "pt": "modo desligado",
+   "ru": "режим выкл.",
+   "zh": "模式：关闭",
+   "ja": "モード: オフ"
+  },
+  "mod: {mod}": {
+   "en": "mode: {mod}",
+   "de": "Modus: {mod}",
+   "es": "modo: {mod}",
+   "fr": "mode : {mod}",
+   "pt": "modo: {mod}",
+   "ru": "режим: {mod}",
+   "zh": "模式：{mod}",
+   "ja": "モード: {mod}"
+  },
+  "yanıt veriyor; mod {mod}": {
+   "en": "responding; mode {mod}",
+   "de": "antwortet; Modus {mod}",
+   "es": "responde; modo {mod}",
+   "fr": "répond ; mode {mod}",
+   "pt": "respondendo; modo {mod}",
+   "ru": "отвечает; режим {mod}",
+   "zh": "有响应；模式 {mod}",
+   "ja": "応答あり。モード {mod}"
+  },
+  "{profil} — KAPALI (düz geçiş)": {
+   "en": "{profil} — OFF (bypass)",
+   "de": "{profil} — AUS (Durchleitung)",
+   "es": "{profil} — DESACTIVADO (paso directo)",
+   "fr": "{profil} — DÉSACTIVÉ (contournement)",
+   "pt": "{profil} — DESLIGADO (passagem direta)",
+   "ru": "{profil} — ВЫКЛ. (обход)",
+   "zh": "{profil} — 关闭（直通）",
+   "ja": "{profil} — オフ（バイパス）"
+  },
+  "Kulaklığı takın ya da ses ayarlarından varsayılan çıkış yapın; kulaklığınız tanınmıyorsa kurallar.toml [genel] kulaklik_desen ile ekleyin": {
+   "en": "Plug in your headphones or make them the default output in your sound settings; if they are not recognized, add them with kulaklik_desen in the [genel] section of kurallar.toml",
+   "de": "Schließen Sie die Kopfhörer an oder legen Sie sie in den Toneinstellungen als Standardausgang fest; werden sie nicht erkannt, fügen Sie sie in kurallar.toml unter [genel] mit kulaklik_desen hinzu",
+   "es": "Conecta los auriculares o configúralos como salida predeterminada en los ajustes de sonido; si no se reconocen, añádelos en kurallar.toml, sección [genel], con kulaklik_desen",
+   "fr": "Branchez votre casque ou définissez-le comme sortie par défaut dans les paramètres audio ; s'il n'est pas reconnu, ajoutez-le dans kurallar.toml, section [genel], avec kulaklik_desen",
+   "pt": "Conecte os fones de ouvido ou defina-os como saída padrão nas configurações de som; se não forem reconhecidos, adicione-os em kurallar.toml, seção [genel], com kulaklik_desen",
+   "ru": "Подключите наушники или сделайте их устройством вывода по умолчанию в настройках звука; если они не распознаются, добавьте их в kurallar.toml, раздел [genel], параметром kulaklik_desen",
+   "zh": "请插上耳机，或在声音设置中将其设为默认输出；若无法识别，请在 kurallar.toml 的 [genel] 部分用 kulaklik_desen 添加",
+   "ja": "ヘッドホンを接続するか、サウンド設定で既定の出力にしてください。認識されない場合は kurallar.toml の [genel] セクションに kulaklik_desen で追加してください"
+  },
+  "ad listeleri [uygulamalar.muzik / uygulamalar.film]": {
+   "en": "name lists [uygulamalar.muzik / uygulamalar.film]",
+   "de": "Namenslisten [uygulamalar.muzik / uygulamalar.film]",
+   "es": "listas de nombres [uygulamalar.muzik / uygulamalar.film]",
+   "fr": "listes de noms [uygulamalar.muzik / uygulamalar.film]",
+   "pt": "listas de nomes [uygulamalar.muzik / uygulamalar.film]",
+   "ru": "списки имён [uygulamalar.muzik / uygulamalar.film]",
+   "zh": "名称列表 [uygulamalar.muzik / uygulamalar.film]",
+   "ja": "名前リスト [uygulamalar.muzik / uygulamalar.film]"
+  },
+  "ad listesi [uygulamalar.sesli], rol '{rol}'": {
+   "en": "name list [uygulamalar.sesli], role '{rol}'",
+   "de": "Namensliste [uygulamalar.sesli], Rolle '{rol}'",
+   "es": "lista de nombres [uygulamalar.sesli], rol '{rol}'",
+   "fr": "liste de noms [uygulamalar.sesli], rôle '{rol}'",
+   "pt": "lista de nomes [uygulamalar.sesli], função '{rol}'",
+   "ru": "список имён [uygulamalar.sesli], роль '{rol}'",
+   "zh": "名称列表 [uygulamalar.sesli]，角色 '{rol}'",
+   "ja": "名前リスト [uygulamalar.sesli]、ロール '{rol}'"
+  },
+  "ad listesi [uygulamalar.sistem], rol '{rol}'": {
+   "en": "name list [uygulamalar.sistem], role '{rol}'",
+   "de": "Namensliste [uygulamalar.sistem], Rolle '{rol}'",
+   "es": "lista de nombres [uygulamalar.sistem], rol '{rol}'",
+   "fr": "liste de noms [uygulamalar.sistem], rôle '{rol}'",
+   "pt": "lista de nomes [uygulamalar.sistem], função '{rol}'",
+   "ru": "список имён [uygulamalar.sistem], роль '{rol}'",
+   "zh": "名称列表 [uygulamalar.sistem]，角色 '{rol}'",
+   "ja": "名前リスト [uygulamalar.sistem]、ロール '{rol}'"
+  },
+  "{alan}: [dinamik] bir tablo olmalı": {
+   "en": "{alan}: [dinamik] must be a table",
+   "de": "{alan}: [dinamik] muss eine Tabelle sein",
+   "es": "{alan}: [dinamik] debe ser una tabla",
+   "fr": "{alan} : [dinamik] doit être une table",
+   "pt": "{alan}: [dinamik] deve ser uma tabela",
+   "ru": "{alan}: [dinamik] должен быть таблицей",
+   "zh": "{alan}：[dinamik] 必须是表",
+   "ja": "{alan}: [dinamik] はテーブルである必要があります"
+  },
+  "{cikis}: çıkış node.passive değil": {
+   "en": "{cikis}: output is not node.passive",
+   "de": "{cikis}: Ausgang ist nicht node.passive",
+   "es": "{cikis}: la salida no es node.passive",
+   "fr": "{cikis} : la sortie n'est pas node.passive",
+   "pt": "{cikis}: a saída não é node.passive",
+   "ru": "{cikis}: выход не node.passive",
+   "zh": "{cikis}：输出不是 node.passive",
+   "ja": "{cikis}: 出力が node.passive ではありません"
+  },
+  "seviye eşitleyici kapalı": {
+   "en": "leveler off",
+   "de": "Pegelausgleich aus",
+   "es": "nivelador desactivado",
+   "fr": "normaliseur de niveau désactivé",
+   "pt": "nivelador desligado",
+   "ru": "выравниватель уровня выключен",
+   "zh": "响度均衡关闭",
+   "ja": "レベラー: オフ"
+  },
+  "{profil}: seviye eşitleyici parametreleri görünmüyor (LV2 yüklenmemiş olabilir)": {
+   "en": "{profil}: leveler parameters not visible (LV2 may not be loaded)",
+   "de": "{profil}: Parameter des Pegelausgleichs nicht sichtbar (LV2 ist möglicherweise nicht geladen)",
+   "es": "{profil}: no se ven los parámetros del nivelador (puede que LV2 no esté cargado)",
+   "fr": "{profil} : paramètres du normaliseur de niveau invisibles (LV2 n'est peut-être pas chargé)",
+   "pt": "{profil}: parâmetros do nivelador não visíveis (o LV2 pode não estar carregado)",
+   "ru": "{profil}: параметры выравнивателя уровня не видны (возможно, LV2 не загружен)",
+   "zh": "{profil}：看不到响度均衡参数（可能未加载 LV2）",
+   "ja": "{profil}: レベラーのパラメーターが見えません（LV2 が読み込まれていない可能性があります）"
+  },
+  "{profil}: seviye eşitleyici yüklendi ({anahtar} = {deger:.4g}, açık {acik})": {
+   "en": "{profil}: leveler loaded ({anahtar} = {deger:.4g}, on {acik})",
+   "de": "{profil}: Pegelausgleich geladen ({anahtar} = {deger:.4g}, ein {acik})",
+   "es": "{profil}: nivelador cargado ({anahtar} = {deger:.4g}, activado {acik})",
+   "fr": "{profil} : normaliseur de niveau chargé ({anahtar} = {deger:.4g}, activé {acik})",
+   "pt": "{profil}: nivelador carregado ({anahtar} = {deger:.4g}, ligado {acik})",
+   "ru": "{profil}: выравниватель уровня загружен ({anahtar} = {deger:.4g}, вкл. {acik})",
+   "zh": "{profil}：已加载响度均衡（{anahtar} = {deger:.4g}，开启 {acik}）",
+   "ja": "{profil}: レベラーを読み込みました（{anahtar} = {deger:.4g}、オン {acik}）"
+  },
+  "kişisel ton payı {db:+.2f} dB": {
+   "en": "personal tone headroom {db:+.2f} dB",
+   "de": "Reserve für persönlichen Klang {db:+.2f} dB",
+   "es": "margen para el tono personal {db:+.2f} dB",
+   "fr": "marge pour la tonalité personnelle {db:+.2f} dB",
+   "pt": "margem para o tom pessoal {db:+.2f} dB",
+   "ru": "запас на персональный тон {db:+.2f} dB",
+   "zh": "个人音色预留余量 {db:+.2f} dB",
+   "ja": "パーソナルトーン用ヘッドルーム {db:+.2f} dB"
+  },
+  "profil": {
+   "en": "profile",
+   "de": "Profil",
+   "es": "perfil",
+   "fr": "profil",
+   "pt": "perfil",
+   "ru": "профиль",
+   "zh": "配置文件",
+   "ja": "プロファイル"
+  },
+  "tepe": {
+   "en": "peak",
+   "de": "Spitze",
+   "es": "pico",
+   "fr": "crête",
+   "pt": "pico",
+   "ru": "пик",
+   "zh": "峰值",
+   "ja": "ピーク"
+  },
+  "eşitl.": {
+   "en": "match",
+   "de": "Angl.",
+   "es": "igual.",
+   "fr": "align.",
+   "pt": "igual.",
+   "ru": "выравн.",
+   "zh": "匹配",
+   "ja": "整合"
+  },
+  "toplam": {
+   "en": "total",
+   "de": "Gesamt",
+   "es": "total",
+   "fr": "total",
+   "pt": "total",
+   "ru": "всего",
+   "zh": "合计",
+   "ja": "合計"
+  },
+  "enkötü": {
+   "en": "worst",
+   "de": "ungünst.",
+   "es": "peor",
+   "fr": "pire",
+   "pt": "pior",
+   "ru": "худший",
+   "zh": "最差",
+   "ja": "最悪"
+  },
+  "dinamik": {
+   "en": "dynamics",
+   "de": "Dynamik",
+   "es": "dinámica",
+   "fr": "dynamique",
+   "pt": "dinâmica",
+   "ru": "динамика",
+   "zh": "动态",
+   "ja": "ダイナミクス"
+  },
+  "Çalışıyor": {
+   "en": "Running",
+   "de": "Läuft",
+   "es": "En ejecución",
+   "fr": "En cours",
+   "pt": "Em execução",
+   "ru": "Работает",
+   "zh": "运行中",
+   "ja": "実行中"
+  },
+  "Durdu": {
+   "en": "Stopped",
+   "de": "Gestoppt",
+   "es": "Detenido",
+   "fr": "Arrêté",
+   "pt": "Parado",
+   "ru": "Остановлен",
+   "zh": "已停止",
+   "ja": "停止"
+  },
+  "Başlıyor": {
+   "en": "Starting",
+   "de": "Startet",
+   "es": "Iniciando",
+   "fr": "Démarrage",
+   "pt": "Iniciando",
+   "ru": "Запускается",
+   "zh": "启动中",
+   "ja": "起動中"
+  },
+  "Duruyor": {
+   "en": "Stopping",
+   "de": "Wird beendet",
+   "es": "Deteniéndose",
+   "fr": "Arrêt en cours",
+   "pt": "Parando",
+   "ru": "Останавливается",
+   "zh": "正在停止",
+   "ja": "停止中"
+  },
+  "ayarların yedeği (al [dosya] | yukle dosya)": {
+   "en": "settings backup (al [dosya] | yukle dosya)",
+   "de": "Sicherung der Einstellungen (al [dosya] | yukle dosya)",
+   "es": "copia de seguridad de los ajustes (al [dosya] | yukle dosya)",
+   "fr": "sauvegarde des réglages (al [dosya] | yukle dosya)",
+   "pt": "backup das configurações (al [dosya] | yukle dosya)",
+   "ru": "резервная копия настроек (al [dosya] | yukle dosya)",
+   "zh": "设置备份（al [dosya] | yukle dosya）",
+   "ja": "設定のバックアップ（al [dosya] | yukle dosya）"
+  },
+  "kişisel tür modeli: düzeltmelerinden öğrenir (durum | egit | sifirla)": {
+   "en": "personal genre model: learns from your corrections (durum | egit | sifirla)",
+   "de": "persönliches Genre-Modell: lernt aus deinen Korrekturen (durum | egit | sifirla)",
+   "es": "modelo de género personal: aprende de tus correcciones (durum | egit | sifirla)",
+   "fr": "modèle de genre personnel : apprend de vos corrections (durum | egit | sifirla)",
+   "pt": "modelo de gênero pessoal: aprende com suas correções (durum | egit | sifirla)",
+   "ru": "персональная модель жанров: учится на ваших исправлениях (durum | egit | sifirla)",
+   "zh": "个人流派模型：从你的修正中学习（durum | egit | sifirla）",
+   "ja": "パーソナルジャンルモデル: 修正から学習します（durum | egit | sifirla）"
+  },
+  "sesli sohbette kısma: Discord vb. konuşunca oyun/müzik/film sesi iner (durum | ac | kapat | db=6)": {
+   "en": "voice chat ducking: game/music/movie volume drops while someone talks on Discord etc. (durum | ac | kapat | db=6)",
+   "de": "Ducking im Sprachchat: Spiel-/Musik-/Filmton wird leiser, solange in Discord u. a. gesprochen wird (durum | ac | kapat | db=6)",
+   "es": "atenuación en chat de voz: el volumen del juego/música/película baja mientras alguien habla en Discord, etc. (durum | ac | kapat | db=6)",
+   "fr": "atténuation en chat vocal : le volume du jeu/de la musique/du film baisse quand quelqu'un parle sur Discord, etc. (durum | ac | kapat | db=6)",
+   "pt": "atenuação no chat de voz: o volume do jogo/música/filme baixa enquanto alguém fala no Discord etc. (durum | ac | kapat | db=6)",
+   "ru": "приглушение в голосовом чате: звук игры/музыки/фильма тише, пока кто-то говорит в Discord и т. п. (durum | ac | kapat | db=6)",
+   "zh": "语音聊天音量闪避：有人在 Discord 等中说话时，游戏/音乐/电影音量降低（durum | ac | kapat | db=6）",
+   "ja": "音声チャット中のダッキング: Discord などで誰かが話すと、ゲーム/音楽/映画の音量が下がります（durum | ac | kapat | db=6）"
+  },
+  "eşitleme {db:+.1f} dB": {
+   "en": "level match {db:+.1f} dB",
+   "de": "Pegelangleich {db:+.1f} dB",
+   "es": "igualación de nivel {db:+.1f} dB",
+   "fr": "alignement de niveau {db:+.1f} dB",
+   "pt": "igualação de nível {db:+.1f} dB",
+   "ru": "выравнивание уровня {db:+.1f} dB",
+   "zh": "电平匹配 {db:+.1f} dB",
+   "ja": "レベル合わせ {db:+.1f} dB"
+  },
+  "adım sesi / sert ses bastırma": {
+   "en": "footsteps / taming harsh sounds",
+   "de": "Schritte / harte Geräusche zähmen",
+   "es": "pasos / control de sonidos duros",
+   "fr": "pas / maîtrise des sons durs",
+   "pt": "passos / controle de sons duros",
+   "ru": "шаги / укрощение резких звуков",
+   "zh": "脚步声 / 抑制刺耳声",
+   "ja": "足音 / 鋭い音の抑制"
+  }
+ },
+ "terim": {
+  "Kişisel ton": {
+   "en": "Personal tone",
+   "de": "Persönlicher Klang",
+   "es": "Tono personal",
+   "fr": "Tonalité personnelle",
+   "pt": "Tom pessoal",
+   "ru": "Персональный тон",
+   "zh": "个人音色",
+   "ja": "パーソナルトーン"
+  },
+  "kişisel ton": {
+   "en": "personal tone",
+   "de": "persönlicher Klang",
+   "es": "tono personal",
+   "fr": "tonalité personnelle",
+   "pt": "tom pessoal",
+   "ru": "персональный тон",
+   "zh": "个人音色",
+   "ja": "パーソナルトーン"
+  },
+  "Kişisel model": {
+   "en": "Personal model",
+   "de": "Persönliches Modell",
+   "es": "Modelo personal",
+   "fr": "Modèle personnel",
+   "pt": "Modelo pessoal",
+   "ru": "Персональная модель",
+   "zh": "个人模型",
+   "ja": "パーソナルモデル"
+  },
+  "Kör A/B": {
+   "en": "Blind A/B",
+   "de": "Blind-A/B",
+   "es": "A/B a ciegas",
+   "fr": "A/B à l'aveugle",
+   "pt": "A/B às cegas",
+   "ru": "Слепой A/B",
+   "zh": "盲听 A/B",
+   "ja": "ブラインドA/B"
+  },
+  "kör A/B": {
+   "en": "blind A/B",
+   "de": "Blind-A/B",
+   "es": "A/B a ciegas",
+   "fr": "A/B à l'aveugle",
+   "pt": "A/B às cegas",
+   "ru": "слепой A/B",
+   "zh": "盲听 A/B",
+   "ja": "ブラインドA/B"
+  },
+  "Sohbette kısma": {
+   "en": "Chat ducking",
+   "de": "Chat-Ducking",
+   "es": "Atenuación en chat",
+   "fr": "Atténuation en conversation",
+   "pt": "Atenuação no chat",
+   "ru": "Приглушение в чате",
+   "zh": "聊天音量闪避",
+   "ja": "チャット中のダッキング"
+  },
+  "sohbette kısma": {
+   "en": "chat ducking",
+   "de": "Chat-Ducking",
+   "es": "atenuación en chat",
+   "fr": "atténuation en conversation",
+   "pt": "atenuação no chat",
+   "ru": "приглушение в чате",
+   "zh": "聊天音量闪避",
+   "ja": "チャット中のダッキング"
+  },
+  "Kısma": {
+   "en": "Ducking",
+   "de": "Ducking",
+   "es": "Atenuación",
+   "fr": "Atténuation",
+   "pt": "Atenuação",
+   "ru": "Приглушение",
+   "zh": "音量闪避",
+   "ja": "ダッキング"
+  },
+  "seviye eşitleyici": {
+   "en": "leveler",
+   "de": "Pegelausgleich",
+   "es": "nivelador",
+   "fr": "normaliseur de niveau",
+   "pt": "nivelador",
+   "ru": "выравниватель уровня",
+   "zh": "响度均衡",
+   "ja": "レベラー"
+  },
+  "Seviye eşitleyici": {
+   "en": "Leveler",
+   "de": "Pegelausgleich",
+   "es": "Nivelador",
+   "fr": "Normaliseur de niveau",
+   "pt": "Nivelador",
+   "ru": "Выравниватель уровня",
+   "zh": "响度均衡",
+   "ja": "レベラー"
+  },
+  "düz geçiş": {
+   "en": "bypass",
+   "de": "Durchleitung",
+   "es": "paso directo",
+   "fr": "contournement",
+   "pt": "passagem direta",
+   "ru": "обход",
+   "zh": "直通",
+   "ja": "バイパス"
+  },
+  "Düz geçiş": {
+   "en": "Bypass",
+   "de": "Durchleitung",
+   "es": "Paso directo",
+   "fr": "Contournement",
+   "pt": "Passagem direta",
+   "ru": "Обход",
+   "zh": "直通",
+   "ja": "バイパス"
+  },
+  "baskın profil": {
+   "en": "dominant profile",
+   "de": "dominantes Profil",
+   "es": "perfil dominante",
+   "fr": "profil dominant",
+   "pt": "perfil dominante",
+   "ru": "доминирующий профиль",
+   "zh": "主导配置文件",
+   "ja": "優勢プロファイル"
+  },
+  "Baskın profil": {
+   "en": "Dominant profile",
+   "de": "Dominantes Profil",
+   "es": "Perfil dominante",
+   "fr": "Profil dominant",
+   "pt": "Perfil dominante",
+   "ru": "Доминирующий профиль",
+   "zh": "主导配置文件",
+   "ja": "優勢プロファイル"
+  },
+  "kişisel ton payı": {
+   "en": "personal tone headroom",
+   "de": "Reserve für persönlichen Klang",
+   "es": "margen para el tono personal",
+   "fr": "marge pour la tonalité personnelle",
+   "pt": "margem para o tom pessoal",
+   "ru": "запас на персональный тон",
+   "zh": "个人音色预留余量",
+   "ja": "パーソナルトーン用ヘッドルーム"
+  }
+ }
+}

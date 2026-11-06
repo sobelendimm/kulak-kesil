@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Kulak Kesil Tepsisi
+GenericName=Akıllı Ekolayzır
+Comment=Kulaklık EQ'sunu bağlama göre değiştiren Kulak Kesil'in sistem tepsisi simgesi
+Exec=kulak-tepsi
+Icon=audio-headphones
+Terminal=false
+Categories=AudioVideo;Audio;
+NoDisplay=true
+X-KDE-autostart-after=panel
+X-GNOME-Autostart-enabled=true

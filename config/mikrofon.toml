@@ -1,0 +1,140 @@
+# ============================================================================
+#  Kulak Kesil (oto-eq) — Mikrofon ayarları
+# ============================================================================
+#
+#  HS80 mikrofonundan gelen sesi işleyip "Kulak Kesil · Mikrofon" adlı sanal
+#  bir mikrofon (oto_eq_mikrofon) olarak sunar. Discord / OBS / oyunlarda bu
+#  mikrofonu seçin.
+#
+#  Zincir:
+#     HS80 mikrofonu → [giriş kazancı] → [bas filtresi] → [RNNoise gürültü bastırma | düz yol]
+#                    → [EQ] → [netlik] → [kompresör] → [tepe sınırlayıcı]
+#                    → Kulak Kesil · Mikrofon
+#
+#  Elle düzenledikten sonra:
+#     python3 -m oto_eq.micgen check      (dene: test kopyası açılıyor mu)
+#     python3 -m oto_eq.micgen generate   (mikrofon.conf üret)
+#     systemctl --user restart oto-eq-mic (yeni dosyayı yükle)
+#     python3 -m oto_eq.micgen ozet       (zincir özeti)
+#
+#  Kullanıcı kopyası ~/.config/oto-eq/mikrofon.toml varsa o okunur.
+#
+#  CANLI / YENİDEN BAŞLATMA: Neredeyse her şey canlı değişir: kazançlar,
+#  frekanslar, eşikler, VAD, RNNoise aç/kapa, mod (tam/discord), "aktif".
+#  RNNoise'u açıp kapatmak bile canlıdır, çünkü zincirde gürültüsüz bir paralel
+#  yol var ve ikisi arasında geçiş yapılır. Yeniden başlatma gereken tek durum
+#  EQ filtre SAYISI veya TİPİNİN değişmesi (bir de eklenti kurulup kaldırılması).
+#
+#  Ölçüm (24 Eki 2026): oda gürültüsü yaklaşık -72 dBFS (ortanca), çoğu
+#  200 Hz'in altında (fan uğultusu). Bu yüzden 90 Hz bas filtresi ve hafif
+#  RNNoise yeterli.
+#
+#  Discord önerisi: Discord'un Krisp / gürültü azaltma, otomatik kazanç ve
+#  yankı giderme seçeneklerini KAPATIN. Bunlar burada yapılıyor; aynı işlemin
+#  iki kez yapılması sesi bozar. Krisp'i açık tutmak isterseniz
+#  mod = "discord" seçin.
+# ============================================================================
+
+[genel]
+# false → tüm işlem kapanır (düz geçiş; mikrofon yine "Kulak Kesil" adıyla
+# görünür, canlı değişir).
+aktif = true
+# "tam" = tüm işlem açık | "discord" = aşağıdaki [mod.discord] uygulanır
+mod = "tam"
+# Hangi mikrofon yakalansın? Bu düzenli ifadeye uyan ALSA giriş kaynakları
+# aday sayılır. Kablosuz (alıcı) ve kablolu (USB) HS80'in adları farklıdır;
+# ikisi de uyar. Önce varsayılan çıkışla AYNI USB aygıtındaki mikrofon seçilir
+# (kablolu modda alıcı takılı kalsa bile doğru seçim), sonra kablolu, sonra
+# kablosuz.
+giris_desen = "(?i)^alsa_input\\.usb-Corsair_CORSAIR_HS80"
+# Boş değilse otomatik seçim yapılmaz, bu kaynak adı kullanılır.
+giris_sabit = ""
+orneklem_hz = 48000
+
+# ---- Giriş kazancı: kablosuz/kablolu mod için ayrı ince ayar (dB) ---------
+# İki modun mikrofon seviyesi farklı olabilir. WirePlumber kayıtlarında
+# kablolu mikrofon +10,6 dB, kablosuz -2,6 dB ses düzeyiyle saklanmış.
+# Kablolu modda ses çok yüksek/patlıyorsa önce KDE'de kablolu mikrofonu %100'e
+# çekin, yine farklıysa buradan dengeleyin (ör. kablolu_db = -6.0).
+# Mod değişince (router / `micgen izle`) canlı uygulanır.
+[giris]
+kablosuz_db = 0.0
+kablolu_db = 0.0
+
+# ---- Bas filtresi: masa/fan uğultusu ve nefes patlamaları (p/b) ------------
+[bas_filtre]
+aktif = true
+fc = 90.0
+q = 0.707
+
+# ---- RNNoise: konuşma yokken klavye/fan sesini siler -----------------------
+# esik            : VAD eşiği (%). Konuşma olasılığı bunun altındaysa çıkış
+#                   susturulur (yüksek = daha agresif, fısıltı kesilebilir).
+# bekleme_ms      : konuşma bitince bu kadar süre daha açık kal (kelime
+#                   sonları kesilmesin)
+# geriye_donuk_ms : konuşma başlangıcını geriye doğru yakala. GECİKME EKLER,
+#                   0 kalsın.
+[gurultu]
+aktif = true
+esik = 60.0
+bekleme_ms = 250.0
+geriye_donuk_ms = 0.0
+
+# ---- EQ: ek filtreler (yazım profiller.toml ile aynı) ----------------------
+# tip: "PK" tepe/çukur | "LSC" alçak raf | "HSC" yüksek raf
+[eq]
+aktif = true
+filtreler = [
+    { tip = "PK", fc = 250.0, kazanc = -2.0, q = 1.0 },   # kafa mikrofonunun "kutu" sesi
+    { tip = "HSC", fc = 8000.0, kazanc = 1.0, q = 0.7 },  # hafif hava
+]
+
+# ---- Netlik: konuşma anlaşılırlığı bandı (ünsüzler 2-4 kHz) ----------------
+# kazanc: dB (+ daha net/öne çıkan ses, fazlası sertlik ve "s" sesi getirir)
+[netlik]
+aktif = true
+fc = 3500.0
+kazanc = 2.5
+q = 0.9
+
+# ---- Kompresör: fısıltı ile bağırma arasını dengeler ------------------------
+# (LSP Compressor Mono; lsp-plugins-lv2 gerekir)
+# esik     : bu seviyenin üstü sıkıştırılır (dBFS)
+# oran     : 3.0 → eşiğin 3 dB üstü 1 dB'e iner
+# diz_db   : yumuşak geçiş genişliği (0..24)
+# telafi   : sıkıştırma sonrası genel yükseltme (dB)
+# algilama : "rms" (konuşma için yumuşak) | "tepe" (ani sesleri yakalar)
+# tepki_ms : algılama penceresi
+[kompresor]
+aktif = true
+esik = -26.0
+oran = 3.0
+atak_ms = 10.0
+birakma_ms = 150.0
+diz_db = 6.0
+telafi = 6.0
+algilama = "rms"
+tepki_ms = 10.0
+
+# ---- Tepe sınırlayıcı: ani bağırma/öksürük kliplemesin ---------------------
+[tepe]
+aktif = true
+esik = -3.0
+oran = 20.0
+atak_ms = 0.5
+birakma_ms = 60.0
+diz_db = 0.0
+telafi = 0.0
+algilama = "tepe"
+tepki_ms = 1.0
+
+# ---- Hazır modlar: yalnızca yazılan değerler [genel] mod seçilince değişir --
+[mod.discord]
+aciklama = "Discord'da Krisp açıkken: çift gürültü bastırma yok, daha hafif sıkıştırma"
+
+[mod.discord.gurultu]
+aktif = false
+
+[mod.discord.kompresor]
+oran = 2.0
+telafi = 3.0

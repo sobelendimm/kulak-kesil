@@ -1,0 +1,319 @@
+# ============================================================================
+#  Kulak Kesil (oto-eq) — sınıflandırma kuralları (kurallar.toml)
+# ============================================================================
+#
+#  Bu dosya, çalan her sesin (akışın) hangi EQ profiline gideceğini belirler.
+#  Kendi kopyanız: ~/.config/oto-eq/kurallar.toml (varsa o kullanılır).
+#  Değişiklikten sonra:  kulak yenile
+#  (Kulak Kesil arayüzünden yapılan uygulama atamaları bu dosyadan ÖNCE gelir.)
+#
+#  Kategoriler:
+#    cs2        Counter-Strike 2 (ayak sesi odaklı)
+#    oyun       diğer oyunlar (atmosfer)
+#    muzik      müzik (ton doğruluğu)
+#    film       film / dizi / video (diyalog)
+#    sesli      Discord, TeamSpeak, görüşmeler  -> HER ZAMAN EQ'suz
+#    sistem     bildirim sesleri, ekran okuyucu -> HER ZAMAN EQ'suz
+#    bilinmeyen hiçbir kurala uymayan
+#
+#  Desenler: "regex" (düzenli ifade), büyük/küçük harf duyarsız.
+#    * Ad listeleri ve ikili/uygulama/flatpak/medya_rolu/steam_appid alanları
+#      TAM eşleşir: "spotify" sadece "spotify"yi yakalar. Parça eşleşme için
+#      ".*" kullanın: "spotify.*"
+#    * medya_adi, ata, url, ozellik ve ortam değerleri PARÇA eşleşir
+#      (metnin içinde geçmesi yeter).
+#
+#  Ad listelerindeki bir değer şunlarla karşılaştırılır: ikili ad
+#  (application.process.binary), uygulama adı (application.name), süreç adı
+#  (/proc/<pid>/comm), çalıştırılabilir dosya adı, flatpak kimliği.
+#
+#  Bir anahtarı bu dosyadan silerseniz programın içindeki varsayılan (bu
+#  dosyanın orijinal hâli) kullanılır. Bir listeyi yazarsanız varsayılan
+#  listenin YERİNE geçer (eklenmez).
+# ============================================================================
+
+[genel]
+# Kulak Kesil, varsayılan çıkış bir KULAKLIK olduğunda çalışır. Kulaklık türü
+# kendiliğinden tanınır: USB kulaklık / kulaklık seti, Bluetooth kulaklık ve
+# anakartın 3,5 mm kulaklık girişi. Hoparlöre (hat çıkışı), HDMI'ye (monitör/TV)
+# ya da Bluetooth hoparlöre geçince tüm sesler EQ'suz kalır.
+# HS80 düzeltme eğrisi (profiller.toml [duzeltme]) yalnız HS80'de uygulanır;
+# başka kulaklıkta düzeltme nötr, profil EQ'ları çalışmaya devam eder.
+#
+# Bu desene uyan çıkış HER ZAMAN kulaklık sayılır (otomatik tespiti tanımadığı
+# bir kulaklık için). Desen; çıkış adı, açıklaması ve model adıyla karşılaştırılır.
+kulaklik_desen = "(?i)hs80"
+# Bu desene uyan çıkış HİÇBİR ZAMAN kulaklık sayılmaz. "" = yok.
+kulaklik_haric = ""
+# false: otomatik tespit kapalı, yalnız kulaklik_desen'e uyan çıkışlar (eski davranış).
+kulaklik_otomatik = true
+
+# HS80 takibi: kulaklık kablosuz <-> kablolu moda geçince (USB-C kablo takılınca
+# alıcı kaybolur, "HS80 RGB USB" adlı YENİ bir cihaz belirir) WirePlumber varsayılanı
+# hoparlöre düşürebilir. true ise: eski HS80 kaybolduktan sonra 30 sn içinde diğer
+# HS80 belirirse önce sesi ESKİ seviyeye ayarlanır (asla daha yüksek değil; eski
+# seviye bilinmiyorsa %40), sonra varsayılan çıkış/mikrofon yapılır. Arada siz
+# varsayılanı elle değiştirdiyseniz dokunulmaz. "Kulak Kesil · Mikrofon" varsayılan
+# mikrofonsa o kalır, yalnızca sanal mikrofonun girişi yeni HS80'e taşınır.
+hs80_takip = true
+
+# Hiçbir kurala uymayan akışların profili. "" = EQ'suz.
+# "muzik" profili en düz/doğal düzeltmedir; tanınmayan sesler için güvenli seçim.
+bilinmeyen_profil = "muzik"
+
+# Kontrol sırası: ilk eşleşen kazanır. Adımları silebilir/sırasını
+# değiştirebilirsiniz. Geçerli adlar:
+#   kullanici  aşağıdaki [[kural]] listesi
+#   cs2        Counter-Strike 2
+#   sesli      sesli sohbet uygulamaları + medya rolü phone/communication
+#   sistem     sistem sesleri + medya rolü event/notification/a11y
+#   oyun       Proton/wine/umu/Lutris/Faugus/Steam oyunları, .exe'ler
+#   oynatici   çok amaçlı oynatıcılar (mpv, VLC): ses dosyası -> muzik, değilse film
+#   rol        uygulamanın bildirdiği medya rolü ([roller] tablosu)
+#   uygulama   bilinen müzik/film uygulamaları
+#   tarayici   tarayıcılar (site / başlık ile müzik-film ayrımı)
+sira = ["kullanici", "cs2", "sesli", "sistem", "oyun", "oynatici", "rol", "uygulama", "tarayici"]
+
+# ----------------------------------------------------------------------------
+[eslesme]
+# Kategori -> EQ profili. Profil adları: cs2, oyun, muzik, film. "" = EQ'suz.
+# (sesli ve sistem burada ne yazarsa yazsın HER ZAMAN EQ'suzdur.)
+cs2 = "cs2"
+oyun = "oyun"
+muzik = "muzik"
+film = "film"
+sesli = ""
+sistem = ""
+
+# ----------------------------------------------------------------------------
+#  KULLANICI KURALLARI — en önce bakılır, yukarıdan aşağı ilk eşleşen kazanır.
+#  Bir kuraldaki TÜM alanlar uymalıdır (VE). Kullanılabilir alanlar:
+#    ad          kuralın adı (sadece açıklamada görünür)
+#    ikili       application.process.binary / süreç adı / exe       (tam)
+#    uygulama    application.name                                   (tam)
+#    medya_adi   media.name (pencere/sekme/dosya başlığı)           (parça)
+#    medya_rolu  media.role (Music, Movie, Game, event ...)         (tam)
+#    flatpak     flatpak kimliği, ör. "com.spotify.Client"          (tam)
+#    steam_appid Steam uygulama no (SteamAppId/SteamGameId/AppId=)  (tam)
+#    ortam       ortam değişkenleri tablosu, ör. { GAMEID = "umu-.*" } (parça)
+#    ata         üst süreçlerin adı veya komut satırı               (parça)
+#    url         tarayıcı/oynatıcı MPRIS adresi (xesam:url)         (parça)
+#    ozellik     akış özellikleri tablosu, ör. { "node.name" = "x" } (parça)
+#    kategori    ZORUNLU: cs2 / oyun / muzik / film / sesli / sistem
+#    profil      İSTEĞE BAĞLI: kategorinin profilini ezer ("" = EQ'suz)
+#
+#  Örnekler (başındaki # işaretini kaldırarak açın):
+#
+#  [[kural]]
+#  ad = "Witcher 3 film gibi dinlensin"
+#  ikili = "witcher3\\.exe"
+#  kategori = "film"
+#
+#  [[kural]]
+#  ad = "YouTube'da her şey müzik"
+#  url = "youtube\\.com"
+#  kategori = "muzik"
+#
+#  [[kural]]
+#  ad = "Faugus'taki bir oyun"
+#  ortam = { WINEPREFIX = "Faugus/oyunum" }
+#  kategori = "oyun"
+#
+#  [[kural]]
+#  ad = "Tarayıcıdaki Twitch EQ'suz olsun"
+#  url = "twitch\\.tv"
+#  kategori = "film"
+#  profil = ""
+
+# ----------------------------------------------------------------------------
+[cs2]
+# CS2 Linux'ta yerel çalışır: ikili "cs2", Steam uygulama no 730.
+ikili = ["cs2"]
+steam_appid = ["730"]
+
+# ----------------------------------------------------------------------------
+[roller]
+# media.role -> kategori. Çoğu uygulama rol bildirmez; bildirenler için.
+# (Firefox/Chrome rol bildirmez. mpv ses dosyasında "Music", videoda "Movie" der.)
+event = "sistem"
+notification = "sistem"
+a11y = "sistem"
+accessibility = "sistem"
+alarm = "sistem"
+test = "sistem"
+phone = "sesli"
+communication = "sesli"
+game = "oyun"
+music = "muzik"
+video = "film"
+movie = "film"
+animation = "film"
+
+# ----------------------------------------------------------------------------
+[uygulamalar]
+# Sesli sohbet / görüşme -> EQ'suz
+sesli = [
+  "discord", "com.discordapp.Discord", "discord.*", "WEBRTC VoiceEngine",
+  "vesktop", "dev.vencord.Vesktop", "legcord", "webcord", "armcord",
+  "teamspeak.*", "ts3client.*", "com.teamspeak.TeamSpeak.*",
+  "mumble", "info.mumble.Mumble", "zoom", "us.zoom.Zoom", "skype.*",
+  "org.ferdium.Ferdium", "ferdium", "signal.*", "org.signal.Signal",
+  "Steam Voice Settings", "baresip", "linphone.*", "jami.*",
+]
+
+# Sistem/bildirim sesleri, ekran okuyucu -> EQ'suz
+sistem = [
+  "sd_dummy", "sd_espeak.*", "sd_generic", "sd_pico.*", "speech-dispatcher.*",
+  "espeak.*", "orca", "libcanberra", "canberra-gtk-play", "kded6", "kded5",
+  "plasmashell", "kwin_wayland", "knotify.*", "ksmserver", "xdg-desktop-portal.*",
+  "polkit-kde-authentication-agent-1", "org.kde.polkit-kde-authentication-agent-1",
+  "gnome-shell", "notify-send",
+]
+
+# Oyun DEĞİL (Steam istemcisi, başlatıcıların kendi arayüzü vb.)
+oyun_haric = [
+  "steam", "steamwebhelper", "Steam", "steam-runtime.*", "srt-.*", "pv-.*",
+  "reaper", "lutris", "faugus-launcher", "faugus.*", "heroic", "protonup-qt",
+  "net.davidotek.pupgui2", "winecfg", "winetricks", "protontricks",
+]
+
+# Ortam değişkeni taşımayan YEREL (Linux) oyunlar -> oyun
+oyun = []
+
+# Bilinen müzik uygulamaları -> muzik
+muzik = [
+  "spotify", "com.spotify.Client", "Spotify", "spotify_player", "ncspot",
+  "rhythmbox", "org.gnome.Rhythmbox3", "elisa", "org.kde.elisa", "strawberry",
+  "org.strawberrymusicplayer.strawberry", "clementine", "audacious",
+  "deadbeef", "lollypop", "amberol", "io.bassi.Amberol", "cmus", "mpd",
+  "quodlibet", "tauon", "com.github.taiko2k.tauonmb", "cider", "tidal-hifi",
+  "com.mastermindzh.tidal-hifi", "youtube-music", "app.ytmd.YTMDesktop",
+  "nuclear", "museeks", "feishin", "sublime-music", "g4music", "gapless",
+  "com.github.neithern.g4music", "fooyin", "qmmp", "foobar2000\\.exe",
+  "musicbee\\.exe", "aimp\\.exe",
+]
+
+# Bilinen film/video uygulamaları -> film
+film = [
+  "kodi", "tv.kodi.Kodi", "jellyfin.*", "com.github.iwalton3.jellyfin-media-player",
+  "stremio", "com.stremio.Stremio", "plex.*", "tv.plex.PlexDesktop",
+  "freetube", "io.freetubeapp.FreeTube", "hypnotix", "showtime",
+  "org.gnome.Showtime", "kaffeine", "dragon", "org.kde.dragonplayer",
+]
+
+# ----------------------------------------------------------------------------
+[oyun]
+# Bu ortam değişkenlerinden biri doluysa (ve "0" değilse) akış oyundur.
+ortam = [
+  "SteamAppId", "SteamGameId", "STEAM_COMPAT_APP_ID", "STEAM_COMPAT_DATA_PATH",
+  "GAMEID", "UMU_ID", "WINEPREFIX", "WINELOADER", "LUTRIS_GAME_UUID",
+]
+# Süreç adı/çalıştırılabilir bunlardan biriyse oyundur (wine yükleyicisi).
+wine_ikili = ["wine", "wine64", "wine-preloader", "wine64-preloader", "wineserver"]
+# Üst süreçlerden birinin adı ya da komut satırı bunlara uyarsa oyundur.
+# (pressure-vessel tek başına oyun DEĞİL: Steam'in kendi arayüzü de onun içinde.)
+ata = [
+  "SteamLaunch\\s+AppId=\\d+", "umu-run", "\\bproton\\b", "gamescope",
+  "lutris-wrapper", "faugus\\.runner", "faugus-run", "wine(64)?(-preloader)?$",
+  "\\.exe\\b",
+]
+
+# ----------------------------------------------------------------------------
+[oynatici]
+# Hem müzik hem film çalan oynatıcılar. Ses dosyası -> muzik, değilse film.
+uygulamalar = [
+  "mpv", "io.mpv.Mpv", "vlc", "org.videolan.VLC", "VLC media player",
+  "celluloid", "io.github.celluloid_player.Celluloid", "haruna", "org.kde.haruna",
+  "smplayer", "info.smplayer.SMPlayer", "totem", "org.gnome.Totem",
+  "mplayer", "ffplay", "parole", "mpc-hc.*\\.exe", "mpc-be.*\\.exe",
+]
+ses_uzantilari = [
+  "mp3", "flac", "ogg", "oga", "opus", "m4a", "aac", "wav", "wv", "ape",
+  "alac", "aiff", "aif", "dsf", "dff", "mka", "wma", "mpc", "tta", "mid",
+  "midi", "m3u", "m3u8", "pls", "cue",
+]
+video_uzantilari = [
+  "mkv", "mp4", "avi", "webm", "mov", "m4v", "wmv", "flv", "mpg", "mpeg",
+  "ts", "m2ts", "mts", "vob", "ogv", "3gp", "divx", "rmvb", "iso",
+]
+# Kanıt bulunamazsa:
+varsayilan = "film"
+
+# ----------------------------------------------------------------------------
+[tarayici]
+# Tarayıcı olarak ele alınacak uygulamalar.
+uygulamalar = [
+  "firefox", "Firefox", "firefox-bin", "firefox-esr", "org.mozilla.firefox",
+  "librewolf", "io.gitlab.librewolf-community", "zen", "zen-bin", "app.zen_browser.zen",
+  "floorp", "waterfox", "chromium", "Chromium", "org.chromium.Chromium",
+  "chrome", "google-chrome.*", "com.google.Chrome", "Google Chrome",
+  "brave", "brave-browser", "com.brave.Browser", "vivaldi.*", "com.vivaldi.Vivaldi",
+  "opera", "com.opera.Opera", "msedge", "microsoft-edge.*", "com.microsoft.Edge",
+  "falkon", "org.kde.falkon", "epiphany", "org.gnome.Epiphany", "qutebrowser",
+]
+
+# Müzik siteleri (alan adı sonu eşleşir: "spotify.com" -> open.spotify.com)
+muzik_siteleri = [
+  "instagram.com", "tiktok.com",   # 25 Eki: müzikli kısa klipler (Film kompresörü sıkıştırıyordu)
+  "music.youtube.com", "open.spotify.com", "soundcloud.com", "deezer.com",
+  "tidal.com", "music.apple.com", "bandcamp.com", "mixcloud.com",
+  "music.amazon.com", "music.amazon.com.tr", "last.fm", "radio.garden",
+  "tunein.com", "fizy.com", "muud.com.tr", "radyodinle.fm", "canliradyodinle.fm",
+  "radioline.co", "lofi.cafe", "nightride.fm", "plaza.one", "jango.com",
+  "audiomack.com", "napster.com", "qobuz.com", "pandora.com",
+]
+# Adresin alan adı bu desenlerden birine uyarsa da müzik (radyo siteleri).
+muzik_site_desen = ["(^|\\.)rad(y|i)o[a-z0-9-]*\\.", "(^|\\.)fm[a-z0-9-]*\\."]
+
+# Film/dizi/yayın siteleri
+film_siteleri = [
+  "netflix.com", "disneyplus.com", "primevideo.com", "max.com", "hbomax.com",
+  "mubi.com", "blutv.com", "exxen.com", "tabii.com", "gain.tv", "puhutv.com",
+  "twitch.tv", "kick.com", "todtv.com.tr", "tod.tv", "crunchyroll.com",
+  "dailymotion.com", "vimeo.com", "tv.apple.com", "hulu.com", "paramountplus.com",
+  "beinconnect.com.tr", "tvplus.com.tr", "trtizle.com", "trt.net.tr",
+  "atv.com.tr", "kanald.com.tr", "showtv.com.tr", "startv.com.tr", "nowtv.com.tr",
+  # sosyal (25 Eki): konuşma ağırlıklı videolar → Film (diyalog); Instagram/TikTok müzikli
+  # klipler için Müzik'te (ses analizi konuşmayı ayrıca tanır)
+  "x.com", "twitter.com", "facebook.com", "reddit.com",
+]
+# Alan adı bu desenlere uyarsa da film (dizi*/film* siteleri)
+film_site_desen = ["(^|\\.)dizi[a-z0-9-]*\\.", "(^|\\.)film[a-z0-9-]*\\.", "(^|\\.)anime[a-z0-9-]*\\."]
+
+# Bu sitelerde başlığa bakılır: müzik başlığıysa muzik, değilse film.
+baslik_siteleri = ["youtube.com", "youtu.be", "youtube-nocookie.com", "invidious.*", "piped.*"]
+
+# Müzik başlığı/sanatçı ipuçları (YouTube vb.)
+muzik_baslik = [
+  "official\\s+(music\\s+)?video", "official\\s+audio", "official\\s+lyric",
+  "\\(audio\\)", "\\[audio\\]", "lyrics?", "lyric\\s+video", "şarkı\\s+sözleri",
+  "visuali[sz]er", "\\bft\\.", "\\bfeat\\.?\\b", "\\bremix\\b", "\\bklip\\b",
+  "\\bşarkı", "\\bslowed\\b", "\\breverb\\b", "sped\\s+up", "nightcore",
+  "\\bmix\\b", "\\bplaylist\\b", "\\balbum\\b", "\\balbüm", "\\bOST\\b",
+  "soundtrack", "\\bkaraoke\\b", "\\bacoustic\\b", "\\bakustik\\b",
+  "\\btürkü", "\\bmusic\\b", "\\bmüzik", "\\blo-?fi\\b", "\\bphonk\\b",
+  "\\binstrumental\\b", "\\bcover\\b", "\\bmv\\b", "\\bm/v\\b",
+]
+muzik_sanatci = [" - Topic$", "VEVO$", "\\bRecords?$", "\\bMusic$", "\\bMüzik$", "\\bOfficial$"]
+# Adresteki müzik listesi: list=RD… = YouTube "Mix" (otomatik müzik radyosu),
+# list=OLAK5uy_… = albüm listesi. Başlıkta ipucu olmasa da müzik sayılır.
+muzik_adres_desen = ["[?&]list=RD", "[?&]list=OLAK5uy_"]
+
+# MPRIS bilgisi yoksa sekme başlığına (media.name) bakılır.
+muzik_sekme = ["YouTube Music$", "\\bSpotify\\b", "SoundCloud", "Deezer", "TIDAL", "Apple Music", "Bandcamp"]
+film_sekme = ["Netflix", "Disney\\+", "Prime Video", "\\bMUBI\\b", "BluTV", "Exxen", "tabii", "\\bTwitch\\b", "\\bHBO\\b", "\\bMax\\b$"]
+youtube_sekme = ["- YouTube$"]
+
+# Hiçbiri belli değilse tarayıcı sesi:
+varsayilan = "film"
+
+# ---- TÜR ALT PROFİLLERİ: şarkı adı ipuçları -------------------------------
+# Şarkı adında bu ifade geçerse o PARÇA için müzik türü bu olur (sanatçının
+# türünden önce gelir; ama sanatçıya elle verdiğin tür her zaman kazanır).
+# Anahtar = düzenli ifade (küçük harfe çevrilmiş başlıkta aranır),
+# değer = metal_rock | elektronik | klasik_akustik | pop_vokal | konusma.
+# Yerleşik ipuçları (acoustic/akustik/unplugged → klasik_akustik,
+# remix/club mix → elektronik, podcast/bölüm N → konusma) zaten açık;
+# burada yenilerini ekleyebilir ya da aynı ifadeyle değiştirebilirsin.
+[tur]
+baslik_ipucu = { "\\b(senfoni|symphony)\\b" = "klasik_akustik" }

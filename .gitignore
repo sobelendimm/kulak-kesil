@@ -1,0 +1,15 @@
+# Python / tooling
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.pytest_cache/
+.venv/
+
+# Internal development notes stay local; only public docs are tracked
+docs/*
+!docs/MODELS.md
+
+# Local backups and caches
+*.yedek*
+*.bak
+oto_eq/i18n/.kaynak-motor.json

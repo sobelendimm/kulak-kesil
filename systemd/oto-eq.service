@@ -1,0 +1,22 @@
+# Kulak Kesil (oto-eq): akışları bağlama göre EQ çıkışlarına yönlendiren servis.
+[Unit]
+Description=Kulak Kesil - otomatik EQ yönlendirici
+Documentation=file://%h/.local/src/oto-eq/README.md
+After=pipewire-pulse.service oto-eq-sinks.service wireplumber.service
+Wants=pipewire-pulse.service oto-eq-sinks.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.local/src/oto-eq
+Environment=PYTHONPATH=%h/.local/src/oto-eq
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 -m oto_eq.router
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=yes
+Slice=session.slice
+
+[Install]
+# Girişte başlar. PipeWire yeniden başlarsa servis çalışmaya devam eder
+# (pactl olay dinleyicisi kendini yeniden bağlar).
+WantedBy=default.target

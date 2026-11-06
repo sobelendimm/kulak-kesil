@@ -1,0 +1,20 @@
+# Kulak Kesil (oto-eq): işlenmiş sanal mikrofon "Kulak Kesil · Mikrofon" (oto_eq_mikrofon).
+# Ayrı bir `pipewire -c` süreci; ayar dosyası `python3 -m oto_eq.micgen generate` ile üretilir.
+# Kurulum varsayılan mikrofonu DEĞİŞTİRMEZ (pencereden / `kulak mikrofon varsayilan`).
+[Unit]
+Description=Kulak Kesil · Mikrofon (HS80 için işlenmiş sanal mikrofon)
+Documentation=file://%h/.local/src/oto-eq/README.md
+After=pipewire.service pipewire-pulse.service
+# PipeWire durursa/yeniden başlarsa bu da durur/yeniden başlar.
+BindsTo=pipewire.service
+ConditionPathExists=%h/.config/oto-eq/mikrofon.conf
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/pipewire -c %h/.config/oto-eq/mikrofon.conf
+Restart=on-failure
+RestartSec=2
+Slice=session.slice
+
+[Install]
+WantedBy=pipewire.service

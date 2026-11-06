@@ -1,0 +1,446 @@
+# ============================================================================
+#  Kulak Kesil (oto-eq) — EQ profilleri
+# ============================================================================
+#
+#  Bu dosya Corsair HS80 kulaklık için 4 sanal EQ çıkışının (oto_eq_cs2,
+#  oto_eq_oyun, oto_eq_muzik, oto_eq_film) ses eğrilerini tanımlar.
+#
+#  Zincir (her profil, her kanal için aynı):
+#
+#     giriş → [seviye eşitleyici (yavaş)] → [ön kazanç] → [HS80 düzeltmesi]
+#           → [profil filtreleri] → [tür + kişisel ton] → [crossfeed (müzik)]
+#           → [dinamik (kompresör, isteğe bağlı)] → [seviye eşitleme]
+#           → [sınırlayıcı (tavan)] → HS80
+#
+#  Elle düzenledikten sonra:
+#     python3 -m oto_eq.eqgen check     (dene: sanal çıkışlar açılıyor mu)
+#     oto-eq eq-uret                    (üret + servisi yeniden başlat)
+#     oto-eq eq-ciz                     (eğri grafiği)
+#
+#  Kullanıcı kopyası ~/.config/oto-eq/profiller.toml varsa o okunur.
+#
+#  FİLTRE YAZIMI  { tip = "PK", fc = 3000.0, kazanc = 2.0, q = 1.0 }
+#     tip     : "PK"  = tepe/çukur (peaking)
+#               "LSC" = alçak raf (low shelf: fc altını yükseltir/kısar)
+#               "HSC" = yüksek raf (high shelf: fc üstünü yükseltir/kısar)
+#     fc      : merkez / köşe frekansı (Hz)
+#     kazanc  : dB (+ yükseltme, - kısma)
+#     q       : genişlik. Büyük q = dar. Raflarda 0.7 ≈ yumuşak, klasik eğim.
+#     aktif   : (isteğe bağlı) false → filtre devre dışı (kazanç 0 dB sayılır)
+#
+#  Matematik PipeWire'ın bq_* filtreleriyle birebir aynıdır (RBJ "Audio EQ
+#  Cookbook", raflarda da q kullanılır: alpha = sin(w0)/(2q)). Yani grafikte
+#  gördüğünüz eğri kulağa giden eğridir.
+#
+#  CANLI / YENİDEN BAŞLATMA: kazanç, fc, q, aktif ve dinamik değerleri canlı
+#  değiştirilebilir (uygulama "set_live" ile). Filtre SAYISI veya TİPİ,
+#  ya da bir [dinamik] bloğunun eklenip silinmesi servisin yeniden
+#  başlatılmasını gerektirir.
+# ============================================================================
+
+[genel]
+# Otomatik ön kazancın üstüne bırakılacak ek pay (dB). Eğrinin en yüksek
+# noktası + bu pay kadar kısılır → dijital kırpılma (clipping) olmaz.
+pay_db = 1.0
+# Kırpılma tavanı (dBFS). En kötü durum — tam ölçekli bir patlama, kompresör
+# daha atak süresi içinde yakalayamadan telafi kazancıyla geçerse — bile bu
+# seviyeyi aşmaz. Gerekirse TÜM çıkışlar aynı miktarda kısılır (eşitleme
+# bozulmaz).
+tavan_dbfs = -0.5
+# Ortak link grubu (docs/NOTES-perf.md): true → 5 zincir aynı
+# node.link-group'ta; WirePlumber bir *_out çıkışını ASLA başka bir Kulak
+# Kesil çıkışına bağlamaz (güvenlik). Bedeli: herhangi bir çıkış çalınca
+# PipeWire 5 zinciri birlikte çalıştırır (~%2.7 / tek çekirdek yerine ~%0.6;
+# gecikme ve xrun etkisi yok). false → yalnız kullanılan zincir çalışır.
+ortak_link_grubu = true
+# Profiller arası ses seviyesi eşitleme: mod değişince ses "zıplamasın".
+# Yalnızca KISMA ekler (hiçbir profili yükseltmez); en sessiz profile eşitler.
+ses_esitleme = true
+# Eşitlemede bakılan frekans aralığı (Hz). Pembe gürültü ağırlıklı ortalama
+# (her oktav eşit önemde) — kulağın en hassas olduğu orta bölge.
+esitleme_alt_hz = 100.0
+esitleme_ust_hz = 6000.0
+# Dinamikli profillerde (kompresör) eşitleme hesabı için "tipik içerik
+# seviyesi" (dBFS). Oyun/film ortalaması kabaca -20 dBFS civarıdır.
+referans_seviye_db = -20.0
+# Hesaplar için örnekleme hızı (PipeWire grafiği genelde 48000).
+orneklem_hz = 48000
+
+# ----------------------------------------------------------------------------
+# DÜZ çıkış (oto_eq_duz): sesli sohbet (Discord), sistem sesleri ve "kapalı"
+# mod buradan geçer. HS80 düzeltmesi YOK, EQ YOK, kompresör YOK — yalnızca
+# 4 profilin ortak (eşitlenmiş) ses seviyesine otomatik kısılır, böylece
+# Discord ile oyun arasında seviye dengesi bozulmaz ve "kapalı" ile A/B
+# karşılaştırması adil olur.
+#   aktif        : false → kısma yok (0 dB, eski davranış)
+#   ek_kazanc_db : otomatik kazancın üstüne elle ekleme (örn. +3 → sohbet
+#                  biraz daha yüksek). Tavanın üstüne çıkamaz.
+# ----------------------------------------------------------------------------
+[duz]
+aktif = true
+aciklama = "Düz geçiş: sesli sohbet, sistem sesleri, kapalı mod (seviye eşitli)"
+ek_kazanc_db = 0.0
+
+# ----------------------------------------------------------------------------
+# HS80 RGB Wireless düzeltmesi — TÜM profillerin ortak tabanı.
+# Kaynak: AutoEq, Rtings ölçümü, Harman hedefi. HS80 ~3.5 kHz'te çukur
+# (tam adım sesi bandı!) ve bası zayıf; bu düzeltme onu hedefe çeker.
+# aktif = false → düzeltme kapanır (filtreler 0 dB olur, canlı değişebilir).
+# 24 Eki: iki dar (yüksek-Q) çentik yumuşatıldı — docs/NOTES-pro-referans.md
+# §3-4: 5 kHz üstü ve dar tepe/çukurlar oturuşa bağlı (Rtings "inconsistent",
+# oratory1990); Q≈6'lık çentik oturuş kayınca delik açar. Ölçülen örnekteki
+# bedel ≤ +0.9 dB. AutoEq orijinali yorum olarak duruyor.
+# ----------------------------------------------------------------------------
+[duzeltme]
+aktif = true
+aciklama = "HS80 RGB Wireless → Harman hedefi (AutoEq / Rtings)"
+# Bu eğri hangi kulaklık için ölçüldü? Desene uymayan bir kulaklıkta (ör. Bluetooth
+# kulaklık) düzeltme kendiliğinden nötr olur, profil EQ'ları çalışmaya devam eder.
+# "" = hiçbir kulaklıkta uygulanmaz.
+cihaz_desen = "(?i)hs80"
+# AutoEq'in önerdiği preamp; bilgi amaçlı. Gerçek ön kazanç her profil
+# için otomatik hesaplanır (tüm eğri + pay_db).
+autoeq_preamp_db = -6.3
+filtreler = [
+    { tip = "LSC", fc = 105.0, kazanc = 7.4, q = 0.70 },
+    { tip = "PK", fc = 135.0, kazanc = -6.0, q = 0.32 },
+    { tip = "PK", fc = 3485.0, kazanc = 5.5, q = 0.70 },
+    { tip = "PK", fc = 627.0, kazanc = 3.2, q = 2.00 },
+    { tip = "PK", fc = 1057.0, kazanc = -3.0, q = 2.44 },
+    { tip = "HSC", fc = 10000.0, kazanc = 4.0, q = 0.70 },
+    # AutoEq: -4.1 dB Q 5.90 → yumuşatıldı (NOTES-pro-referans: oturuşa bağlı dar tepe)
+    { tip = "PK", fc = 5744.0, kazanc = -3.0, q = 3.0 },
+    { tip = "PK", fc = 4111.0, kazanc = 1.4, q = 2.19 },
+    # AutoEq: -1.6 dB Q 5.76 → yumuşatıldı (adım bandının ortasında dar çentik)
+    { tip = "PK", fc = 2892.0, kazanc = -1.0, q = 3.0 },
+    { tip = "PK", fc = 69.0, kazanc = -0.5, q = 2.98 },
+]
+
+# ----------------------------------------------------------------------------
+# PROFİLLER — düzeltmenin ÜSTÜNE eklenen filtreler + isteğe bağlı dinamik.
+#   aciklama : kısa tanım       odak : bu modda neyi öne çıkarıyoruz
+#   aktif    : false → profil düz geçer (düzeltme dahil hiçbir filtre yok,
+#              kompresör kapalı; sadece seviye eşitleme kalır)
+#   sifir_gecikme : true → ileri bakış (lookahead) zorla 0; gecikme eklenmez
+#
+# [profil.X.dinamik]  (LSP Compressor Stereo, lsp-plugins-lv2 gerekir;
+#  yoksa profil EQ'lu ama kompresörsüz üretilir ve uyarı yazılır)
+#   aktif           : kompresör açık/kapalı (canlı değişebilir)
+#   esik_db         : bu seviyenin üstü sıkıştırılır (ön kazanç SONRASI dBFS)
+#   oran            : 3.0 → eşiğin 3 dB üstü 1 dB'e iner
+#   atak_ms         : ne kadar hızlı yakalasın (küçük = silah patlamasını
+#                     hemen yakalar)
+#   birakma_ms      : sıkıştırma ne kadar sürede bıraksın (küçük = silahtan
+#                     hemen sonra adım sesi geri gelir; çok küçük = "pompalama")
+#   diz_db          : yumuşak geçiş (knee) genişliği, 0..24 dB
+#   telafi_db       : makeup: sıkıştırma sonrası her şeyi yükselt → sessiz
+#                     sesler (adım) yükselir, yüksekler (silah) zaten kısıldı
+#   algilama        : "tepe" (hızlı, transient yakalar) | "rms" (yumuşak)
+#   tepki_ms        : rms algılamada ortalama penceresi
+#   yan_zincir_hpf_hz : 0 = kapalı; örn 120 → kompresör bası "duymaz"
+#   ileri_bakis_ms  : lookahead. GECİKME EKLER! Rekabetçi oyunda 0 kalmalı.
+#
+# [profil.X.sinirlayici]  (LSP Limiter Stereo — zincirin EN SONU; 25 Eki, D1)
+#  Tuğla duvar sınırlayıcı: çıkış ASLA tavan_dbfs'i aşmaz (ölçüldü: +14 dB
+#  aşırı yüklemede bile tam -0.50 dBFS). Bu güvence sayesinde ön kazanç
+#  kişisel ton payını ve kompresör atak taşmasını AYIRMAZ, üstüne marj_db
+#  kadar daha az kısar → ortak seviye -12.4 → -4.3 dB. Gerçekçi -8 LUFS
+#  master'da sınırlayıcı çoğu türde hiç çalışmaz; bas ağırlıklı EDM +
+#  "elektronik" türünde en çok ~1.5 dB, kısa anlarda. Ayrıntı: docs/NOTES-seviye.md
+#   aktif            : açık/kapalı (canlı). Blok yoksa düğüm de yok.
+#   marj_db          : 0..12. Tam ölçekli sürekli sinüsün (EQ tepesinde, ton 0)
+#                      tavanı aşmasına izin verilen pay (= kazanılan ses)
+#   ileri_bakis_ms   : 0.1..20. EKLENEN GECİKME tam bu kadardır (1.5 ms = 72 örnek)
+#   birakma_ms       : 0.25..20
+#   seviye_duzenleme : true → LSP ALR. VARSAYILAN KAPALI: ölçüldü, tavanın altındaki
+#                      müziği de ~1.5 dB kısıyordu (gereksiz ses kaybı)
+#  CS2'de en düşük gecikmeyle (0.1 ms ileri bakış = 4 örnek = 0.08 ms).
+#  Bir blok eksikse paketteki varsayılan eklenir; kapatmak için aktif = false.
+#
+# [profil.X.seviye]  (LSP Autogain Stereo — zincirin EN BAŞI; yavaş, nazik)
+#  Şarkıdan şarkıya / sahneden sahneye ses yüksekliğini (K-ağırlıklı LUFS)
+#  yavaşça hedefe çeker. Tüm profillerin hedefi aynı (referans_seviye_db) →
+#  profil değişince seviye yine eşit.
+#   aktif               : açık/kapalı (canlı). Blok yoksa düğüm de yok.
+#   hedef_lufs          : (isteğe bağlı) -40..-6; yoksa genel.referans_seviye_db.
+#                         Kompresörlü profilde kompresör hesabı da bu seviyeyle yapılır.
+#   en_cok_yukseltme_db : sessiz içeriği en çok bu kadar yükseltir (kısma sınırsız)
+#   yukselme_db_sn      : yükseltme hızı (dB/sn) — küçük = fark edilmez
+#   dusme_db_sn         : kısma hızı (dB/sn)
+#   olcum_ms            : 100..2000 ölçüm penceresi
+#   sessizlik_lufs      : bunun altı sessizlik sayılır, kazanç donar (gürültü şişmez)
+#   ani_tepki_db        : ani yükselişte (kısa-uzun ölçüm farkı > bu) hızlı kısma
+# ----------------------------------------------------------------------------
+
+# ---- CS2: ADIM SESİ her şeyin üstünde -------------------------------------
+# Bas/patlama maskelemesini azalt (60-120 Hz kıs), adım bandına (2-4 kHz)
+# ölçülü +2 dB, yön/HRTF ipuçları için üst bölgeye hafif hava. Asıl iş
+# kompresörde: silah/flaş gibi yüksek transientler bastırılır, telafi ile
+# uzak/sessiz adımlar onlara göre yukarı gelir. Sıfır gecikme.
+[profil.cs2]
+aciklama = "Rekabetçi CS2: adım sesi ve yön duyma"
+odak = "Adım sesi + yön"
+aktif = true
+sifir_gecikme = true
+filtreler = [
+    { tip = "LSC", fc = 120.0, kazanc = -5.0, q = 0.70 },
+    { tip = "PK", fc = 280.0, kazanc = -1.5, q = 1.00 },
+    { tip = "PK", fc = 3000.0, kazanc = 2.0, q = 1.10 },
+    { tip = "PK", fc = 5000.0, kazanc = -1.0, q = 2.50 },
+    { tip = "HSC", fc = 7500.0, kazanc = 1.0, q = 0.70 },
+]
+
+[profil.cs2.dinamik]
+aktif = true
+esik_db = -30.0
+oran = 3.0
+atak_ms = 1.0
+# 80 → 120: 50–100 ms "agresif uç", pompalama riski; 120 ms adımı yine
+# ~0.1 sn'de geri getirir (NOTES-pro-referans §5)
+birakma_ms = 120.0
+diz_db = 6.0
+telafi_db = 8.0
+algilama = "tepe"
+tepki_ms = 5.0
+# 0 → 100 Hz: bomba/patlama gürlemesi tüm bandı kısmasın; silahın orta/tiz
+# enerjisi kompresörü yine tetikler (NOTES-pro-referans, öneriler tablosu)
+yan_zincir_hpf_hz = 100.0
+ileri_bakis_ms = 0.0
+
+# CS2 sınırlayıcısı: en düşük gecikme (0.1 ms ileri bakış = 4 örnek = 0.08 ms,
+# ölçüldü; bir oyun karesinin ~1/100'ü). Tavanı korur, böylece cs2 de diğerleri
+# gibi yüksek seviyede çalabilir. [seviye] bilerek YOK (adım/silah dengesi doğal).
+[profil.cs2.sinirlayici]
+aktif = true
+marj_db = 5.0
+ileri_bakis_ms = 0.1
+birakma_ms = 5.0
+seviye_duzenleme = false
+
+# ---- OYUN (normal oyunlar): atmosfer, dolgun bas ve etki ------------------
+[profil.oyun]
+aciklama = "Normal oyunlar: atmosfer ve sürükleyicilik"
+odak = "Atmosfer + bas etkisi"
+aktif = true
+sifir_gecikme = false
+filtreler = [
+    { tip = "LSC", fc = 90.0, kazanc = 2.5, q = 0.70 },
+    { tip = "PK", fc = 2800.0, kazanc = 0.8, q = 1.00 },
+    { tip = "HSC", fc = 9000.0, kazanc = 1.0, q = 0.70 },
+]
+
+# Hafif kompresör hazır ama KAPALI; açmak için aktif = true (canlı).
+[profil.oyun.dinamik]
+aktif = false
+esik_db = -18.0
+oran = 1.6
+atak_ms = 10.0
+birakma_ms = 200.0
+diz_db = 9.0
+telafi_db = 2.0
+algilama = "rms"
+tepki_ms = 10.0
+yan_zincir_hpf_hz = 0.0
+ileri_bakis_ms = 0.0
+
+[profil.oyun.sinirlayici]
+aktif = true
+marj_db = 5.0
+ileri_bakis_ms = 1.5
+birakma_ms = 8.0
+seviye_duzenleme = false
+
+# Seviye eşitleyici hazır ama KAPALI (oyunlarda patlama/sessizlik dengesi
+# tasarımın parçası); açmak için aktif = true (canlı).
+[profil.oyun.seviye]
+aktif = false
+en_cok_yukseltme_db = 4.0
+yukselme_db_sn = 1.0
+dusme_db_sn = 2.0
+olcum_ms = 2000.0
+sessizlik_lufs = -60.0
+ani_tepki_db = 9.0
+
+# ---- OYUN tür alt profilleri (oyun türüne göre küçük canlı farklar) -------
+# Yalnız oyun başlarken değişir (oyun ortasında asla), ~1.5 sn yumuşak geçiş.
+# Her tür en çok 4 filtre, SABİT yuvalara: en çok 1 LSC (v1), 2 PK (v2, v3),
+# 1 HSC (v4) — tip değiştirmek servis yeniden başlatması gerektirdiği için
+# yuvaların tipi sabittir. Farklar ±3 dB içinde tutuldu (sınır ±6). Seviye
+# her tür için ayrı eşitlenir; ön kazanç en kötü türe göre hesaplanır.
+[profil.oyun.tur.rekabetci]
+aciklama = "Rekabetçi / FPS: adım sesi öne, bas geri (CS2'nin hafif hali)"
+odak = "Adım sesi"
+filtreler = [
+    { tip = "LSC", fc = 120.0, kazanc = -2.0, q = 0.70 },
+    { tip = "PK", fc = 3000.0, kazanc = 1.5, q = 0.90 },
+]
+
+[profil.oyun.tur.korku_hayatta_kalma]
+aciklama = "Korku / hayatta kalma: adım + ortam ayrıntısı, bas korunur"
+odak = "Adım + ortam"
+filtreler = [
+    { tip = "PK", fc = 3000.0, kazanc = 1.5, q = 0.90 },
+    { tip = "HSC", fc = 8000.0, kazanc = 1.0, q = 0.70 },
+]
+
+[profil.oyun.tur.aksiyon_rpg]
+aciklama = "Aksiyon / RPG: vuruş etkisi ve büyü/arayüz netliği"
+odak = "Etki + netlik"
+filtreler = [
+    { tip = "PK", fc = 75.0, kazanc = 1.5, q = 1.00 },
+    { tip = "PK", fc = 3000.0, kazanc = 1.0, q = 1.00 },
+]
+
+[profil.oyun.tur.strateji_insa]
+aciklama = "Strateji / inşa: uzun oturumda yormayan, temiz orta bölge"
+odak = "Yorgunluksuz"
+filtreler = [
+    { tip = "LSC", fc = 120.0, kazanc = -1.0, q = 0.70 },
+    { tip = "PK", fc = 1500.0, kazanc = 0.5, q = 0.70 },
+    { tip = "HSC", fc = 8000.0, kazanc = -0.5, q = 0.70 },
+]
+
+[profil.oyun.tur.yaris_sim]
+aciklama = "Yarış / simülasyon: motor gövdesi ve lastik/yol dokusu"
+odak = "Motor + yol"
+filtreler = [
+    { tip = "PK", fc = 180.0, kazanc = 1.5, q = 0.80 },
+    { tip = "PK", fc = 4000.0, kazanc = 0.5, q = 1.00 },
+]
+
+# ---- MÜZİK: tonal sadakat — HS80'i hedefe getir, dinamiğe dokunma --------
+[profil.muzik]
+aciklama = "Müzik: hedefe sadık ton, dinamik korunur"
+odak = "Ton sadakati + hafif sıcaklık"
+aktif = true
+sifir_gecikme = false
+filtreler = [
+    { tip = "PK", fc = 220.0, kazanc = 1.0, q = 0.80 },
+]
+
+[profil.muzik.sinirlayici]
+aktif = true
+marj_db = 5.0
+ileri_bakis_ms = 1.5
+birakma_ms = 8.0
+seviye_duzenleme = false
+
+# KAPALI (25 Eki gece): -20 LUFS hedefi her şarkıyı ~6-8 dB kısıyordu ("ses az
+# geliyor"). Açılırsa nazik: yavaş (0.5 dB/sn) denge, sessiz kayıtlar en çok +3 dB.
+[profil.muzik.seviye]
+aktif = false
+en_cok_yukseltme_db = 3.0
+yukselme_db_sn = 0.5
+dusme_db_sn = 1.0
+olcum_ms = 2000.0
+sessizlik_lufs = -60.0
+ani_tepki_db = 12.0
+
+# Crossfeed (bs2b benzeri): kulaklıkta "kafanın içinde" sert stereo yerine
+# hoparlör gibi hafif karışım (bas bölgesinde karşı kanaldan alçak geçiren +
+# gecikme). Yalnız müzik. aktif canlı değişir (yeniden başlatma yok).
+#   seviye_db  : 1..15, bas bölgesinde düz/çapraz seviye farkı (bs2b varsayılanı 4.5)
+#   kesim_hz   : 300..2000, çapraz yolun alçak geçiren köşesi (bs2b: 700)
+#   gecikme_us : 0..1000, ek gecikme (alçak geçiren zaten ~0.3 ms verir)
+[profil.muzik.crossfeed]
+aktif = false
+seviye_db = 4.5
+kesim_hz = 700.0
+gecikme_us = 0.0
+
+# ---- MÜZİK tür alt profilleri (şarkı değişince, ~1.5 sn yumuşak geçiş) ----
+# Kurallar oyun türleriyle aynı (yuvalar: LSC v1, PK v2-v3, HSC v4; ±3 dB).
+[profil.muzik.tur.metal_rock]
+aciklama = "Metal / Rock: gitar duvarının 2–4 kHz sertliği yumuşak, kick dolgun"
+odak = "Sertliksiz yoğunluk"
+filtreler = [
+    { tip = "PK", fc = 70.0, kazanc = 1.5, q = 1.00 },
+    { tip = "PK", fc = 3000.0, kazanc = -1.5, q = 0.90 },
+    { tip = "HSC", fc = 9000.0, kazanc = 0.5, q = 0.70 },
+]
+
+[profil.muzik.tur.elektronik]
+aciklama = "Elektronik / Hip-hop: alt bas (30–60 Hz) ve hafif hava"
+odak = "Alt bas"
+filtreler = [
+    { tip = "LSC", fc = 60.0, kazanc = 2.5, q = 0.70 },
+    { tip = "HSC", fc = 10000.0, kazanc = 1.0, q = 0.70 },
+]
+
+[profil.muzik.tur.klasik_akustik]
+aciklama = "Klasik / Caz / Akustik: nötre yakın, biraz hava, hafif temiz alt-orta"
+odak = "Doğallık"
+filtreler = [
+    { tip = "PK", fc = 300.0, kazanc = -0.5, q = 0.80 },
+    { tip = "HSC", fc = 10000.0, kazanc = 1.0, q = 0.70 },
+]
+
+[profil.muzik.tur.pop_vokal]
+aciklama = "Pop / Vokal: vokal öne (1–3 kHz), hafif bas"
+odak = "Vokal"
+filtreler = [
+    { tip = "LSC", fc = 100.0, kazanc = 1.0, q = 0.70 },
+    { tip = "PK", fc = 2000.0, kazanc = 1.0, q = 0.70 },
+]
+
+[profil.muzik.tur.konusma]
+aciklama = "Konuşma / Podcast: ses netliği, gürültülü bas geri"
+odak = "Konuşma netliği"
+filtreler = [
+    { tip = "LSC", fc = 150.0, kazanc = -2.0, q = 0.70 },
+    { tip = "PK", fc = 2500.0, kazanc = 2.0, q = 1.00 },
+]
+
+# ---- FİLM: DİYALOG anlaşılırlığı + orta "gece modu" ----------------------
+# Konuşma bandı (1-4 kHz) öne, kutu sesi (300 Hz) ve LFE gürlemesi geri.
+# Kompresör patlamaları bastırır, telafi diyalogu yükseltir; patlama için
+# sesi kısıp diyalog için açma derdi biter.
+[profil.film]
+aciklama = "Film/dizi: net diyalog, gece modu"
+odak = "Diyalog anlaşılırlığı"
+aktif = true
+sifir_gecikme = false
+filtreler = [
+    { tip = "LSC", fc = 100.0, kazanc = -2.0, q = 0.70 },
+    { tip = "PK", fc = 300.0, kazanc = -1.5, q = 1.00 },
+    { tip = "PK", fc = 2500.0, kazanc = 2.5, q = 0.90 },
+    { tip = "PK", fc = 7000.0, kazanc = -1.0, q = 2.50 },
+]
+
+[profil.film.dinamik]
+aktif = true
+esik_db = -32.0
+oran = 2.5
+# 10 → 15: çok hızlı atak ünsüzleri köreltir, 10–20 ms konuşmayı korur
+atak_ms = 15.0
+# 250 → 400: konuşma için 100–500 ms; cümle arası "nefes alma" azalır
+# (NOTES-pro-referans §5-6)
+birakma_ms = 400.0
+diz_db = 9.0
+telafi_db = 6.0
+algilama = "rms"
+tepki_ms = 10.0
+yan_zincir_hpf_hz = 0.0
+ileri_bakis_ms = 0.0
+
+[profil.film.sinirlayici]
+aktif = true
+marj_db = 5.0
+ileri_bakis_ms = 1.5
+birakma_ms = 8.0
+seviye_duzenleme = false
+
+# Neredeyse yalnız YÜKSELTİR: hedef -16 LUFS (film/dizi tipik -23..-27 LUFS),
+# sessiz diyaloglu filmler en çok +6 dB, 1 dB/sn ile yükselir. -16'dan yüksek
+# sahnelerde çok yavaş kısar (0.5 dB/sn, ani kısma kapalı: anlık tepeleri
+# kompresör ve sınırlayıcı tutar) → 6 sn'lik gürültülü sahnede en çok ~-3 dB.
+# (LSP autogain'de "en çok şu kadar kıs" ayarı yok; sınır bu yavaşlıktan gelir.)
+[profil.film.seviye]
+aktif = true
+hedef_lufs = -16.0
+en_cok_yukseltme_db = 6.0
+yukselme_db_sn = 1.0
+dusme_db_sn = 0.5
+olcum_ms = 2000.0
+sessizlik_lufs = -60.0
+ani_tepki_db = 24.0
