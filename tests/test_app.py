@@ -1288,6 +1288,19 @@ class TestGenreSection(AppTestBase):
 
 
 class TestSettingsPage(AppTestBase):
+    def test_uninstall_card_only_for_script_installs(self):
+        """A distro package (AUR) has no uninstall.sh: the card must not point to a missing file."""
+        from PyQt6.QtWidgets import QLabel
+        def card_texts(page):
+            return [w.text() for w in page.findChildren(QLabel)]
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(config, "SRC_DIR", Path(d)):
+                page = appmod.SettingsPage(self.win)
+                self.assertFalse(any("uninstall.sh" in t for t in card_texts(page)))
+                (Path(d) / "uninstall.sh").write_text("#!/bin/sh\n")
+                page = appmod.SettingsPage(self.win)
+                self.assertTrue(any(t.endswith("uninstall.sh") for t in card_texts(page)))
+
     def test_toggles_persist(self):
         sp = self.win.page_settings
         self.assertTrue(sp.sw_notify.isChecked())

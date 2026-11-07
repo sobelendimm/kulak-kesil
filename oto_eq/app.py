@@ -2276,26 +2276,29 @@ class SettingsPage(Page):
         gl2.addWidget(self.btn_guide)
         self.body.addWidget(gcard)
 
-        # --- uninstall info
-        u = card()
-        ul = QVBoxLayout(u)
-        ul.setContentsMargins(18, 14, 18, 14)
-        ul.setSpacing(6)
-        ul.addWidget(label(_("Kulak Kesil'i kaldır"), "sectionTitle"))
-        ul.addWidget(label(_("Servisleri, komutları ve kısayolları kaldırmak için terminalde çalıştır. "
-                             "Ayarların korunur; tamamen silmek için sonuna {secenek} ekle.").format(
-                                 secenek="--purge"), "muted", wrap=True))
-        ur = QHBoxLayout()
-        self.uninstall_cmd = str(config.SRC_DIR / "uninstall.sh").replace(str(Path.home()), "~", 1)
-        mono = label(self.uninstall_cmd, "mono")
-        mono.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        ur.addWidget(mono)
-        b_copy = button(_("Kopyala"))
-        b_copy.clicked.connect(self.copy_uninstall)
-        ur.addWidget(b_copy)
-        ur.addStretch(1)
-        ul.addLayout(ur)
-        self.body.addWidget(u)
+        # --- uninstall info (only for install.sh installs; a distro package (AUR) has no uninstall.sh:
+        # the package manager removes it, so the card would point to a missing file)
+        uninstall_sh = config.SRC_DIR / "uninstall.sh"
+        self.uninstall_cmd = str(uninstall_sh).replace(str(Path.home()), "~", 1)
+        if uninstall_sh.is_file():
+            u = card()
+            ul = QVBoxLayout(u)
+            ul.setContentsMargins(18, 14, 18, 14)
+            ul.setSpacing(6)
+            ul.addWidget(label(_("Kulak Kesil'i kaldır"), "sectionTitle"))
+            ul.addWidget(label(_("Servisleri, komutları ve kısayolları kaldırmak için terminalde çalıştır. "
+                                 "Ayarların korunur; tamamen silmek için sonuna {secenek} ekle.").format(
+                                     secenek="--purge"), "muted", wrap=True))
+            ur = QHBoxLayout()
+            mono = label(self.uninstall_cmd, "mono")
+            mono.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            ur.addWidget(mono)
+            b_copy = button(_("Kopyala"))
+            b_copy.clicked.connect(self.copy_uninstall)
+            ur.addWidget(b_copy)
+            ur.addStretch(1)
+            ul.addLayout(ur)
+            self.body.addWidget(u)
 
         # --- about
         a = card()
