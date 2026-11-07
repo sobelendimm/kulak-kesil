@@ -70,6 +70,7 @@ BACKOFF_MIN = 0.5            # pulse error backoff (doubles up to BACKOFF_MAX)
 BACKOFF_MAX = 10.0
 COMMAND_WAIT = 1.0           # IPC thread waits this long for the worker (< every client
                              # timeout: GUI 1.5 s, CLI 2 s, so "bekliyor" reaches them)
+BACKGROUND_DESKTOP_PROP = "deskhand.sanal"  # stream property set by Deskhand's invisible desktop
 KISMA_STATUS_WAIT = 0.05     # status(): max wait for the ducker's lock (its tick runs pactl)
 UNLINKED_RECHECK = 0.03      # a stream not linked to any sink yet: look again this soon …
 UNLINKED_WINDOW = 1.0        # … for at most this long after we first saw it unlinked
@@ -1284,7 +1285,10 @@ class Router:
         candidates: dict[str, Stream | None] = {p: None for p in VARIANT_PROFILES}
         voice: list[Stream] = []
         ours = [st for st in sorted(streams, key=lambda s: s.index)
-                if not st.node_name.startswith(SINK_PREFIX)]   # skip our filter-chain nodes
+                if not st.node_name.startswith(SINK_PREFIX)    # skip our filter-chain nodes
+                and st.props.get(BACKGROUND_DESKTOP_PROP) != "1"]
+        # ^ streams from an invisible background desktop (Deskhand) play into their own null sink: they must
+        #   not be routed, counted as "seen" apps, or trigger voice ducking of the user's outputs
         decisions = {st.index: self._classify(st, players) for st in ours}
         decisions = self._content_step(ours, decisions, players, present)
         for st in ours:

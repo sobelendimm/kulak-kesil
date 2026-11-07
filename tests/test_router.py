@@ -2388,6 +2388,21 @@ class TestDucking(RouterTestBase):
         self.assertTrue(any(n.startswith(R.SINK_PREFIX) for n in d.calls[-1][1]))
         self.assertEqual(r.status()["kisma"], {"acik": True, "konusma": False})
 
+    def test_background_desktop_streams_are_ignored(self):
+        """Deskhand's invisible desktop marks its streams (deskhand.sanal=1); they play into their own null
+        sink and must not duck the user's outputs or be routed."""
+        d = FakeDucker()
+        r = self.make(ducker=d, voice_check=self.voice_check)
+        st = self.pulse.add_stream(1, "discord")
+        st.props["deskhand.sanal"] = "1"
+        sink_once = self.pulse.sink_of(1)
+        r.scan()
+        self.assertEqual(d.calls[-1][0], [])
+        self.assertEqual(self.pulse.sink_of(1), sink_once)
+        self.pulse.add_stream(2, "discord")  # an unmarked voice stream still ducks
+        r.scan()
+        self.assertEqual(d.calls[-1][0], [2])
+
     def test_corked_and_off_mode_never_duck(self):
         d = FakeDucker()
         r = self.make(ducker=d, voice_check=self.voice_check, mode=("off", None))
