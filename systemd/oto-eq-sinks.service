@@ -23,6 +23,11 @@ RestrictNamespaces=yes
 SystemCallArchitectures=native
 SystemCallFilter=@system-service
 Type=simple
+# At login, wait (at most 10 s) until a real output (ALSA/Bluetooth) exists. Otherwise
+# the EQ outputs are the only sinks for a moment and WirePlumber makes one of them the
+# default; plasma-pa <= 6.8 never drops its volume watch on a former default sink, so
+# KDE's volume OSD then popped up at every kısma (ducking) step for the whole session.
+ExecStartPre=/bin/sh -c 'i=0; while [ $$i -lt 50 ]; do pw-cli ls Node 2>/dev/null | grep -qE "node.name = .(alsa|bluez)_output" && exit 0; i=$$((i+1)); sleep 0.2; done; exit 0'
 ExecStart=/usr/bin/pipewire -c %h/.config/oto-eq/oto-eq-sinks.conf
 Restart=on-failure
 RestartSec=2
