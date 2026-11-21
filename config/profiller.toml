@@ -139,8 +139,11 @@ filtreler = [
 #   tepki_ms        : rms algılamada ortalama penceresi
 #   yan_zincir_hpf_hz : 0 = kapalı; örn 120 → kompresör bası "duymaz"
 #   ileri_bakis_ms  : lookahead. GECİKME EKLER! Rekabetçi oyunda 0 kalmalı.
-#   mod             : "asagi" (klasik: eşiğin ÜSTÜ kısılır) | "yukari" (eşiğin
-#                     ALTI yükseltilir; yüksek sesler ve transientler dokunulmaz)
+#   mod             : "asagi" (klasik: eşiğin ÜSTÜ kısılır; varsayılan) | "yukari"
+#                     (eşiğin ALTI yükseltilir). DİKKAT: "yukari" DENEYSEL. Ölçümde
+#                     (CS2, 12 Kas 2026) sessizlikte kazanç açılıyor ve ardından
+#                     gelen vuruş o kazançla geçiyor: orta uzaklıktaki adım +24 dB
+#                     oldu, sınırlayıcı sürekli devredeydi. Oyunda önerilmez.
 #   taban_db        : "yukari" kipinde bu seviyenin altı yükseltilmez
 #                     (-120..-60; dip gürültüsü yerinde kalır)
 #

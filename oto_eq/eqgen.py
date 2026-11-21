@@ -128,8 +128,9 @@ DINAMIK_DEFAULTS = {
     "tepki_ms": 10.0,
     "yan_zincir_hpf_hz": 0.0,
     "ileri_bakis_ms": 0.0,
-    # "asagi" = classic downward compressor; "yukari" = upward (LSP cm=1): only signals
-    # BELOW esik_db are raised, loud sounds/transients stay untouched.
+    # "asagi" = classic downward compressor; "yukari" = upward (LSP cm=1): signals BELOW
+    # esik_db are raised. EXPERIMENTAL: measured in CS2 the gain opens up in silence and the
+    # next hit passes with that gain (mid-distance footsteps +24 dB, limiter always on).
     "mod": "asagi",
     # upward mode: no further boost below this level (LSP "bth"), so the noise floor stays put
     "taban_db": -72.0,
