@@ -128,7 +128,13 @@ DINAMIK_DEFAULTS = {
     "tepki_ms": 10.0,
     "yan_zincir_hpf_hz": 0.0,
     "ileri_bakis_ms": 0.0,
+    # "asagi" = classic downward compressor; "yukari" = upward (LSP cm=1): only signals
+    # BELOW esik_db are raised, loud sounds/transients stay untouched.
+    "mod": "asagi",
+    # upward mode: no further boost below this level (LSP "bth"), so the noise floor stays put
+    "taban_db": -72.0,
 }
+DYN_MODES = {"asagi": 0.0, "yukari": 1.0}
 # [profil.<ad>.sinirlayici] — LSP Limiter Stereo at the very end of the chain.
 # Block present = node in the graph (structure); aktif = live.
 SINIRLAYICI_DEFAULTS = {
@@ -247,13 +253,17 @@ def _norm_dinamik(d: dict, where: str) -> dict:
             if v not in DETECTION:
                 raise ProfileError(_("{alan}.algilama: 'tepe' ya da 'rms' olmalı").format(alan=where))
             out[k] = v
+        elif k == "mod":
+            if v not in DYN_MODES:
+                raise ProfileError(_("{alan}.mod: 'asagi' ya da 'yukari' olmalı").format(alan=where))
+            out[k] = v
         else:
             out[k] = _num(v, f"{where}.{k}")
     limits = {
         "esik_db": (-60.0, 0.0), "oran": (1.0, 100.0), "atak_ms": (0.0, 2000.0),
         "birakma_ms": (0.0, 5000.0), "diz_db": (0.0, 24.0), "telafi_db": (-30.0, 30.0),
         "tepki_ms": (0.0, 250.0), "yan_zincir_hpf_hz": (0.0, 20000.0),
-        "ileri_bakis_ms": (0.0, 20.0),
+        "ileri_bakis_ms": (0.0, 20.0), "taban_db": (-120.0, -60.0),
     }
     for k, (lo, hi) in limits.items():
         if not lo <= out[k] <= hi:
@@ -1094,7 +1104,8 @@ def comp_controls(d: dict, profile_active: bool, zero_latency: bool) -> dict[str
         "shpm": 1.0 if hpf > 0 else 0.0,
         "shpf": max(hpf, 10.0),
         "slpm": 0.0,
-        "cm": 0.0,                # downward
+        "cm": DYN_MODES[d.get("mod", "asagi")],   # 0 downward, 1 upward
+        "bth": _db2lin(d.get("taban_db", -72.0)),  # upward: boost stops below this level
         "al": _db2lin(d["esik_db"]),
         "at": d["atak_ms"],
         "rt": d["birakma_ms"],

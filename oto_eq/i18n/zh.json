@@ -1481,6 +1481,7 @@
  "{alan} negatif olamaz": "{alan} 不能为负",
  "{alan}.algilama: \"tepe\" veya \"rms\" olmalı, '{deger}' bulundu": "{alan}.algilama：须为 \"tepe\" 或 \"rms\"，实际为 '{deger}'",
  "{alan}.algilama: 'tepe' ya da 'rms' olmalı": "{alan}.algilama：必须是 'tepe' 或 'rms'",
+ "{alan}.mod: 'asagi' ya da 'yukari' olmalı": "{alan}.mod：必须是 'asagi' 或 'yukari'",
  "{alan}.tip: PK, LSC veya HSC olmalı, '{deger}' bulundu": "{alan}.tip：须为 PK、LSC 或 HSC，实际为 '{deger}'",
  "{alan}: [dinamik] bir tablo olmalı": "{alan}：[dinamik] 必须是表",
  "{alan}: bilinmeyen anahtar '{anahtar}'": "{alan}：未知的键 '{anahtar}'",

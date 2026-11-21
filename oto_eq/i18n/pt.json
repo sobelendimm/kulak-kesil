@@ -1481,6 +1481,7 @@
  "{alan} negatif olamaz": "{alan} não pode ser negativo",
  "{alan}.algilama: \"tepe\" veya \"rms\" olmalı, '{deger}' bulundu": "{alan}.algilama: deve ser \"tepe\" ou \"rms\", '{deger}' encontrado",
  "{alan}.algilama: 'tepe' ya da 'rms' olmalı": "{alan}.algilama: deve ser 'tepe' ou 'rms'",
+ "{alan}.mod: 'asagi' ya da 'yukari' olmalı": "{alan}.mod: deve ser 'asagi' ou 'yukari'",
  "{alan}.tip: PK, LSC veya HSC olmalı, '{deger}' bulundu": "{alan}.tip: deve ser PK, LSC ou HSC, '{deger}' encontrado",
  "{alan}: [dinamik] bir tablo olmalı": "{alan}: [dinamik] deve ser uma tabela",
  "{alan}: bilinmeyen anahtar '{anahtar}'": "{alan}: chave desconhecida '{anahtar}'",

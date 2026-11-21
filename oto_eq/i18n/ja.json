@@ -1481,6 +1481,7 @@
  "{alan} negatif olamaz": "{alan} は負の値にできません",
  "{alan}.algilama: \"tepe\" veya \"rms\" olmalı, '{deger}' bulundu": "{alan}.algilama: \"tepe\" または \"rms\" にしてください（'{deger}' でした）",
  "{alan}.algilama: 'tepe' ya da 'rms' olmalı": "{alan}.algilama: 'tepe' か 'rms' である必要があります",
+ "{alan}.mod: 'asagi' ya da 'yukari' olmalı": "{alan}.mod: 'asagi' か 'yukari' である必要があります",
  "{alan}.tip: PK, LSC veya HSC olmalı, '{deger}' bulundu": "{alan}.tip: PK、LSC、HSC のいずれかにしてください（'{deger}' でした）",
  "{alan}: [dinamik] bir tablo olmalı": "{alan}: [dinamik] はテーブルである必要があります",
  "{alan}: bilinmeyen anahtar '{anahtar}'": "{alan}: 不明なキー '{anahtar}' です",

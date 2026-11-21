@@ -139,6 +139,10 @@ filtreler = [
 #   tepki_ms        : rms algılamada ortalama penceresi
 #   yan_zincir_hpf_hz : 0 = kapalı; örn 120 → kompresör bası "duymaz"
 #   ileri_bakis_ms  : lookahead. GECİKME EKLER! Rekabetçi oyunda 0 kalmalı.
+#   mod             : "asagi" (klasik: eşiğin ÜSTÜ kısılır) | "yukari" (eşiğin
+#                     ALTI yükseltilir; yüksek sesler ve transientler dokunulmaz)
+#   taban_db        : "yukari" kipinde bu seviyenin altı yükseltilmez
+#                     (-120..-60; dip gürültüsü yerinde kalır)
 #
 # [profil.X.sinirlayici]  (LSP Limiter Stereo — zincirin EN SONU; 25 Eki, D1)
 #  Tuğla duvar sınırlayıcı: çıkış ASLA tavan_dbfs'i aşmaz (ölçüldü: +14 dB

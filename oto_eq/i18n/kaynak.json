@@ -30,7 +30,7 @@
   "kisisel.py:85"
  ],
  "'{tip}' için boş tür yuvası yok (en çok 1 LSC, 2 PK, 1 HSC)": [
-  "eqgen.py:295"
+  "eqgen.py:305"
  ],
  "(hiçbiri)": [
   "kisma.py:1033"
@@ -69,10 +69,10 @@
   "eq_page.py:915"
  ],
  "1. Kulaklığı tak, mikrofon kolunu aşağı indir (sessize alma kapalı olsun).\n2. “Başla”ya bas ve {saniye} saniye boyunca normal sesinle konuş; arada kısa sessizlik bırak (oyunda/Discord'da konuştuğun gibi).\n3. Sonra şu anki ve önerilen ayarları yan yana görürsün; istersen uygularsın.\nSes yalnızca bellekte ölçülür, hiçbir yere kaydedilmez.": [
-  "app.py:3026"
+  "app.py:3029"
  ],
  "1. Ses biraz kısılır: kulaklık sesini bir kez artır": [
-  "app.py:3876"
+  "app.py:3879"
  ],
  "10 dakikada en çok bir otomatik onarım": [
   "onarim.py:255"
@@ -87,25 +87,25 @@
   "eq_page.py:335"
  ],
  "2. CS2 oyun içi ses ayarları": [
-  "app.py:3879"
+  "app.py:3882"
  ],
  "20 dk kesintisiz dinle.": [
   "eq_page.py:1370"
  ],
  "3. Discord ayarları": [
-  "app.py:3884"
+  "app.py:3887"
  ],
  "30 m'de adım hâlâ seçiliyor mu? Mesafe hissi korunuyor mu (uzak ses uzak gelmeli; kompresör hepsini aynı seviyeye çekmemeli)?": [
   "eq_page.py:1305"
  ],
  "4. Mikrofon testi": [
-  "app.py:3887"
+  "app.py:3890"
  ],
  "5 saniye konuş; ham ve işlenmiş sesi art arda dinle, farkı duy.": [
-  "app.py:3888"
+  "app.py:3891"
  ],
  "5 saniye konuş; ham ve işlenmiş sesin seviyelerini gör, sonra ikisini art arda dinle.": [
-  "app.py:3457"
+  "app.py:3460"
  ],
  "8 kHz üstü: zil, nefes, ince detay. Artı = daha parlak ve havadar, eksi = daha yumuşak, cızırtı/sertlik azalır.": [
   "eq_page.py:337"
@@ -229,7 +229,7 @@
   "app.py:2069"
  ],
  "Atamayı kaldır": [
-  "app.py:4251",
+  "app.py:4254",
   "tray.py:56"
  ],
  "Atmosfer + bas etkisi": [
@@ -245,7 +245,7 @@
   "eq_page.py:1646"
  ],
  "Ayar": [
-  "app.py:3245"
+  "app.py:3248"
  ],
  "Ayar (kulakla)": [
   "eq_page.py:1329"
@@ -254,7 +254,7 @@
   "tray.py:232"
  ],
  "Ayar modülü (micgen) henüz kurulu değil; ayarlar şimdilik kapalı.": [
-  "app.py:3711"
+  "app.py:3714"
  ],
  "Ayarlanmadı": [
   "ui_text.py:441"
@@ -264,16 +264,16 @@
   "app.py:2109"
  ],
  "Ayarlar kaydedildi ama mikrofon servisi başlatılamadı: {hata}. Ayarlar sayfasındaki Servisler bölümünden yeniden başlatmayı dene.": [
-  "app.py:3346"
+  "app.py:3349"
  ],
  "Ayarlar'da aç": [
   "ui_text.py:547"
  ],
  "Ayarların zaten önerilen değerlerde; uygulamak yalnızca ayar dosyasını tazeler.": [
-  "app.py:3228"
+  "app.py:3231"
  ],
  "Ayarların zaten önerilen değerlerdeydi; değişiklik gerekmedi.": [
-  "app.py:3339"
+  "app.py:3342"
  ],
  "Aynı sahnede Durum'dan modu “Sabit: CS2” ile “Kapalı” arasında değiştir (Kapalı = seviye eşitli Düz çıkış).": [
   "eq_page.py:1322"
@@ -353,34 +353,34 @@
   "eq_page.py:1368"
  ],
  "Bastırma eşiği": [
-  "app.py:2546",
+  "app.py:2549",
   "cli.py:916"
  ],
  "Bazı ayarlar bu sürümde yok ve kapalı gösteriliyor.": [
-  "app.py:3715"
+  "app.py:3718"
  ],
  "Bağlanıyor…": [
   "app.py:1139",
   "app.py:1329",
-  "app.py:4015",
-  "app.py:4159"
+  "app.py:4018",
+  "app.py:4162"
  ],
  "Başla": [
-  "app.py:2980"
+  "app.py:2983"
  ],
  "Başlamak için Enter (q = vazgeç): ": [
   "ab.py:565"
  ],
  "Başlat": [
   "app.py:2204",
-  "app.py:3407"
+  "app.py:3410"
  ],
  "Başlatılamadı: {hata}": [
-  "app.py:3618",
-  "app.py:4325"
+  "app.py:3621",
+  "app.py:4328"
  ],
  "Başlatılıyor…": [
-  "app.py:4319"
+  "app.py:4322"
  ],
  "Başlatınca otomatik EQ geri gelir. Terminalden: {komut}": [
   "app.py:1119"
@@ -400,14 +400,14 @@
   "saglik.py:55"
  ],
  "Bilinmeyen hata": [
-  "app.py:3183"
+  "app.py:3186"
  ],
  "Bilinmeyen çıkış": [
   "kulaklik.py:49",
   "ui_text.py:602"
  ],
  "Bilinmiyor": [
-  "app.py:2434"
+  "app.py:2437"
  ],
  "Bir T botu donmuş halde bekler (bot_stop 1), ateş etmez. Sol üstteki cl_showpos koordinatları mesafe ölçmek için: 1 birim ≈ 2,5 cm.": [
   "eq_page.py:1289"
@@ -479,7 +479,7 @@
   "eq_page.py:1503"
  ],
  "Bu değeri “{mod}” modu belirliyor (mikrofon.toml → [mod.{mod}]); değiştirmek için oradaki satırı düzenle.": [
-  "app.py:3698"
+  "app.py:3701"
  ],
  "Bu kulaklıkta ({model}) HS80 düzeltmesi uygulanmıyor; eğri HS80 için ölçüldü.": [
   "ui_text.py:569"
@@ -497,10 +497,10 @@
   "app.py:1592"
  ],
  "Bu seviyeyi aşan ses yumuşatılır; bağırınca karşı tarafın kulağı patlamaz.": [
-  "app.py:2821"
+  "app.py:2824"
  ],
  "Bu sürümde kalibrasyon yok (micgen.calibrate).": [
-  "app.py:3053"
+  "app.py:3056"
  ],
  "Bu tür için": [
   "eq_page.py:2690"
@@ -521,7 +521,7 @@
   "app.py:776"
  ],
  "Bu uygulamayı hep şununla çal": [
-  "app.py:4242"
+  "app.py:4245"
  ],
  "Bu şarkı aslında…": [
   "tray.py:54"
@@ -536,13 +536,13 @@
   "eq_page.py:109"
  ],
  "Bunun üstündeki sesler yumuşatılır; bağırınca patlamaz.": [
-  "app.py:2551"
+  "app.py:2554"
  ],
  "Bırakma": [
   "eq_page.py:75"
  ],
  "CS2 kendi HRTF'ini uygular.": [
-  "app.py:3793"
+  "app.py:3796"
  ],
  "CS2: adım sesi, yön ve silah sertliği": [
   "eq_page.py:1275"
@@ -566,7 +566,7 @@
   "eq_page.py:2987"
  ],
  "Crisp tizi ikinci kez yükseltir; Smooth'u kullanma.": [
-  "app.py:3792"
+  "app.py:3795"
  ],
  "Daha az göster": [
   "app.py:2009"
@@ -591,10 +591,10 @@
   "app.py:1907"
  ],
  "Değerlendiriliyor…": [
-  "app.py:3120"
+  "app.py:3123"
  ],
  "Değerler dBFS: gürültü düşük, konuşma ile arası geniş olmalı.": [
-  "app.py:2792"
+  "app.py:2795"
  ],
  "Değişecek bir şey yok; hiçbir dosya yazılmadı.": [
   "yedek.py:404"
@@ -603,7 +603,7 @@
   "ab.py:640"
  ],
  "Değişiklikler hemen uygulanır.": [
-  "app.py:3717"
+  "app.py:3720"
  ],
  "Değişiklikler çalışan sanal çıkışlara anında uygulanır (kaydetmeden). Yeniden başlatma gerekmez.": [
   "eq_page.py:1810"
@@ -612,7 +612,7 @@
   "ui_text.py:453"
  ],
  "Değiştirilemedi: {hata}": [
-  "app.py:3611"
+  "app.py:3614"
  ],
  "Dikey (üst / alt)": [
   "eq_page.py:1307"
@@ -631,10 +631,10 @@
   "ses_model.py:323"
  ],
  "Discord için ipucu": [
-  "app.py:3520"
+  "app.py:3523"
  ],
  "Discord'da Ses ve Görüntü ayarlarından giriş cihazı olarak “Kulak Kesil · Mikrofon”u seç; gürültü azaltma (Krisp), otomatik kazanç ve yankı giderme kapalı olsun. İşlemeyi zaten Kulak Kesil yapıyor; ikisi üst üste binince ses boğuklaşır.": [
-  "app.py:3521"
+  "app.py:3524"
  ],
  "Diyalog anlaşılırlığı": [
   "config/profiller.toml:400"
@@ -665,8 +665,8 @@
   "app.py:1102"
  ],
  "Durum alınıyor…": [
-  "app.py:3400",
-  "app.py:3573"
+  "app.py:3403",
+  "app.py:3576"
  ],
  "Durum'da Sabit: Film ↔ Kapalı; sonra Ekolayzır → Film → Kör test.": [
   "eq_page.py:1355"
@@ -687,7 +687,7 @@
   "eq_page.py:1312"
  ],
  "Dört kısa adım. Yaptıkça işaretle; bu rehbere Ayarlar → Kurulum rehberi'nden yeniden ulaşabilirsin.": [
-  "app.py:3831"
+  "app.py:3834"
  ],
  "Düz": [
   "models.py:45",
@@ -763,7 +763,7 @@
   "tray.py:230"
  ],
  "EQ eğrilerini çiz (PNG)": [
-  "eqgen.py:3097"
+  "eqgen.py:3108"
  ],
  "EQ eğrilerinin grafiğini çiz ve aç": [
   "cli.py:1058"
@@ -775,7 +775,7 @@
   "ui_text.py:22"
  ],
  "EQ profili: Natural": [
-  "app.py:3792"
+  "app.py:3795"
  ],
  "EQ yapılandırması": [
   "app.py:2225"
@@ -785,7 +785,7 @@
   "saglik.py:817"
  ],
  "EQ yeniden üretildi ✓": [
-  "app.py:2457"
+  "app.py:2460"
  ],
  "EQ yok": [
   "classifier.py:60",
@@ -836,16 +836,16 @@
   "onarim.py:246"
  ],
  "EQ üretildi, ama servis çalışmıyor": [
-  "app.py:2459"
+  "app.py:2462"
  ],
  "EQ üretilemedi: {hata}": [
-  "app.py:2462"
+  "app.py:2465"
  ],
  "EQ'lu bir ses çalınca profil burada görünür.": [
   "app.py:1346"
  ],
  "EQ'nun yükselttiği bölgeler patlamasın diye yaklaşık 10 dB pay bırakılır. Kulaklık tekerinden ya da KDE ses seviyesinden bir kez artırman yeterli.": [
-  "app.py:3877"
+  "app.py:3880"
  ],
  "EQ'suz, doğrudan varsayılan çıkışa": [
   "ui_text.py:21"
@@ -945,13 +945,13 @@
   "eq_page.py:85"
  ],
  "Eşiği aşan sesin ne kadar bastırılacağı (3:1 → 3 dB fazlalık 1 dB olur).": [
-  "app.py:2823"
+  "app.py:2826"
  ],
  "Eşiği aşan sesin ne kadar ezileceği (1:1 = hiç).": [
   "eq_page.py:110"
  ],
  "Fan, klavye ve oda uğultusunu bastırır.": [
-  "app.py:2545"
+  "app.py:2548"
  ],
  "Fark duyuluyor ve hoşuna gidiyor mu? Gerekirse dinamik bloğunu aç.": [
   "eq_page.py:1389"
@@ -975,7 +975,7 @@
   "eq_page.py:1732"
  ],
  "Frekans (Hz)": [
-  "eqgen.py:2192"
+  "eqgen.py:2203"
  ],
  "GRUP": [
   "cli.py:1077"
@@ -995,7 +995,7 @@
  "Genel": [
   "app.py:1631",
   "app.py:2124",
-  "app.py:4263",
+  "app.py:4266",
   "cli.py:600",
   "eq_page.py:2048",
   "models.py:87",
@@ -1030,13 +1030,13 @@
   "eq_page.py:2705"
  ],
  "Gerçek bir mikrofon bulunamadı": [
-  "app.py:3604"
+  "app.py:3607"
  ],
  "Geçerli olması için çalıştırın:": [
   "yedek.py:420"
  ],
  "Giriş seviyesi": [
-  "app.py:3421"
+  "app.py:3424"
  ],
  "Giriş: {kaynak}": [
   "micgen.py:1317",
@@ -1056,36 +1056,36 @@
   "ui_text.py:128"
  ],
  "Grafik: {yol}": [
-  "eqgen.py:3127"
+  "eqgen.py:3138"
  ],
  "Grup": [
   "app.py:1605",
   "app.py:1693"
  ],
  "Günlükte hata satırları:": [
-  "eqgen.py:2950"
+  "eqgen.py:2961"
  ],
  "Gürültü": [
-  "app.py:2697",
+  "app.py:2700",
   "cli.py:945"
  ],
  "Gürültü bastırma": [
-  "app.py:2544"
+  "app.py:2547"
  ],
  "Gürültü kapısı (VAD eşiği)": [
-  "app.py:2817"
+  "app.py:2820"
  ],
  "Güven": [
   "ab.py:307"
  ],
  "HATA:": [
-  "eqgen.py:2744"
+  "eqgen.py:2755"
  ],
  "HATA: {hata}": [
-  "eqgen.py:2779",
-  "eqgen.py:2977",
-  "eqgen.py:2985",
-  "eqgen.py:2997",
+  "eqgen.py:2790",
+  "eqgen.py:2988",
+  "eqgen.py:2996",
+  "eqgen.py:3008",
   "micgen.py:942",
   "micgen.py:1108",
   "micgen.py:1431"
@@ -1131,7 +1131,7 @@
   "onarim.py:364"
  ],
  "HS80 mikrofonunun işlenmiş hâli: gürültü bastırma, netlik ve dengeli seviye. Discord ve oyunlarda bunu seç.": [
-  "app.py:3379"
+  "app.py:3382"
  ],
  "HS80 takibi: {takip}": [
   "saglik.py:432"
@@ -1140,23 +1140,23 @@
   "onarim.py:331"
  ],
  "HS80'e geri dön": [
-  "app.py:3586"
+  "app.py:3589"
  ],
  "Hafif kompresör: yüksek anları yumuşatır, sessiz detayları yukarı çeker.": [
   "eq_page.py:108"
  ],
  "Ham": [
-  "app.py:2767",
+  "app.py:2770",
   "mikrofon_test.py:31"
  ],
  "Ham HS80 mikrofonu ve Kulak Kesil · Mikrofon aynı anda kaydedilir, sonra önce ham, ardından işlenmiş ses kulaklığından çalınır.": [
-  "app.py:2688"
+  "app.py:2691"
  ],
  "Ham HS80 mikrofonunun seviyesi: konuşurken yeşilde, ara ara sarıda olmalı; kırmızı = çok yüksek.": [
-  "app.py:2959"
+  "app.py:2962"
  ],
  "Ham ve işlenmiş sesi art arda dinle": [
-  "app.py:2987"
+  "app.py:2990"
  ],
  "Hangisi daha iyi? [1 / 2 / = fark yok / t tekrar / q bitir]: ": [
   "ab.py:615"
@@ -1169,8 +1169,8 @@
  ],
  "Hata: {hata}": [
   "ab.py:678",
-  "app.py:3946",
-  "app.py:4193",
+  "app.py:3949",
+  "app.py:4196",
   "tray.py:468"
  ],
  "Hazır": [
@@ -1181,7 +1181,7 @@
   "app.py:1346"
  ],
  "Hazırlanıyor…": [
-  "app.py:2686"
+  "app.py:2689"
  ],
  "Hazırlık": [
   "eq_page.py:1280",
@@ -1199,7 +1199,7 @@
   "app.py:1709"
  ],
  "Hepsi tamam ✓": [
-  "app.py:3924"
+  "app.py:3927"
  ],
  "Her modun eğrisi: HS80 düzeltmesi (yalnız HS80'de) + profil bantları + dinamik.": [
   "eq_page.py:1599"
@@ -1229,7 +1229,7 @@
   "kulaklik.py:43"
  ],
  "Kalibrasyon": [
-  "app.py:3438"
+  "app.py:3441"
  ],
  "Kapalı": [
   "app.py:1215",
@@ -1244,8 +1244,8 @@
   "eq_page.py:1643"
  ],
  "Kapat": [
-  "app.py:2714",
-  "app.py:3021",
+  "app.py:2717",
+  "app.py:3024",
   "eq_page.py:912",
   "eq_page.py:1155",
   "eq_page.py:1466"
@@ -1281,9 +1281,9 @@
  ],
  "Kaydedilemedi: {hata}": [
   "app.py:1763",
-  "app.py:2383",
-  "app.py:2401",
-  "app.py:4219",
+  "app.py:2386",
+  "app.py:2404",
+  "app.py:4222",
   "eq_page.py:3068",
   "tray.py:358"
  ],
@@ -1333,11 +1333,11 @@
   "eq_page.py:1732"
  ],
  "Kazanç (dB)": [
-  "eqgen.py:2189",
-  "eqgen.py:2191"
+  "eqgen.py:2200",
+  "eqgen.py:2202"
  ],
  "Kenardaki sesler tek kulağa kayarsa kapatıp karşılaştır.": [
-  "app.py:3795"
+  "app.py:3798"
  ],
  "Kendini onarma": [
   "ui_text.py:534"
@@ -1385,15 +1385,15 @@
   "config/profiller.toml:371"
  ],
  "Kompresör eşiği": [
-  "app.py:2550",
-  "app.py:2820",
+  "app.py:2553",
+  "app.py:2823",
   "cli.py:914"
  ],
  "Kompresör oranı": [
-  "app.py:2822"
+  "app.py:2825"
  ],
  "Kompresör telafisi": [
-  "app.py:2552",
+  "app.py:2555",
   "cli.py:915"
  ],
  "Kompresör: YOK (LSP yok)": [
@@ -1406,19 +1406,19 @@
   "micgen.py:1347"
  ],
  "Komut kopyalandı": [
-  "app.py:2531"
+  "app.py:2534"
  ],
  "Konsol komutları": [
   "eq_page.py:1436"
  ],
  "Kontrol ediliyor…": [
-  "app.py:2471"
+  "app.py:2474"
  ],
  "Kontrol et": [
   "app.py:2248"
  ],
  "Konuşma": [
-  "app.py:2697",
+  "app.py:2700",
   "cli.py:944"
  ],
  "Konuşma / Podcast": [
@@ -1428,7 +1428,7 @@
   "config/profiller.toml:387"
  ],
  "Konuşma algılanmadı": [
-  "app.py:2833"
+  "app.py:2836"
  ],
  "Konuşma algılanmadı. Mikrofon açık mı (kol aşağıda)? {saniye:g} saniye boyunca normal sesinle konuşup tekrar deneyin.": [
   "micgen.py:1222"
@@ -1437,16 +1437,16 @@
   "eq_page.py:67"
  ],
  "Konuşma bölgesini (2–4 kHz) öne çıkarır.": [
-  "app.py:2826"
+  "app.py:2829"
  ],
  "Konuşma bölgesini (2–4 kHz) öne çıkarır; sesin daha anlaşılır olur.": [
-  "app.py:2549"
+  "app.py:2552"
  ],
  "Konuşma netliği": [
   "config/profiller.toml:388"
  ],
  "Konuşma sayılmayan sesler (fan, klavye) susturulur. Kelime sonların kesilirse düşür.": [
-  "app.py:2818"
+  "app.py:2821"
  ],
  "Konuşma var · {db}": [
   "ui_text.py:415"
@@ -1458,13 +1458,13 @@
   "micgen.py:1239"
  ],
  "Konuşma/gürültü farkı: ham {ham:.0f} dB → işlenmiş {islenmis:.0f} dB.": [
-  "app.py:2778"
+  "app.py:2781"
  ],
  "Konuşman {konusma:.1f} dBFS, ortam gürültüsü {gurultu:.1f} dBFS (aradaki fark {fark:.0f} dB), en yüksek tepe {tepe:.1f} dBFS.": [
-  "app.py:3218"
+  "app.py:3221"
  ],
  "Kopyala": [
-  "app.py:2293",
+  "app.py:2296",
   "eq_page.py:1437"
  ],
  "Korku / Hayatta kalma": [
@@ -1495,7 +1495,7 @@
   "ses_analiz.py:48"
  ],
  "Kulak Kesil seviye ölçer": [
-  "app.py:3638"
+  "app.py:3641"
  ],
  "Kulak Kesil tepsisi zaten çalışıyor.": [
   "tray.py:614"
@@ -1531,7 +1531,7 @@
   "tray.py:196"
  ],
  "Kulak Kesil'i kaldır": [
-  "app.py:2284"
+  "app.py:2288"
  ],
  "Kulak Kesil'in kendi çıkışı": [
   "kulaklik.py:234"
@@ -1573,13 +1573,13 @@
   "app.py:1334"
  ],
  "Kulaklık düzeltmesi ({ad}), ön kazançsız": [
-  "eqgen.py:2152"
+  "eqgen.py:2163"
  ],
  "Kulaklık düzeltmesi: bu kulaklıkta nötr": [
-  "eqgen.py:2154"
+  "eqgen.py:2165"
  ],
  "Kulaklık için bağlama göre otomatik ekolayzır: CS2'de adım sesi, filmde diyalog, müzikte tını, oyunda atmosfer. USB, Bluetooth ve 3,5 mm kulaklıklarda çalışır; HS80 düzeltme eğrisi yalnız Corsair HS80'de uygulanır. Discord ve sistem sesleri EQ'suz kalır.": [
-  "app.py:2313"
+  "app.py:2316"
  ],
  "Kulaklık varsayılan çıkış değil, EQ devrede değil. HS80'i varsayılan çıkış yapıp tekrar deneyin.": [
   "ab.py:444"
@@ -1591,10 +1591,10 @@
   "saglik.py:68"
  ],
  "Kulaklığı ya da mikrofonu aç ve bağla, sonra “Yeniden ölç”e bas.": [
-  "app.py:2832"
+  "app.py:2835"
  ],
  "Kulaklığından dinle: önce ham HS80, sonra Kulak Kesil · Mikrofon.": [
-  "app.py:2758"
+  "app.py:2761"
  ],
  "Kullanıcı ataması": [
   "ui_text.py:110"
@@ -1610,7 +1610,7 @@
   "tray.py:493"
  ],
  "Kurallar yeniden yüklendi ✓": [
-  "app.py:4212"
+  "app.py:4215"
  ],
  "Kurallar yeniden yüklendi.": [
   "cli.py:199"
@@ -1655,13 +1655,13 @@
   "eq_page.py:2616"
  ],
  "Kısmen uygulandı": [
-  "app.py:3357"
+  "app.py:3360"
  ],
  "L/R Isolation: %50 ile başla": [
-  "app.py:3794"
+  "app.py:3797"
  ],
  "LSP eklentileri eksik: {eksik} (bu bloklar üretilmez)": [
-  "eqgen.py:3034"
+  "eqgen.py:3045"
  ],
  "LSP eklentisi": [
   "saglik.py:514",
@@ -1669,13 +1669,13 @@
   "saglik.py:520"
  ],
  "LSP kompresör eklentisi: YOK (yalnız EQ)": [
-  "eqgen.py:3032"
+  "eqgen.py:3043"
  ],
  "LSP kompresör eklentisi: var": [
-  "eqgen.py:3030"
+  "eqgen.py:3041"
  ],
  "LSP kompresör yüklendi (cs2 lookahead comp:sla = {sla} ms, eşik {esik}, telafi {telafi})": [
-  "eqgen.py:2867"
+  "eqgen.py:2878"
  ],
  "Lutris oyunu": [
   "classifier.py:946"
@@ -1709,22 +1709,22 @@
  ],
  "Mikrofon": [
   "app.py:42",
-  "app.py:3379"
+  "app.py:3382"
  ],
  "Mikrofon ayarları okunamadı": [
-  "app.py:2839"
+  "app.py:2842"
  ],
  "Mikrofon ayarları okunamadı.": [
-  "app.py:3713"
+  "app.py:3716"
  ],
  "Mikrofon ayarı uygulanamadı: {hata}": [
-  "app.py:3766"
+  "app.py:3769"
  ],
  "Mikrofon başlatıldı ✓": [
-  "app.py:3617"
+  "app.py:3620"
  ],
  "Mikrofon bulunamadı": [
-  "app.py:2831"
+  "app.py:2834"
  ],
  "Mikrofon bulunamadı (takılı ve açık mı?)": [
   "micgen.py:1202"
@@ -1739,47 +1739,47 @@
   "ui_text.py:552"
  ],
  "Mikrofon kalibre edildi ✓": [
-  "app.py:3362"
+  "app.py:3365"
  ],
  "Mikrofon kolu aşağıda ve sessize alma kapalı mı? {saniye} saniye boyunca normal sesinle konuş, sonra yeniden ölç.": [
-  "app.py:2834"
+  "app.py:2837"
  ],
  "Mikrofon kırpılıyor (tepe {tepe:+.1f} dBFS). KDE'de mikrofon seviyesini düşürüp tekrar deneyin.": [
   "micgen.py:1218"
  ],
  "Mikrofon servisi yeni ayarlarla yeniden başlatıldı.": [
-  "app.py:3344"
+  "app.py:3347"
  ],
  "Mikrofon servisi yeni ayarlarla yeniden başlatılıyor…": [
-  "app.py:3310"
+  "app.py:3313"
  ],
  "Mikrofon testi": [
-  "app.py:2679",
-  "app.py:2986",
-  "app.py:3456"
+  "app.py:2682",
+  "app.py:2989",
+  "app.py:3459"
  ],
  "Mikrofon testini başlat": [
-  "app.py:3885"
+  "app.py:3888"
  ],
  "Mikrofon yeniden başlatıldı ✓": [
-  "app.py:3773"
+  "app.py:3776"
  ],
  "Mikrofon'da aç": [
   "ui_text.py:553"
  ],
  "Mikrofon: kısmen uygulandı": [
-  "app.py:3362"
+  "app.py:3365"
  ],
  "Mikrofonu ağzından biraz uzaklaştır ya da KDE ses ayarlarında HS80 mikrofon seviyesini düşür, sonra yeniden ölç.": [
-  "app.py:2837"
+  "app.py:2840"
  ],
  "Mikrofonu kalibre et": [
-  "app.py:2936",
-  "app.py:2942",
-  "app.py:3025"
+  "app.py:2939",
+  "app.py:2945",
+  "app.py:3028"
  ],
  "Mikrofonu kalibre et…": [
-  "app.py:3443"
+  "app.py:3446"
  ],
  "Mod": [
   "app.py:1204",
@@ -1850,8 +1850,8 @@
   "eq_page.py:99"
  ],
  "Netlik": [
-  "app.py:2548",
-  "app.py:2826"
+  "app.py:2551",
+  "app.py:2829"
  ],
  "Neye göre": [
   "app.py:1555",
@@ -1861,7 +1861,7 @@
   "config/profiller.toml:222"
  ],
  "Normal sesinle konuş; arada kısa sessizlik bırak. Ölçüm bitince sonuç kendiliğinden gelir.": [
-  "app.py:3063"
+  "app.py:3066"
  ],
  "Not: Ses analizi Ayarlar'da kapalı; yönlendirici kullanmıyor (bu deneme yine de çalışır).": [
   "cli.py:853"
@@ -1870,10 +1870,10 @@
   "cli.py:696"
  ],
  "Not: gerçek sanal çıkışlar zaten açık ({cikislar}); test '{onek}*' adlarıyla yapılıyor": [
-  "eqgen.py:2762"
+  "eqgen.py:2773"
  ],
  "Not: gerçekçi müzik ölçümü yapılamadı: {hata}": [
-  "eqgen.py:2992"
+  "eqgen.py:3003"
  ],
  "Not: tür değişti ({eski} → {yeni}); sonuç yine {eski} için kaydedilir.": [
   "ab.py:600"
@@ -1891,7 +1891,7 @@
   "eq_page.py:1308"
  ],
  "Olmadı: {hata}": [
-  "app.py:2445"
+  "app.py:2448"
  ],
  "Onay": [
   "app.py:1659"
@@ -1906,7 +1906,7 @@
   "eq_page.py:1385"
  ],
  "Ortam gürültülü (konuşmayla arası yalnız {fark:.0f} dB): gürültü bastırmayı açık tut, mikrofonu ağzına yaklaştır.": [
-  "app.py:2904"
+  "app.py:2907"
  ],
  "Ortam gürültülü: RNNoise'u açık tutun, mikrofonu ağza yaklaştırın.": [
   "micgen.py:1237"
@@ -1918,7 +1918,7 @@
   "ui_text.py:23"
  ],
  "Otomatik (içeriğe göre)": [
-  "app.py:4263"
+  "app.py:4266"
  ],
  "Otomatik (sistem dili: {dil})": [
   "app.py:2126"
@@ -1927,7 +1927,7 @@
   "tray.py:486"
  ],
  "Otomatik başlatma değiştirilemedi": [
-  "app.py:2420"
+  "app.py:2423"
  ],
  "Oyna → Antrenman (botlarla, çevrimdışı) → Mirage. Konsolu aç (Ayarlar → Oyun → Geliştirici konsolu) ve yukarıdaki komut bloğunu yapıştır.": [
   "eq_page.py:1287"
@@ -1943,7 +1943,7 @@
   "app.py:1935"
  ],
  "Oyun içi ana ses sabit (ör. %80)": [
-  "app.py:3796"
+  "app.py:3799"
  ],
  "Oyun içi sesi sabitle.": [
   "eq_page.py:1383"
@@ -1991,7 +1991,7 @@
   "eq_page.py:100"
  ],
  "Perspective Correction: Açık": [
-  "app.py:3795"
+  "app.py:3798"
  ],
  "Pop / Vokal": [
   "models.py:91"
@@ -2019,7 +2019,7 @@
   "app.py:1503"
  ],
  "Profillerin düzeltmenin üstüne eklediği": [
-  "eqgen.py:2190"
+  "eqgen.py:2201"
  ],
  "Profillerin üstüne kendi zevkine göre küçük bir ayar (en çok ±3 dB). Genel ayar her profilde geçerli; \"bu tür için\" ayarı yalnız o tür çalarken genelin üstüne eklenir. CS2 varsayılan olarak hariç: adım sesi ayarı bozulmasın. Kulağın karar versin istersen \"Kör A/B dinle…\" ile neyi seçtiğini bilmeden dene.": [
   "eq_page.py:340"
@@ -2071,10 +2071,10 @@
   "micgen.py:1113"
  ],
  "SONUÇ: BAŞARILI  (dosyalar: {yol})": [
-  "eqgen.py:2998"
+  "eqgen.py:3009"
  ],
  "SONUÇ: BAŞARISIZ  (dosyalar: {yol})": [
-  "eqgen.py:2999"
+  "eqgen.py:3010"
  ],
  "SONUÇ: BAŞARISIZ (günlükler: {yol})": [
   "micgen.py:1114"
@@ -2109,7 +2109,7 @@
   "cli.py:417"
  ],
  "Servis başlatıldı ✓": [
-  "app.py:4324"
+  "app.py:4327"
  ],
  "Servis durumu bilinmiyor": [
   "eq_page.py:3177"
@@ -2124,24 +2124,24 @@
   "eq_page.py:2433"
  ],
  "Servis çalışmadığı için varsayılan mikrofon değiştirilmedi.": [
-  "app.py:3354"
+  "app.py:3357"
  ],
  "Servis çalışmıyor": [
   "app.py:1329",
-  "app.py:4159"
+  "app.py:4162"
  ],
  "Servis çalışmıyor — systemctl --user start oto-eq": [
   "ui_common.py:49"
  ],
  "Servis çalışmıyor — önce servisi başlat": [
-  "app.py:4189"
+  "app.py:4192"
  ],
  "Servis çalışınca uygulanacak": [
   "tray.py:373"
  ],
  "Servisi başlat": [
   "app.py:1122",
-  "app.py:4323"
+  "app.py:4326"
  ],
  "Servisler": [
   "app.py:2193"
@@ -2150,11 +2150,11 @@
   "app.py:2245"
  ],
  "Servisleri, komutları ve kısayolları kaldırmak için terminalde çalıştır. Ayarların korunur; tamamen silmek için sonuna {secenek} ekle.": [
-  "app.py:2285"
+  "app.py:2289"
  ],
  "Ses analizi": [
   "app.py:2177",
-  "app.py:2413",
+  "app.py:2416",
   "ui_text.py:109"
  ],
  "Ses ayarlarından bir çıkış seçin (kulaklık takılı mı?)": [
@@ -2170,10 +2170,10 @@
   "eq_page.py:1367"
  ],
  "Ses işleme": [
-  "app.py:3470"
+  "app.py:3473"
  ],
  "Ses kazancı (telafi)": [
-  "app.py:2824"
+  "app.py:2827"
  ],
  "Ses seviyesi": [
   "ui_text.py:481"
@@ -2191,19 +2191,19 @@
   "app.py:1954"
  ],
  "Ses çok yüksek (kırpılıyor)": [
-  "app.py:2836"
+  "app.py:2839"
  ],
  "Ses çıkışı: Kulaklık — sanal surround / 7.1 kapalı": [
-  "app.py:3793"
- ],
- "Sesi kulaklık tekerinden ya da KDE'den ayarla; kompresör oyunun dijital seviyesine göre çalışır.": [
   "app.py:3796"
  ],
+ "Sesi kulaklık tekerinden ya da KDE'den ayarla; kompresör oyunun dijital seviyesine göre çalışır.": [
+  "app.py:3799"
+ ],
  "Sesin inceleniyor, birkaç saniye sürer.": [
-  "app.py:3121"
+  "app.py:3124"
  ],
  "Sesin çok kısık geliyor ({konusma:.0f} dBFS). Kazanç yükseltildi; daha temiz sonuç için KDE'de HS80 mikrofon seviyesini biraz artırıp yeniden ölçebilirsin.": [
-  "app.py:2900"
+  "app.py:2903"
  ],
  "Sesler şu an EQ'suz çalıyor.": [
   "app.py:1330"
@@ -2318,7 +2318,7 @@
   "ab.py:307"
  ],
  "Sonucu duymak için “Mikrofon testi”ne bas: önce ham, sonra işlenmiş sesin çalınır.": [
-  "app.py:3356"
+  "app.py:3359"
  ],
  "Sonuç ({n} yanıt) · {hedef}:": [
   "ab.py:636"
@@ -2381,27 +2381,27 @@
   "ui_text.py:550"
  ],
  "Tamam": [
-  "app.py:2445",
-  "app.py:3896"
+  "app.py:2448",
+  "app.py:3899"
  ],
  "Tekrarla": [
-  "app.py:2711"
+  "app.py:2714"
  ],
  "Telafi": [
   "eq_page.py:76"
  ],
  "Tepe": [
-  "app.py:2697",
+  "app.py:2700",
   "cli.py:946"
  ],
  "Tepe (PK)": [
   "eq_page.py:60"
  ],
  "Tepe {tepe:.1f} dBFS ile sınıra çok yakın: bağırınca kırpılabilir. Mikrofonu biraz uzaklaştırmak ya da KDE'de seviyesini azıcık düşürmek iyi olur.": [
-  "app.py:2897"
+  "app.py:2900"
  ],
  "Tepe çok yüksek; kompresör eşiğini düşür.": [
-  "app.py:2781"
+  "app.py:2784"
  ],
  "Tepe: YOK (LSP yok)": [
   "micgen.py:1352"
@@ -2442,10 +2442,10 @@
   "eq_page.py:1657"
  ],
  "Test yapılamadı": [
-  "app.py:2795"
+  "app.py:2798"
  ],
  "Testi başlat": [
-  "app.py:3460"
+  "app.py:3463"
  ],
  "Tip": [
   "eq_page.py:919",
@@ -2562,17 +2562,17 @@
   "kulaklik.py:197"
  ],
  "Uyarı: {uyari}": [
-  "app.py:4196",
+  "app.py:4199",
   "tray.py:472"
  ],
  "Uyarı: önceki ton geri yüklenemedi; '{komut}' ile kontrol edin.": [
   "ab.py:697"
  ],
  "Uygula": [
-  "app.py:2982"
+  "app.py:2985"
  ],
  "Uygula ve varsayılan mikrofon yap": [
-  "app.py:2984"
+  "app.py:2987"
  ],
  "Uygulama adı": [
   "app.py:44"
@@ -2587,7 +2587,7 @@
   "micgen.py:1435"
  ],
  "Uygulanamadı": [
-  "app.py:3305"
+  "app.py:3308"
  ],
  "Uygulanamadı.": [
   "micgen.py:1435"
@@ -2596,7 +2596,7 @@
   "micgen.py:1434"
  ],
  "Uygulanıyor…": [
-  "app.py:3287"
+  "app.py:3290"
  ],
  "Uzun dinleme": [
   "eq_page.py:1370"
@@ -2608,18 +2608,18 @@
   "cli.py:297"
  ],
  "Varsayılan mikrofon artık “{mikrofon}”.": [
-  "app.py:3350"
+  "app.py:3353"
  ],
  "Varsayılan mikrofon değiştirilemedi: {hata}": [
-  "app.py:3352"
+  "app.py:3355"
  ],
  "Varsayılan mikrofon yap": [
-  "app.py:3405",
-  "app.py:3586"
+  "app.py:3408",
+  "app.py:3589"
  ],
  "Varsayılan mikrofon: {mikrofon}": [
-  "app.py:3606",
-  "app.py:3608",
+  "app.py:3609",
+  "app.py:3611",
   "cli.py:397",
   "cli.py:407"
  ],
@@ -2642,8 +2642,8 @@
  "Vazgeç": [
   "app.py:1561",
   "app.py:1609",
-  "app.py:2976",
-  "app.py:3021"
+  "app.py:2979",
+  "app.py:3024"
  ],
  "Vazgeçildi, hiçbir şey değişmedi.": [
   "ab.py:569"
@@ -2700,7 +2700,7 @@
   "config/profiller.toml:304"
  ],
  "Yazıldı: {yol}": [
-  "eqgen.py:3123",
+  "eqgen.py:3134",
   "micgen.py:1404"
  ],
  "Yağmur, rüzgâr, şehir gibi ortam seslerinin bol olduğu bir yerde dur.": [
@@ -2713,13 +2713,13 @@
   "yedek.py:399"
  ],
  "Yeni ayarlar kaydediliyor ve mikrofona uygulanıyor.": [
-  "app.py:3288"
+  "app.py:3291"
  ],
  "Yeni ayarlar çalışan mikrofona hemen uygulandı; bağlı uygulamalar (Discord, oyun) kesilmedi.": [
-  "app.py:3341"
+  "app.py:3344"
  ],
  "Yeni dil bir sonraki açılışta geçerli olur.": [
-  "app.py:2387"
+  "app.py:2390"
  ],
  "Yeniden başla": [
   "eq_page.py:1153"
@@ -2728,20 +2728,20 @@
   "app.py:2206"
  ],
  "Yeniden başlatılamadı: {hata}": [
-  "app.py:3774"
+  "app.py:3777"
  ],
  "Yeniden kontrol et": [
-  "app.py:2482"
+  "app.py:2485"
  ],
  "Yeniden yükle": [
   "app.py:1940"
  ],
  "Yeniden ölç": [
-  "app.py:2978"
+  "app.py:2981"
  ],
  "Yeniden üret": [
   "app.py:2230",
-  "app.py:2455"
+  "app.py:2458"
  ],
  "Yenilikler": [
   "app.py:1057"
@@ -2763,16 +2763,16 @@
   "ui_text.py:124"
  ],
  "Yumuşatmadan sonra genel seviyeyi geri yükseltir.": [
-  "app.py:2553"
+  "app.py:2556"
  ],
  "Yumuşatmadan sonra genel seviyeyi geri yükseltir; seni rahat duyarlar.": [
-  "app.py:2825"
+  "app.py:2828"
  ],
  "Yön (5 m ≈ 200 birim)": [
   "eq_page.py:1297"
  ],
  "Yön karışırsa %75–100 dene.": [
-  "app.py:3794"
+  "app.py:3797"
  ],
  "Yönlendirici (oto-eq)": [
   "app.py:59"
@@ -2784,7 +2784,7 @@
   "cli.py:700"
  ],
  "Yüksek = daha sıkı; çok yüksekte kelime sonları kesilebilir.": [
-  "app.py:2547"
+  "app.py:2550"
  ],
  "Yüksek raf (HSC)": [
   "eq_page.py:60"
@@ -2820,7 +2820,7 @@
   "ui_common.py:79"
  ],
  "adım sesi bandı": [
-  "eqgen.py:2185"
+  "eqgen.py:2196"
  ],
  "adından kulaklık": [
   "kulaklik.py:209"
@@ -2913,7 +2913,7 @@
   "yedek.py:401"
  ],
  "ayrıntılı günlük (INFO satırları) göster": [
-  "eqgen.py:3106",
+  "eqgen.py:3117",
   "micgen.py:1387"
  ],
  "az önce": [
@@ -2973,11 +2973,11 @@
   "ipc.py:373"
  ],
  "beklenmeyen sonuç: {sonuc}": [
-  "router.py:1500"
+  "router.py:1504"
  ],
  "belirsiz": [
   "cli.py:787",
-  "router.py:547",
+  "router.py:548",
   "ui_text.py:380"
  ],
  "belirsiz → Genel": [
@@ -2999,29 +2999,29 @@
   "cli.py:470"
  ],
  "bilinmeyen hata": [
-  "app.py:2461",
-  "app.py:4297",
+  "app.py:2464",
+  "app.py:4300",
   "cli.py:49",
   "onarim.py:581",
   "tray.py:341"
  ],
  "bilinmeyen komut: {komut}": [
-  "router.py:999"
+  "router.py:1000"
  ],
  "bilinmeyen komut: {komut} ({olanlar})": [
   "ipc.py:93"
  ],
  "bilinmeyen profil(ler): {profiller}": [
-  "eqgen.py:375"
+  "eqgen.py:385"
  ],
  "bilinmeyen ton ayarı: {ayar}": [
-  "eqgen.py:656"
+  "eqgen.py:666"
  ],
  "bilinmeyen ton ayarı: {ayar} (olanlar: {olanlar})": [
   "kisisel.py:78"
  ],
  "bilinmeyen çıkış": [
-  "router.py:1415"
+  "router.py:1419"
  ],
  "bilinmiyor": [
   "saglik.py:307",
@@ -3037,7 +3037,7 @@
   "saglik.py:373"
  ],
  "boşta": [
-  "app.py:4164"
+  "app.py:4167"
  ],
  "bu güncellemede": [
   "app.py:1058"
@@ -3061,10 +3061,10 @@
   "classifier.py:708"
  ],
  "canlı ayar doğrulanamadı (önce {once}, sonra {sonra}, {hata})": [
-  "eqgen.py:2935"
+  "eqgen.py:2946"
  ],
  "canlı ayar çalışıyor (muzik b1 Gain {once} → {sonra})": [
-  "eqgen.py:2932"
+  "eqgen.py:2943"
  ],
  "canlı durum: alınamadı (servis çalışmıyor ya da henüz bağlanmadı)": [
   "kisma.py:1126"
@@ -3076,34 +3076,34 @@
   "eq_page.py:2059"
  ],
  "crossfeed canlı aç/kapa doğrulanamadı ({acik} / {kapali})": [
-  "eqgen.py:2919"
+  "eqgen.py:2930"
  ],
  "crossfeed canlı aç/kapa çalışıyor (çapraz kazanç {acik:.3f} → {kapali:.3f}, yeniden başlatmasız)": [
-  "eqgen.py:2916"
+  "eqgen.py:2927"
  ],
  "crossfeed düğümleri grafikte yok": [
-  "eqgen.py:2922"
+  "eqgen.py:2933"
  ],
  "crossfeed kapalı": [
-  "eqgen.py:3070"
+  "eqgen.py:3081"
  ],
  "crossfeed {db:g} dB / {hz:g} Hz": [
-  "eqgen.py:3068"
+  "eqgen.py:3079"
  ],
  "crossfeed: {profiller}": [
   "ui_text.py:469"
  ],
  "cs2 ek gecikme bildirmiyor ({dugum}: ProcessLatency {pl}, Latency = düz zincirle aynı, cihaza doğru {lin}); örnek-hassas ölçüm aşağıda (PipeWire LV2 gecikmesini bildirmez)": [
-  "eqgen.py:2860"
+  "eqgen.py:2871"
  ],
  "cs2 ek işlem gecikmesi bildiriyor ({dugum}): {deger}": [
-  "eqgen.py:2853"
+  "eqgen.py:2864"
  ],
  "cs2 gecikmesi düz zincirden farklı: {cs2} ≠ {duz}": [
-  "eqgen.py:2856"
+  "eqgen.py:2867"
  ],
  "cs2 kompresör parametreleri görünmüyor (LV2 yüklenmemiş olabilir)": [
-  "eqgen.py:2871"
+  "eqgen.py:2882"
  ],
  "deneme sayısı (varsayılan {n})": [
   "ab.py:425"
@@ -3124,7 +3124,7 @@
   "kulaklik.py:199"
  ],
  "dinamik": [
-  "eqgen.py:3017"
+  "eqgen.py:3028"
  ],
  "diyalog": [
   "ui_common.py:82"
@@ -3133,7 +3133,7 @@
   "ui_text.py:399"
  ],
  "dosyaya değil ekrana yaz": [
-  "eqgen.py:3096",
+  "eqgen.py:3107",
   "micgen.py:1373"
  ],
  "durdu": [
@@ -3156,7 +3156,7 @@
   "app.py:149"
  ],
  "düz geçiş (EQ yok), seviye eşitli": [
-  "eqgen.py:3044"
+  "eqgen.py:3055"
  ],
  "düz yol (RNNoise kapalı): 1 kHz −20 dBFS → {seviye:.1f} dBFS (model {model:.1f})": [
   "micgen.py:1022"
@@ -3165,7 +3165,7 @@
   "micgen.py:1020"
  ],
  "düz, 0 dB": [
-  "eqgen.py:3045"
+  "eqgen.py:3056"
  ],
  "düşük": [
   "ab.py:75"
@@ -3186,16 +3186,16 @@
   "saglik.py:327"
  ],
  "elle taşınmış ({cikis}), dokunulmuyor": [
-  "router.py:1414"
+  "router.py:1418"
  ],
  "en kötü durum / gecikme / işlemci ölçümünü atla": [
-  "eqgen.py:3103"
+  "eqgen.py:3114"
  ],
  "en kötü tepe {tepe:+.1f} dBFS": [
   "eq_page.py:2148"
  ],
  "enkötü": [
-  "eqgen.py:3010"
+  "eqgen.py:3021"
  ],
  "etkin": [
   "saglik.py:443"
@@ -3221,7 +3221,7 @@
   "kisma.py:1120"
  ],
  "eşitl.": [
-  "eqgen.py:3010"
+  "eqgen.py:3021"
  ],
  "eşitleme {db:+.1f} dB": [
   "eq_page.py:2143"
@@ -3275,10 +3275,10 @@
   "micgen.py:1376"
  ],
  "gerçekçi master (sınırlayıcı açık / baypas karşılaştırması; net = tüm bant RMS):": [
-  "eqgen.py:2718"
+  "eqgen.py:2729"
  ],
  "gerçekçi müzikte çıkış tavanı aştı": [
-  "eqgen.py:2997"
+  "eqgen.py:3008"
  ],
  "geçersiz JSON": [
   "ipc.py:165"
@@ -3324,7 +3324,7 @@
   "saglik.py:525"
  ],
  "güvenlik: {cikis} başka yere bağlı ({bagli}); test durdu": [
-  "eqgen.py:2449"
+  "eqgen.py:2460"
  ],
  "ham JSON çıktısı": [
   "cli.py:1046"
@@ -3375,7 +3375,7 @@
   "micgen.py:1066"
  ],
  "henüz bir çıkışa bağlanmadı": [
-  "router.py:1310"
+  "router.py:1314"
  ],
  "hepsi varsayılan çıkışa bağlı": [
   "saglik.py:366"
@@ -3513,16 +3513,16 @@
   "saglik.py:817"
  ],
  "kişisel ton kapalı": [
-  "eqgen.py:3048"
+  "eqgen.py:3059"
  ],
  "kişisel ton payı {db:+.2f} dB": [
-  "eqgen.py:3047"
+  "eqgen.py:3058"
  ],
  "kişisel tür modeli: düzeltmelerinden öğrenir (durum | egit | sifirla)": [
   "cli.py:1097"
  ],
  "kompresör": [
-  "eqgen.py:547",
+  "eqgen.py:557",
   "saglik.py:45"
  ],
  "komut": [
@@ -3606,7 +3606,7 @@
   "kulaklik.py:240"
  ],
  "kulaklık": [
-  "eqgen.py:2126",
+  "eqgen.py:2137",
   "saglik.py:710",
   "saglik.py:713",
   "saglik.py:717",
@@ -3663,13 +3663,13 @@
   "classifier.py:819"
  ],
  "kurallar bir tablo değil": [
-  "router.py:1009"
+  "router.py:1010"
  ],
  "kurallar okunamadı: {hata}": [
-  "router.py:1011"
+  "router.py:1012"
  ],
  "kurallar yüklenemedi": [
-  "router.py:228"
+  "router.py:229"
  ],
  "kurallar.toml dosyasını düzenleyicide aç": [
   "cli.py:1060"
@@ -3684,7 +3684,7 @@
   "cli.py:1091"
  ],
  "kısma durumu alınamadı: {hata}": [
-  "router.py:975"
+  "router.py:976"
  ],
  "limiter": [
   "saglik.py:1010",
@@ -3746,22 +3746,22 @@
   "cli.py:970"
  ],
  "mikrofon {ad} sesi %{yuzde}'e indirildi": [
-  "router.py:220"
+  "router.py:221"
  ],
  "mikrofon {eski} → {yeni} (sanal mikrofon varsayılan kaldı)": [
-  "router.py:1680"
+  "router.py:1684"
  ],
  "mikrofon {eski} → {yeni} (ses %{yuzde})": [
-  "router.py:218"
+  "router.py:219"
  ],
  "mikrofon: varsayılan elle değiştirildi ({ad}), dokunulmuyor": [
-  "router.py:212"
+  "router.py:213"
  ],
  "mikrofon: {ad} sesi ayarlanamadı → varsayılan değiştirilmedi": [
-  "router.py:214"
+  "router.py:215"
  ],
  "mikrofon: {ad} varsayılan yapılamadı": [
-  "router.py:216"
+  "router.py:217"
  ],
  "miktar: {db:g} dB · çıkışlar: {cikislar}": [
   "kisma.py:1118"
@@ -3770,7 +3770,7 @@
   "micgen.py:222"
  ],
  "mod kapalı": [
-  "router.py:1427"
+  "router.py:1431"
  ],
  "mod: {mod}": [
   "cli.py:149"
@@ -3809,7 +3809,7 @@
   "ab.py:74"
  ],
  "ortak eşit seviye (tüm EQ çıkışları; {duz} {duz_db:+.2f} dB): {db:+.2f} dB": [
-  "eqgen.py:3085"
+  "eqgen.py:3096"
  ],
  "ortam": [
   "teshis.py:159"
@@ -3831,7 +3831,7 @@
   "ipc.py:390"
  ],
  "otomatik": [
-  "app.py:4278",
+  "app.py:4281",
   "cli.py:449",
   "saglik.py:425"
  ],
@@ -3932,10 +3932,10 @@
   "teshis.py:165"
  ],
  "profil": [
-  "eqgen.py:3010"
+  "eqgen.py:3021"
  ],
  "profil kazanç özetini göster": [
-  "eqgen.py:3104"
+  "eqgen.py:3115"
  ],
  "profiller.toml bu sayfa açıldıktan sonra başka bir yerden değiştirildi (el ile, kulak komutu ya da yedekten geri yükleme). Kaydedersen o değişiklikler kaybolur.\n\nYine de kaydedeyim mi?": [
   "eq_page.py:2425"
@@ -3994,7 +3994,7 @@
   "ipc.py:57"
  ],
  "sabit mod: {profil}": [
-  "router.py:1433"
+  "router.py:1437"
  ],
  "sadece dosyayı yaz, servisi yeniden başlatma": [
   "cli.py:1057"
@@ -4003,10 +4003,10 @@
   "cli.py:1059"
  ],
  "sanal çıkış yapılandırmasını üret": [
-  "eqgen.py:3094"
+  "eqgen.py:3105"
  ],
  "sanal çıkışlar açılmadı (görünen: {gorunen}); günlük: {yol}": [
-  "eqgen.py:2793"
+  "eqgen.py:2804"
  ],
  "sanatçının diğer şarkıları": [
   "tur.py:1487"
@@ -4015,7 +4015,7 @@
   "kisisel.py:68"
  ],
  "sağlık kontrolü": [
-  "app.py:2487"
+  "app.py:2490"
  ],
  "sağlık kontrolü (servisler, çıkışlar, eklentiler; salt okunur)": [
   "cli.py:1102"
@@ -4039,7 +4039,7 @@
   "cli.py:1149"
  ],
  "servis meşgul": [
-  "app.py:4296"
+  "app.py:4299"
  ],
  "servis {ad}": [
   "saglik.py:285"
@@ -4065,7 +4065,7 @@
   "icerik.py:350"
  ],
  "ses sunucusuna ulaşılamadı (sonra tekrar denenecek)": [
-  "router.py:1064"
+  "router.py:1065"
  ],
  "ses yakalanamadı — Müzik çıkışı (oto_eq_muzik) var mı? Kontrol: kulak saglik": [
   "cli.py:882"
@@ -4083,20 +4083,20 @@
   "classifier.py:910"
  ],
  "sessiz": [
-  "app.py:3668",
+  "app.py:3671",
   "icerik.py:66"
  ],
  "set_live (RNNoise aç) başarısız": [
   "micgen.py:1028"
  ],
  "set_live sonrası değer {deger} ≠ {beklenen}": [
-  "eqgen.py:2943"
+  "eqgen.py:2954"
  ],
  "set_live() başarısız": [
-  "eqgen.py:2946"
+  "eqgen.py:2957"
  ],
  "set_live() değerleri geri yükledi": [
-  "eqgen.py:2941"
+  "eqgen.py:2952"
  ],
  "seviye dengeleme kapalı": [
   "ui_text.py:467"
@@ -4105,15 +4105,15 @@
   "ui_text.py:466"
  ],
  "seviye eşitleyici": [
-  "eqgen.py:547",
+  "eqgen.py:557",
   "saglik.py:45",
   "saglik.py:1022"
  ],
  "seviye eşitleyici kapalı": [
-  "eqgen.py:3065"
+  "eqgen.py:3076"
  ],
  "seviye eşitleyici → {lufs:g} LUFS (en çok +{db:g} dB, {yukselme:g}/{dusme:g} dB/sn)": [
-  "eqgen.py:3061"
+  "eqgen.py:3072"
  ],
  "seçenekler": [
   "ab.py:411",
@@ -4195,23 +4195,23 @@
   "classifier.py:706"
  ],
  "sınıflandırma hatası: {hata}": [
-  "router.py:1503"
+  "router.py:1507"
  ],
  "sınıflandırıcı kurulamadı: {hata}": [
-  "router.py:1028"
+  "router.py:1029"
  ],
  "sınırlayıcı": [
-  "eqgen.py:547",
+  "eqgen.py:557",
   "saglik.py:45"
  ],
  "sınırlayıcı kapalı": [
-  "eqgen.py:3056"
+  "eqgen.py:3067"
  ],
  "sınırlayıcı yok (0 gecikme)": [
-  "eqgen.py:3058"
+  "eqgen.py:3069"
  ],
  "sınırlayıcı {ms:g} ms (kuramsal en kötü: tam ölçek + ton +3 + kompresör atağı → {db:.1f} dB kısar; gerçek müzikte ~0–1.5 dB)": [
-  "eqgen.py:3053"
+  "eqgen.py:3064"
  ],
  "t = tekrar dinle, q = bitir, Ctrl+C = iptal (eski ayar geri gelir).": [
   "ab.py:554"
@@ -4296,7 +4296,7 @@
   "classifier.py:1228"
  ],
  "tavan {tavan:+.1f} dBFS; ek güvenlik kısması {db:.2f} dB (tüm çıkışlara eşit); 'enkötü' = sınırlayıcıdan ÖNCEKİ statik en kötü tepe (sınırlayıcılı çıkışlarda kulağa giden ≤ tavan)": [
-  "eqgen.py:3081"
+  "eqgen.py:3092"
  ],
  "tek profili tüm akışlara sabitle": [
   "cli.py:1050"
@@ -4308,7 +4308,7 @@
   "eq_page.py:2145"
  ],
  "tepe": [
-  "eqgen.py:3010",
+  "eqgen.py:3021",
   "mikrofon_test.py:117"
  ],
  "test / ölçüm süresi (saniye, varsayılan 5)": [
@@ -4318,7 +4318,7 @@
   "cli.py:387"
  ],
  "test dosyalarının dizini": [
-  "eqgen.py:3101"
+  "eqgen.py:3112"
  ],
  "test düğümleri kaldı: {dugumler}": [
   "micgen.py:1108"
@@ -4330,13 +4330,13 @@
   "micgen.py:959"
  ],
  "test pipewire süreciyle canlı doğrula + en kötü durum ölçümü (kulaklığa ses gitmez)": [
-  "eqgen.py:3099"
+  "eqgen.py:3110"
  ],
  "test süreci kapatıldı, sanal çıkışlar kaldırıldı": [
-  "eqgen.py:2974"
+  "eqgen.py:2985"
  ],
  "test sürecinin işlemci kullanımı (5 çıkış birlikte, en kötü sinyal): %{yuzde:.1f} (tek çekirdek)": [
-  "eqgen.py:2745"
+  "eqgen.py:2756"
  ],
  "test süreçleri ve null sink'ler kaldırıldı": [
   "micgen.py:1110"
@@ -4348,10 +4348,10 @@
   "micgen.py:1012"
  ],
  "test çalıştırılamadı": [
-  "app.py:2794"
+  "app.py:2797"
  ],
  "test çıkışları hâlâ görünüyor!": [
-  "eqgen.py:2977"
+  "eqgen.py:2988"
  ],
  "tizler belirgin şekilde daha parlak": [
   "ab.py:65"
@@ -4378,7 +4378,7 @@
   "ses_analiz.py:611"
  ],
  "toplam": [
-  "eqgen.py:3010"
+  "eqgen.py:3021"
  ],
  "toplam {n} kayıt": [
   "ui_text.py:532"
@@ -4430,8 +4430,8 @@
   "micgen.py:1275"
  ],
  "uygulandı ama kaydedilemedi (yeniden başlayınca eski ayar döner): {hata}": [
-  "router.py:1078",
-  "router.py:1093"
+  "router.py:1079",
+  "router.py:1094"
  ],
  "varsayılan dosya yok: {yol}": [
   "cli.py:294"
@@ -4447,27 +4447,27 @@
   "cli.py:405"
  ],
  "varsayılan çıkış": [
-  "router.py:246",
+  "router.py:247",
   "saglik.py:372"
  ],
  "varsayılan çıkış bir EQ çıkışı oldu: {cikis}": [
-  "eqgen.py:2819"
+  "eqgen.py:2830"
  ],
  "varsayılan çıkış bir Kulak Kesil çıkışı: {cikis}": [
   "onarim.py:316"
  ],
  "varsayılan çıkış düğümü bulunamadı": [
-  "eqgen.py:2841"
+  "eqgen.py:2852"
  ],
  "varsayılan çıkış kulaklık değil": [
-  "router.py:1417",
+  "router.py:1421",
   "tray.py:97"
  ],
  "varsayılan çıkış kulaklık değil: {tur} ({model}; {neden}) — EQ devre dışı": [
   "saglik.py:67"
  ],
  "varsayılan çıkış kulaklık değil; varsayılan çıkış bir oto-eq çıkışı, dokunulmuyor": [
-  "router.py:1419"
+  "router.py:1423"
  ],
  "varsayılan çıkış yok": [
   "kulaklik.py:232",
@@ -4579,7 +4579,7 @@
   "classifier.py:846",
   "classifier.py:873",
   "cli.py:608",
-  "eqgen.py:2863",
+  "eqgen.py:2874",
   "micgen.py:1059",
   "onarim.py:334",
   "saglik.py:380"
@@ -4617,10 +4617,10 @@
   "onarim.py:342"
  ],
  "yönlendirici hazır değil (başlamadı ya da kapanıyor)": [
-  "router.py:1110"
+  "router.py:1111"
  ],
  "yönlendirici meşgul (ses sunucusu yanıt vermiyor); komut sırada, birazdan uygulanacak": [
-  "router.py:1118"
+  "router.py:1119"
  ],
  "yönlendirici çıkışları": [
   "saglik.py:446"
@@ -4656,73 +4656,76 @@
   "app.py:2063"
  ],
  "{ad} EQ motoru": [
-  "eqgen.py:3092"
+  "eqgen.py:3103"
  ],
  "{ad} artık hep {profil} çalacak": [
-  "app.py:4238"
+  "app.py:4241"
  ],
  "{ad} ataması kaldırıldı": [
-  "app.py:4234"
+  "app.py:4237"
  ],
  "{ad} yapılandırıcı": [
   "micgen.py:1369"
  ],
  "{ad} — EQ eğrileri: {kulaklik} (kulağa giden toplam, seviye eşitlenmiş)": [
-  "eqgen.py:2187"
+  "eqgen.py:2198"
  ],
  "{akis} akış, {oyuncu} MPRIS oyuncusu (izleyici: {izleyici}).": [
   "teshis.py:264"
  ],
  "{alan} -12 .. 0 arasında olmalı": [
-  "eqgen.py:353"
+  "eqgen.py:363"
  ],
  "{alan} -20 .. +12 dB arasında olmalı": [
-  "eqgen.py:423"
+  "eqgen.py:433"
  ],
  "{alan} 8000 .. 192000 arasında olmalı": [
-  "eqgen.py:349"
+  "eqgen.py:359"
  ],
  "{alan} = {deger:g} aralık dışında ({en_az:g} .. {en_cok:g})": [
-  "eqgen.py:283"
+  "eqgen.py:293"
  ],
  "{alan} = {deger} aralık dışında ({en_az} .. {en_cok})": [
-  "eqgen.py:260"
+  "eqgen.py:270"
  ],
  "{alan} bir tablo olmalı": [
   "micgen.py:173"
  ],
  "{alan} geçersiz": [
-  "eqgen.py:355"
+  "eqgen.py:365"
  ],
  "{alan} geçersiz düzenli ifade: {hata}": [
   "micgen.py:169"
  ],
  "{alan} geçersiz: {hata}": [
-  "eqgen.py:370"
+  "eqgen.py:380"
  ],
  "{alan} metin olmalı": [
-  "eqgen.py:366"
+  "eqgen.py:376"
  ],
  "{alan} negatif olamaz": [
-  "eqgen.py:351"
+  "eqgen.py:361"
  ],
  "{alan}.algilama: \"tepe\" veya \"rms\" olmalı, '{deger}' bulundu": [
   "micgen.py:134"
  ],
  "{alan}.algilama: 'tepe' ya da 'rms' olmalı": [
-  "eqgen.py:248"
+  "eqgen.py:254"
+ ],
+ "{alan}.mod: 'asagi' ya da 'yukari' olmalı": [
+  "eqgen.py:258"
  ],
  "{alan}.tip: PK, LSC veya HSC olmalı, '{deger}' bulundu": [
   "micgen.py:144"
  ],
  "{alan}: [dinamik] bir tablo olmalı": [
-  "eqgen.py:239"
+  "eqgen.py:245"
  ],
  "{alan}: bilinmeyen anahtar '{anahtar}'": [
-  "eqgen.py:243"
+  "eqgen.py:249"
  ],
  "{alan}: bilinmeyen anahtar '{anahtar}' (olanlar: {olanlar})": [
-  "eqgen.py:273"
+  "eqgen.py:283"
  ],
  "{alan}: bilinmeyen anahtar(lar): {anahtarlar}": [
   "micgen.py:122",
@@ -4730,66 +4733,66 @@
   "micgen.py:235"
  ],
  "{alan}: bilinmeyen filtre tipi '{tip}' (PK, LSC, HSC olabilir)": [
-  "eqgen.py:218"
+  "eqgen.py:224"
  ],
  "{alan}: bilinmeyen tür (olanlar: {olanlar})": [
-  "eqgen.py:312"
- ],
- "{alan}: bir tablo olmalı": [
-  "eqgen.py:208",
-  "eqgen.py:268",
-  "eqgen.py:339"
- ],
- "{alan}: en çok {n} filtre": [
   "eqgen.py:322"
  ],
+ "{alan}: bir tablo olmalı": [
+  "eqgen.py:214",
+  "eqgen.py:278",
+  "eqgen.py:349"
+ ],
+ "{alan}: en çok {n} filtre": [
+  "eqgen.py:332"
+ ],
  "{alan}: fc {fc} Hz geçersiz (1 .. {en_cok:.0f} Hz)": [
-  "eqgen.py:228"
+  "eqgen.py:234"
  ],
  "{alan}: filtre bir tablo olmalı {ornek}": [
-  "eqgen.py:214"
+  "eqgen.py:220"
  ],
  "{alan}: filtre listesi modla değiştirilemez (yalnız aktif)": [
   "micgen.py:231"
  ],
  "{alan}: kazanç ±24 dB'i aşamaz": [
-  "eqgen.py:233"
+  "eqgen.py:239"
  ],
  "{alan}: metin bekleniyordu": [
   "micgen.py:165"
  ],
  "{alan}: q {q} geçersiz (0.05 .. 50)": [
-  "eqgen.py:231"
+  "eqgen.py:237"
  ],
  "{alan}: sayı bekleniyordu, '{deger}' bulundu": [
-  "eqgen.py:187",
+  "eqgen.py:193",
   "micgen.py:103"
  ],
  "{alan}: sonlu bir sayı olmalı": [
-  "eqgen.py:189"
+  "eqgen.py:195"
  ],
  "{alan}: tablo bekleniyordu": [
   "micgen.py:119"
  ],
  "{alan}: tablo olmalı": [
-  "eqgen.py:306",
-  "eqgen.py:315"
+  "eqgen.py:316",
+  "eqgen.py:325"
  ],
  "{alan}: true ya da false olmalı": [
-  "eqgen.py:200",
-  "eqgen.py:277"
+  "eqgen.py:206",
+  "eqgen.py:287"
  ],
  "{alan}: true/false bekleniyordu, '{deger}' bulundu": [
   "micgen.py:113"
  ],
  "{alan}: tür alt profilleri yalnız {olanlar} için": [
-  "eqgen.py:303"
+  "eqgen.py:313"
  ],
  "{alan}: tür farkı ±{db:g} dB'i aşamaz": [
-  "eqgen.py:329"
+  "eqgen.py:339"
  ],
  "{alan}: yalnız {olanlar} profilinde var": [
-  "eqgen.py:410"
+  "eqgen.py:420"
  ],
  "{alan}: yalnızca {tablolar} tabloları değiştirilebilir": [
   "micgen.py:228"
@@ -4802,7 +4805,7 @@
  ],
  "{anahtar} geçersiz ({desen}): {hata}": [
   "kulaklik.py:124",
-  "router.py:1020"
+  "router.py:1021"
  ],
  "{aygit} — EQ devre dışı": [
   "tray.py:275"
@@ -4814,7 +4817,7 @@
   "cli.py:519"
  ],
  "{bitti}/{toplam} adım tamam": [
-  "app.py:3925"
+  "app.py:3928"
  ],
  "{boyut} belirgin şekilde arttı": [
   "ab.py:70"
@@ -4841,22 +4844,22 @@
   "saglik.py:351"
  ],
  "{cikis}: düğüm bulunamadı": [
-  "eqgen.py:2823"
- ],
- "{cikis}: yanlış özellikler {sinif} / {aciklama}": [
-  "eqgen.py:2828"
- ],
- "{cikis}: çıkış bağlantısı {bagli}, beklenen [{beklenen}]": [
   "eqgen.py:2834"
  ],
+ "{cikis}: yanlış özellikler {sinif} / {aciklama}": [
+  "eqgen.py:2839"
+ ],
+ "{cikis}: çıkış bağlantısı {bagli}, beklenen [{beklenen}]": [
+  "eqgen.py:2845"
+ ],
  "{cikis}: çıkış başka bir EQ çıkışına bağlandı": [
-  "eqgen.py:2837"
+  "eqgen.py:2848"
  ],
  "{cikis}: çıkış node.passive değil": [
-  "eqgen.py:2831"
+  "eqgen.py:2842"
  ],
  "{deger} (aynı)": [
-  "app.py:3261"
+  "app.py:3264"
  ],
  "{dizin} içinde yedek yok.": [
   "yedek.py:428"
@@ -4871,13 +4874,13 @@
   "saglik.py:562"
  ],
  "{dosya} okunamadı: {hata}": [
-  "eqgen.py:3114",
+  "eqgen.py:3125",
   "micgen.py:1198",
   "micgen.py:1286",
   "micgen.py:1395"
  ],
  "{dosya} sözdizimi hatası: {hata}": [
-  "eqgen.py:3117",
+  "eqgen.py:3128",
   "micgen.py:1398"
  ],
  "{dosya} yazılamadı: {hata}": [
@@ -4930,10 +4933,10 @@
   "app.py:51"
  ],
  "{duz} — eşitleme kapalı (0 dB)": [
-  "eqgen.py:2179"
+  "eqgen.py:2190"
  ],
  "{duz} — {odak} ({db:+.1f} dB; sohbet, sistem, kapalı mod)": [
-  "eqgen.py:2176"
+  "eqgen.py:2187"
  ],
  "{giris:+4.0f} dBFS giriş → {cikis:+6.1f} dBFS": [
   "micgen.py:1360"
@@ -4945,7 +4948,7 @@
   "eq_page.py:1117"
  ],
  "{hata}\nAyarların değişmedi; “Yeniden ölç” ya da “Vazgeç”.": [
-  "app.py:3306"
+  "app.py:3309"
  ],
  "{kaynak} {dosya} dosyasından daha yeni (eski ayar çalışıyor)": [
   "saglik.py:558"
@@ -4982,41 +4985,41 @@
   "cli.py:391"
  ],
  "{mikrofon} çalışmıyor — önce Mikrofon sayfasından başlat": [
-  "app.py:3930"
+  "app.py:3933"
  ],
  "{model} · {tur} — EQ devre dışı ({neden})": [
   "ui_text.py:580"
  ],
  "{ms:.2f} ms ({n} örnek)": [
-  "eqgen.py:2731"
+  "eqgen.py:2742"
  ],
  "{neden} (bekliyor)": [
-  "router.py:1461"
+  "router.py:1465"
  ],
  "{neden} (sürekli geri alınıyor, beklemede)": [
-  "router.py:1456",
-  "router.py:1469"
+  "router.py:1460",
+  "router.py:1473"
  ],
  "{neden} (taşıma hatası)": [
-  "router.py:1485"
+  "router.py:1489"
  ],
  "{neden} (taşınamadı)": [
-  "router.py:1488"
+  "router.py:1492"
  ],
  "{neden} · ses içeriği doğruladı: {icerik}": [
   "icerik.py:348"
  ],
  "{neden}; bilinmeyen profil {profil}": [
-  "router.py:1507"
+  "router.py:1511"
  ],
  "{neden}; {cikis} yok → {hedef}": [
-  "router.py:1440"
+  "router.py:1444"
  ],
  "{ne} — kaydedildi ama uygulanamadı: {hata}": [
-  "app.py:4303"
+  "app.py:4306"
  ],
  "{ne} — kaydedildi, servis çalışınca uygulanacak": [
-  "app.py:4305"
+  "app.py:4308"
  ],
  "{n} akış; yönlendirici devre dışı, ham çıkış beklenen durum": [
   "saglik.py:457"
@@ -5049,10 +5052,10 @@
   "app.py:147"
  ],
  "{n} sanal çıkış açıldı ({sn:.1f} sn): {cikislar}": [
-  "eqgen.py:2796"
+  "eqgen.py:2807"
  ],
  "{n} saniye boyunca normal sesinle konuş.": [
-  "app.py:2731"
+  "app.py:2734"
  ],
  "{n} test kaydı: {kayitlar}": [
   "saglik.py:497"
@@ -5070,13 +5073,13 @@
   "ab.py:430"
  ],
  "{oran:g}:1 eşik {esik:g} dB, atak {atak:g} ms, telafi {telafi:+g} dB": [
-  "eqgen.py:3040"
+  "eqgen.py:3051"
  ],
  "{ozellik} açık": [
-  "app.py:2405"
+  "app.py:2408"
  ],
  "{ozellik} kapalı": [
-  "app.py:2405"
+  "app.py:2408"
  ],
  "{ozet} — her şey yolunda": [
   "saglik.py:1105"
@@ -5141,58 +5144,58 @@
   "ab.py:456"
  ],
  "{profil} — KAPALI (düz geçiş)": [
-  "eqgen.py:2169"
+  "eqgen.py:2180"
  ],
  "{profil} — {odak}  (kazanç {kazanc:+.1f} dB + telafi {telafi:+g} dB, kompresör {oran:g}:1 @ {esik:g} dB)": [
-  "eqgen.py:2163"
+  "eqgen.py:2174"
  ],
  "{profil} — {odak}  (kazanç {kazanc:+.1f} dB)": [
-  "eqgen.py:2167"
+  "eqgen.py:2178"
  ],
  "{profil}: bilinmeyen tür '{tur}'": [
-  "eqgen.py:1761"
+  "eqgen.py:1772"
  ],
  "{profil}: bilinmeyen tür '{tur}' (olanlar: {olanlar})": [
   "kisisel.py:90"
  ],
  "{profil}: kişisel ton bantları (k1..k{n}) hazır": [
-  "eqgen.py:2882"
- ],
- "{profil}: kişisel ton bantları grafikte yok": [
-  "eqgen.py:2885"
- ],
- "{profil}: kişisel ton yalnız EQ çıkışlarında var ({olanlar})": [
-  "eqgen.py:1777"
- ],
- "{profil}: seviye eşitleyici parametreleri görünmüyor (LV2 yüklenmemiş olabilir)": [
   "eqgen.py:2893"
  ],
+ "{profil}: kişisel ton bantları grafikte yok": [
+  "eqgen.py:2896"
+ ],
+ "{profil}: kişisel ton yalnız EQ çıkışlarında var ({olanlar})": [
+  "eqgen.py:1788"
+ ],
+ "{profil}: seviye eşitleyici parametreleri görünmüyor (LV2 yüklenmemiş olabilir)": [
+  "eqgen.py:2904"
+ ],
  "{profil}: seviye eşitleyici yüklendi ({anahtar} = {deger:.4g}, açık {acik})": [
-  "eqgen.py:2891"
+  "eqgen.py:2902"
  ],
  "{profil}: sınırlayıcı parametreleri görünmüyor (LV2 yüklenmemiş olabilir)": [
-  "eqgen.py:2889"
+  "eqgen.py:2900"
  ],
  "{profil}: sınırlayıcı yüklendi ({anahtar} = {deger:.4g}, lk {lk} ms, boost {boost})": [
-  "eqgen.py:2887"
+  "eqgen.py:2898"
  ],
  "{profil}: tür alt profili yok": [
-  "eqgen.py:1759"
+  "eqgen.py:1770"
  ],
  "{profil}: tür yuvaları grafikte yok": [
-  "eqgen.py:2878"
+  "eqgen.py:2889"
  ],
  "{profil}: {n} tür yuvası (v1..v{n}) hazır": [
-  "eqgen.py:2876"
+  "eqgen.py:2887"
  ],
  "{prog}: hata: {mesaj}": [
   "cli.py:1031"
  ],
  "{saniye} saniye konuş; gürültü kapısı, kompresör ve ses kazancı sesine göre ayarlansın. Önce önerileri görürsün, sonra uygularsın.": [
-  "app.py:3439"
+  "app.py:3442"
  ],
  "{saniye} saniye konuş; sesine göre gürültü kapısı, kompresör ve kazanç önerilir": [
-  "app.py:3444"
+  "app.py:3447"
  ],
  "{secim}; kaynak: {kaynak}": [
   "cli.py:451"
@@ -5206,16 +5209,16 @@
   "onarim.py:576"
  ],
  "{servis}: başlatılıyor…": [
-  "app.py:2441"
+  "app.py:2444"
  ],
  "{servis}: yeniden başlatılıyor…": [
-  "app.py:2441"
+  "app.py:2444"
  ],
  "{sinyal} net {net:+.1f} dB, tepe {tepe:+.1f}, sınırlayıcı %{yuzde:.0f} (>1 dB %{yuzde1:.0f}, en çok {en_cok:.1f} dB)": [
-  "eqgen.py:2721"
+  "eqgen.py:2732"
  ],
  "{slogan} · sürüm {surum}": [
-  "app.py:2311"
+  "app.py:2314"
  ],
  "{sn:g} saniye boyunca Müzik çıkışı dinleniyor… (ses yalnızca bellekte tutulur, kaydedilmez)": [
   "cli.py:856"
@@ -5242,10 +5245,10 @@
   "saglik.py:64"
  ],
  "{uygulama} — Kurulum rehberi": [
-  "app.py:3810"
+  "app.py:3813"
  ],
  "{uygulama}'e hoş geldin": [
-  "app.py:3830"
+  "app.py:3833"
  ],
  "{yer} için etkin: {degerler}": [
   "eq_page.py:2909"
@@ -5283,25 +5286,25 @@
   "app.py:1237"
  ],
  "Çalışmıyor — servis başlıyor. “Başlat” ile aç.": [
-  "app.py:3577"
+  "app.py:3580"
  ],
  "Çalışmıyor — servis durdu. “Başlat” ile aç.": [
-  "app.py:3576"
+  "app.py:3579"
  ],
  "Çalışmıyor — servis hata verdi. “Başlat” ile aç.": [
-  "app.py:3575"
+  "app.py:3578"
  ],
  "Çalışmıyor — servis çalışmıyor. “Başlat” ile aç.": [
-  "app.py:3578"
+  "app.py:3581"
  ],
  "Çalışıyor": [
   "app.py:63"
  ],
  "Çalışıyor · varsayılan değil. Varsayılan yap ya da Discord'da elle seç.": [
-  "app.py:3582"
+  "app.py:3585"
  ],
  "Çalışıyor · varsayılan mikrofon. Uygulamalar işlenmiş sesi alıyor.": [
-  "app.py:3580"
+  "app.py:3583"
  ],
  "Çevrimdışı botlu sunucuda, hep aynı sahneyi dinleyerek CS2 profilini Düz ile karşılaştır. Bir test ~20 dk.": [
   "eq_page.py:1276"
@@ -5315,7 +5318,7 @@
  ],
  "Çevrimiçi tür algılama": [
   "app.py:2165",
-  "app.py:2410"
+  "app.py:2413"
  ],
  "Çift tıkla (veya seçip tıkla) ve değeri düzenle": [
   "eq_page.py:1742"
@@ -5342,16 +5345,16 @@
   "cli.py:943"
  ],
  "Ölçülen: konuşma {konusma:.1f} dBFS, gürültü {gurultu:.1f} dBFS, tepe {tepe:.1f} dBFS.": [
-  "app.py:3189"
+  "app.py:3192"
  ],
  "Ölçüm yapılamadı": [
-  "app.py:2840"
+  "app.py:2843"
  ],
  "Ölçüm yapılamadı: {neden}": [
-  "app.py:3149"
+  "app.py:3152"
  ],
  "Ölçüm: en kötü durum sinyali + gecikme + işlemci (ayrı test süreci, çıkışlar yalnız kayda bağlı — kulaklığa ses GİTMEZ) …": [
-  "eqgen.py:2979"
+  "eqgen.py:2990"
  ],
  "Ön kazanç {db:+.1f} dB": [
   "eq_page.py:2142"
@@ -5375,7 +5378,7 @@
   "micgen.py:1232"
  ],
  "Önerilen": [
-  "app.py:3245"
+  "app.py:3248"
  ],
  "Önerilen ayarlar uygulandı ✓": [
   "cli.py:991"
@@ -5384,7 +5387,7 @@
   "cli.py:947"
  ],
  "Önerilen ayarlarla işlenmiş konuşman ≈ {cikis:.1f} dBFS olur (hedef −18).": [
-  "app.py:3222"
+  "app.py:3225"
  ],
  "Örn. “🎯 CS2 modu — adım sesleri öne çıkarıldı”. Tepsiyle ortak ayar.": [
   "app.py:2145"
@@ -5403,7 +5406,7 @@
   "ui_text.py:504"
  ],
  "Üretiliyor…": [
-  "app.py:2451"
+  "app.py:2454"
  ],
  "çalışan EQ ayarı eski yapıda (yeni bantlar ya da sınırlayıcı yok)": [
   "saglik.py:815"
@@ -5443,12 +5446,12 @@
   "saglik.py:368"
  ],
  "çıkış kodu {kod}": [
-  "app.py:3148",
-  "app.py:3320",
-  "app.py:3331"
+  "app.py:3151",
+  "app.py:3323",
+  "app.py:3334"
  ],
  "çıkış {ad} sesi %{yuzde}'e indirildi": [
-  "router.py:219"
+  "router.py:220"
  ],
  "çıkış {cikis}, giriş {giris}": [
   "saglik.py:382"
@@ -5457,16 +5460,16 @@
   "saglik.py:381"
  ],
  "çıkış {eski} → {yeni} (ses %{yuzde})": [
-  "router.py:217"
+  "router.py:218"
  ],
  "çıkış: varsayılan elle değiştirildi ({ad}), dokunulmuyor": [
-  "router.py:211"
+  "router.py:212"
  ],
  "çıkış: {ad} sesi ayarlanamadı → varsayılan değiştirilmedi": [
-  "router.py:213"
+  "router.py:214"
  ],
  "çıkış: {ad} varsayılan yapılamadı": [
-  "router.py:215"
+  "router.py:216"
  ],
  "çıkış: {cikis}": [
   "teshis.py:142"
@@ -5481,26 +5484,26 @@
   "saglik.py:585"
  ],
  "ölçüm süreci başlatılamadı": [
-  "app.py:3113"
+  "app.py:3116"
  ],
  "ölçüm sırasında artan xrun: {dugumler}": [
   "saglik.py:640"
  ],
  "ölçüm yapılamadı: {hata}": [
-  "eqgen.py:2985",
+  "eqgen.py:2996",
   "micgen.py:1424"
  ],
  "ölçüm zaman aşımına uğradı (ses sistemi yanıt vermiyor)": [
-  "app.py:3129"
+  "app.py:3132"
  ],
  "ölçüm {cikis}: en kötü sinyalde çıkış tepesi {tepe:+.2f} dBFS (tavan {tavan:+.1f}; sınırlayıcısız statik en kötü {statik:+.2f}), eklenen gecikme {gecikme}": [
-  "eqgen.py:2741"
+  "eqgen.py:2752"
  ],
  "ölçüm {cikis}: en kötü sinyalde çıkış tepesi {tepe:+.2f} dBFS (tavan {tavan:+.1f}; sınırlayıcısız statik en kötü {statik:+.2f}), eklenen gecikme {gecikme}, crossfeed sağ/sol {xf:+.1f} dB": [
-  "eqgen.py:2736"
+  "eqgen.py:2747"
  ],
  "ölçüm çıkışları açılmadı (günlük: {yol})": [
-  "eqgen.py:2421"
+  "eqgen.py:2432"
  ],
  "öneri uygulanamadı: {hata}": [
   "micgen.py:1284"
@@ -5509,7 +5512,7 @@
   "micgen.py:1382"
  ],
  "önkaz.": [
-  "eqgen.py:3010"
+  "eqgen.py:3021"
  ],
  "ör. firefox, spotify, cs2": [
   "app.py:1551"
@@ -5544,17 +5547,17 @@
   "cli.py:1067"
  ],
  "İşlenmiş": [
-  "app.py:2767",
+  "app.py:2770",
   "mikrofon_test.py:31"
  ],
  "İşlenmiş mikrofonu kullanmak için: kulak mikrofon varsayilan": [
   "cli.py:423"
  ],
  "İşlenmiş mikrofonun canlı seviyesi (sadece bu sayfa açıkken ölçülür, hiçbir şey kaydedilmez). Konuşurken çoğunlukla yeşilde kalmalı.": [
-  "app.py:3428"
+  "app.py:3431"
  ],
  "İşlenmiş ses kısık; telafiyi artır.": [
-  "app.py:2783"
+  "app.py:2786"
  ],
  "Şarkı adı": [
   "ui_text.py:109"
@@ -5566,7 +5569,7 @@
   "app.py:1188"
  ],
  "Şu an": [
-  "app.py:3245"
+  "app.py:3248"
  ],
  "Şu an bu çıkışı kullanan uygulama yok": [
   "eq_page.py:3189"
@@ -5608,7 +5611,7 @@
   "eq_page.py:2051"
  ],
  "Şu anki ve önerilen ayarlar aşağıda. Uygun görünüyorsa “Uygula”ya bas.": [
-  "app.py:3217"
+  "app.py:3220"
  ],
  "şarkı adı ipuçları": [
   "ui_text.py:123"
@@ -5638,10 +5641,10 @@
   "app.py:1787"
  ],
  "• Giriş cihazı: {mikrofon}.": [
-  "app.py:3883"
+  "app.py:3886"
  ],
  "• Ses ve Görüntü: gürültü azaltma (Krisp), otomatik kazanç ve yankı giderme kapalı.": [
-  "app.py:3881"
+  "app.py:3884"
  ],
  "… diğer akışlar: {n}": [
   "tray.py:112"
@@ -5656,7 +5659,7 @@
   "eq_page.py:2921"
  ],
  "⚠ HS80 mikrofonu şu an görünmüyor: kulaklık açık ve bağlı mı?": [
-  "app.py:3036"
+  "app.py:3039"
  ],
  "⚠ Servise ulaşılamadı: {hata}": [
   "eq_page.py:2528"
@@ -5668,16 +5671,16 @@
   "eq_page.py:2231"
  ],
  "⚠ {mikrofon} şu an çalışmıyor; “Uygula” dediğinde yeni ayarlarla başlatılır.": [
-  "app.py:3038"
+  "app.py:3041"
  ],
  "✓  Test bitti": [
-  "app.py:2791"
+  "app.py:2794"
  ],
  "✓  Uygulandı": [
-  "app.py:3357"
+  "app.py:3360"
  ],
  "✓  Ölçüm tamam": [
-  "app.py:3216"
+  "app.py:3219"
  ],
  "✓ Komutlar panoya kopyalandı — CS2 konsoluna yapıştır (Ctrl+V)": [
   "eq_page.py:1517"
@@ -5686,8 +5689,8 @@
   "eq_page.py:1721"
  ],
  "🎙  Konuş…": [
-  "app.py:2730",
-  "app.py:3062"
+  "app.py:2733",
+  "app.py:3065"
  ],
  "🎙  {saniye:.0f} saniye boyunca normal sesinle konuş…": [
   "mikrofon_test.py:103"
@@ -5703,10 +5706,10 @@
   "app.py:1857"
  ],
  "🔊  Ham ses çalınıyor…": [
-  "app.py:2757"
+  "app.py:2760"
  ],
  "🔊  İşlenmiş ses çalınıyor…": [
-  "app.py:2756"
+  "app.py:2759"
  ],
  "🔊 ham ses çalınıyor…": [
   "mikrofon_test.py:32"

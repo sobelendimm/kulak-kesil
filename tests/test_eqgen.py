@@ -1406,3 +1406,26 @@ class RampCarryOverTests(unittest.TestCase):
         self.assertAlmostEqual(live["pre_l:Mult"], 0.475)
         self.assertAlmostEqual(live["v1_l:Gain"], 1.0)
         self.assertEqual(eqgen._RAMPS, {})
+
+
+class UpwardModeTests(unittest.TestCase):
+    """12 Kas 2026: [profil.X.dinamik] mod = "yukari" → LSP upward compression (cm=1) + taban_db (bth)."""
+
+    def test_default_is_downward(self):
+        d = eqgen._norm_dinamik({}, "t")
+        c = eqgen.comp_controls(d, True, True)
+        self.assertEqual(c["cm"], 0.0)
+        self.assertAlmostEqual(c["bth"], 10 ** (-72 / 20))
+
+    def test_upward_mode_and_floor(self):
+        d = eqgen._norm_dinamik({"mod": "yukari", "taban_db": -66.0, "esik_db": -30.0}, "t")
+        c = eqgen.comp_controls(d, True, True)
+        self.assertEqual(c["cm"], 1.0)
+        self.assertAlmostEqual(c["bth"], 10 ** (-66 / 20))
+        self.assertAlmostEqual(c["al"], 10 ** (-30 / 20))
+
+    def test_invalid_mode_and_floor_rejected(self):
+        with self.assertRaises(eqgen.ProfileError):
+            eqgen._norm_dinamik({"mod": "yanlis"}, "t")
+        with self.assertRaises(eqgen.ProfileError):
+            eqgen._norm_dinamik({"taban_db": -40.0}, "t")
