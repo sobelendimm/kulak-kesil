@@ -43,6 +43,7 @@ tar -xzf "$WORK/$PBS_FILE" -C "$APPDIR/usr/python" --strip-components=1
 cp -r "$SRC/oto_eq" "$SRC/config" "$SRC/systemd" "$APPDIR/usr/share/kulak-kesil/"
 find "$APPDIR/usr/share/kulak-kesil" \( -name '__pycache__' -o -name '*.yedek*' \) -prune -exec rm -rf {} +
 install -m755 "$SRC/packaging/appimage/setup.sh" "$APPDIR/usr/share/kulak-kesil/appimage-setup.sh"
+install -m755 "$SRC/packaging/appimage/run.sh" "$APPDIR/usr/share/kulak-kesil/appimage-run.sh"
 install -m755 "$SRC/packaging/appimage/AppRun" "$APPDIR/AppRun"
 install -m644 "$SRC/packaging/appimage/kulak-kesil.desktop" "$APPDIR/kulak-kesil.desktop"
 echo "$VERSION" > "$APPDIR/usr/share/kulak-kesil/VERSION"
