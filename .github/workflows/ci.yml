@@ -41,7 +41,9 @@ jobs:
       LANG: tr_TR.UTF-8
     steps:
       - name: system packages
-        run: pacman -Syu --noconfirm git python python-numpy python-scipy python-pyqt6 python-jeepney pipewire pipewire-pulse libpulse lsp-plugins-lv2 qt6-base
+        run: |
+          pacman -Syu --noconfirm git python python-numpy python-scipy python-pyqt6 python-jeepney pipewire pipewire-pulse libpulse lsp-plugins-lv2 qt6-base glibc-locales
+          sed -i 's/^#\(tr_TR.UTF-8\)/\1/' /etc/locale.gen && locale-gen
       - uses: actions/checkout@v4
       - name: unit tests (live PipeWire tests skip themselves without a running server)
         # install.sh refuses root by design: run the suite as an ordinary user
