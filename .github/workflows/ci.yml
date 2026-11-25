@@ -25,7 +25,7 @@ jobs:
           pip install ruff
           ruff check --select E9,F63,F7,F82 oto_eq tests tools
       - name: shellcheck
-        run: shellcheck -S warning install.sh uninstall.sh tools/download_models.sh packaging/appimage/AppRun packaging/appimage/setup.sh packaging/appimage/build.sh
+        run: shellcheck -S warning install.sh uninstall.sh tools/download_models.sh packaging/appimage/AppRun packaging/appimage/run.sh packaging/appimage/setup.sh packaging/appimage/build.sh
       - name: actionlint
         run: |
           bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7

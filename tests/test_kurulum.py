@@ -57,6 +57,7 @@ class ScriptCase(unittest.TestCase):
                            'get-default-source) echo "alsa_input.x" ;; *) exit 0 ;; esac')
         for t in ("gio", "kbuildsycoca6", "setsid", "pkill"):
             self.stub(t, "exit 0")
+        self.stub("pgrep", "exit 1")        # uninstall.sh must never find (and kill) the developer's real tray
 
     def stub(self, name: str, body: str, where: Path | None = None) -> None:
         f = (where or self.stubs) / name
@@ -71,6 +72,7 @@ class ScriptCase(unittest.TestCase):
     def run_script(self, script: str, home: Path, *args: str, path: str | None = None,
                    src: Path = ROOT, env: dict | None = None) -> subprocess.CompletedProcess:
         e = {"HOME": str(home), "LANG": "C.UTF-8", "XDG_RUNTIME_DIR": str(home),
+             "TMPDIR": str(self.tmp),      # AppImage mounts are searched under $TMPDIR/.mount_kulak*
              "PATH": path or f"{self.stubs}:/usr/bin:/bin", **(env or {})}
         return subprocess.run(["bash", str(src / script), *args], env=e,
                               capture_output=True, text=True, timeout=120)
@@ -299,6 +301,54 @@ class TestUninstall(ScriptCase):
         self.assertTrue(any("rm -rf" in ln and ln.endswith("/oto-eq/models") for ln in lines), lines)
         self.assertFalse(any("yedekler" in ln for ln in lines))
         self.assertIn(f"Backups kept: {data}/yedekler", r.stdout)
+
+    def test_appimage_launcher_and_cache_removed(self):
+        home = self.home()
+        run = home / ".local/share/kulak-kesil/run.sh"
+        run.parent.mkdir(parents=True)
+        run.write_text("#!/bin/sh\n# Launcher installed by `kulak-kesil.AppImage --setup`\n")
+        cache = home / ".cache/kulak-kesil/123-456"
+        cache.mkdir(parents=True)
+        r = self.run_script("uninstall.sh", home, "--dry-run")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        lines = [ln for ln in r.stdout.splitlines() if ln.startswith("[dry-run]")]
+        self.assertTrue(any("rm -f" in ln and ln.endswith("/kulak-kesil/run.sh") for ln in lines), lines)
+        self.assertTrue(any("rm -rf" in ln and ln.endswith("/.cache/kulak-kesil") for ln in lines), lines)
+        self.assertTrue(run.exists() and cache.exists())          # dry-run changes nothing
+        r = self.run_script("uninstall.sh", home)                  # real run, fake HOME
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertFalse(run.exists())
+        self.assertFalse((home / ".cache/kulak-kesil").exists())
+
+    def test_running_appimage_process_is_stopped_by_pid(self):
+        home = self.home()
+        exe = home / ".cache/kulak-kesil/1-2/usr/python/bin/python3"
+        exe.parent.mkdir(parents=True)
+        shutil.copy("/usr/bin/sleep", exe)
+        proc = subprocess.Popen(["tray", "30"], executable=str(exe))
+        try:
+            r = self.run_script("uninstall.sh", home, "--dry-run")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn(f"[dry-run] kill {proc.pid}", r.stdout)
+            self.assertIsNone(proc.poll())                          # dry-run kills nothing
+            r = self.run_script("uninstall.sh", home)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(proc.wait(timeout=10), -15)
+            self.assertNotIn("did not exit", r.stderr)
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
+
+    def test_foreign_run_sh_left_untouched(self):
+        home = self.home()
+        run = home / ".local/share/kulak-kesil/run.sh"
+        run.parent.mkdir(parents=True)
+        run.write_text("#!/bin/sh\necho mine\n")
+        r = self.run_script("uninstall.sh", home)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(run.exists())
+        self.assertIn("is not ours", r.stderr)
 
     def test_units_found_in_manager_and_shell_dirs(self):
         home = self.home()
