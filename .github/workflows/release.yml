@@ -19,7 +19,11 @@ jobs:
           v=$(sed -n 's/^pkgver=//p' packaging/aur/PKGBUILD)
           [ "${GITHUB_REF_NAME#v}" = "$v" ] || { echo "tag $GITHUB_REF_NAME != pkgver $v" >&2; exit 1; }
       - name: Build the AppImage
-        run: VERSION="${GITHUB_REF_NAME#v}" packaging/appimage/build.sh dist
+        # the build imports PyQt6 (icon generation): it needs the EGL/GL/xkb/fontconfig/dbus runtime libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3 libglib2.0-0
+          QT_QPA_PLATFORM=offscreen VERSION="${GITHUB_REF_NAME#v}" packaging/appimage/build.sh dist
       - name: Smoke test
         run: |
           f=(dist/kulak-kesil-*-x86_64.AppImage)
