@@ -20,7 +20,7 @@ USAGE
 }
 
 case "${1:---app}" in
-    --app) shift 2>/dev/null; exec "$PY" -m oto_eq.app "$@" ;;
+    --app) [ $# -eq 0 ] || shift; exec "$PY" -m oto_eq.app "$@" ;;
     --cli) shift; exec "$PY" -m oto_eq.cli "$@" ;;
     --tray) shift; exec "$PY" -m oto_eq.tray "$@" ;;
     --router) shift; exec "$PY" -m oto_eq.router "$@" ;;

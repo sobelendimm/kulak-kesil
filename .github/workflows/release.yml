@@ -14,12 +14,17 @@ jobs:
     runs-on: ubuntu-22.04   # old glibc: the AppImage runs on older distros too
     steps:
       - uses: actions/checkout@v4
+      - name: Tag must match pkgver in the PKGBUILD
+        run: |
+          v=$(sed -n 's/^pkgver=//p' packaging/aur/PKGBUILD)
+          [ "${GITHUB_REF_NAME#v}" = "$v" ] || { echo "tag $GITHUB_REF_NAME != pkgver $v" >&2; exit 1; }
       - name: Build the AppImage
         run: VERSION="${GITHUB_REF_NAME#v}" packaging/appimage/build.sh dist
       - name: Smoke test
         run: |
           f=(dist/kulak-kesil-*-x86_64.AppImage)
           "${f[0]}" --appimage-extract-and-run --help
+          "${f[0]}" --appimage-extract-and-run --cli --help
       - name: Checksum
         run: cd dist && sha256sum ./*.AppImage > SHA256SUMS
       - name: Draft release with the AppImage

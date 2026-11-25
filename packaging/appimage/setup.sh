@@ -13,7 +13,7 @@ DATA="${XDG_DATA_HOME:-$HOME/.local/share}"
 DEST="$DATA/kulak-kesil/kulak-kesil.AppImage"
 UNIT_DIR="$CFG/systemd/user"
 CONF_DIR="$CFG/oto-eq"
-case "$DEST$HOME" in *[[:space:]\"\\%\$]*) echo "ERROR: paths with spaces or special characters are not supported" >&2; exit 1 ;; esac
+case "$DEST$HOME" in *[[:space:]\"\\%\$\|\&]*) echo "ERROR: paths with spaces or special characters are not supported" >&2; exit 1 ;; esac
 [ "$CFG" = "$HOME/.config" ] || { echo "ERROR: a custom XDG_CONFIG_HOME is not supported by the AppImage setup; use the AUR package or install.sh" >&2; exit 1; }
 
 mkdir -p "$(dirname "$DEST")" "$CONF_DIR" "$UNIT_DIR"
@@ -29,10 +29,22 @@ PYTHONPATH="$HERE" PYTHONNOUSERSITE=1 "$PY" -m oto_eq.micgen generate
 cp "$HERE/systemd/oto-eq-sinks.service" "$HERE/systemd/oto-eq-mic.service" "$UNIT_DIR/"
 # the router unit runs the AppImage itself instead of a source folder
 grep -v '^WorkingDirectory=\|^Environment=PYTHONPATH=' "$HERE/systemd/oto-eq.service" \
-    | sed "s|^ExecStart=.*|ExecStart=$DEST --router|" > "$UNIT_DIR/oto-eq.service"
+    | sed "s|^ExecStart=.*|ExecStart=/usr/bin/env APPIMAGE_EXTRACT_AND_RUN=1 $DEST --router|" > "$UNIT_DIR/oto-eq.service"
+
+# commands in ~/.local/bin (the tray autostart entry and the app look for these)
+BIN="$HOME/.local/bin"; MARK="# kulak-kesil AppImage wrapper"
+mkdir -p "$BIN"
+for pair in kulak:--cli kulak-app:--app kulak-tepsi:--tray; do
+    name="${pair%%:*}"; flag="${pair#*:}"
+    if [ -e "$BIN/$name" ] && ! grep -qF "$MARK" "$BIN/$name"; then
+        echo "WARNING: $BIN/$name exists and is not ours; left untouched" >&2; continue
+    fi
+    printf '#!/bin/sh\n%s\nexec env APPIMAGE_EXTRACT_AND_RUN=1 %s %s "$@"\n' "$MARK" "$DEST" "$flag" > "$BIN/$name.new"
+    chmod 755 "$BIN/$name.new" && mv -f "$BIN/$name.new" "$BIN/$name"
+done
 
 systemctl --user daemon-reload
 systemctl --user enable oto-eq-sinks.service oto-eq.service oto-eq-mic.service
 systemctl --user restart oto-eq.service
 systemctl --user start oto-eq-sinks.service oto-eq-mic.service
-echo "Done. Open the window with: $DEST   (status: $DEST --cli durum)"
+echo "Done. Commands: kulak, kulak-app, kulak-tepsi (in $BIN; add it to PATH if needed)"

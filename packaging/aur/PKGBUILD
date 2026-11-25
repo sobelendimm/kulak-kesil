@@ -18,11 +18,6 @@ install=kulak-kesil.install
 source=("$pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
 sha256sums=('SKIP')
 
-build() {
-  cd "$pkgname-$pkgver"
-  python -m compileall -q oto_eq
-}
-
 package() {
   cd "$pkgname-$pkgver"
   local share="$pkgdir/usr/share/$pkgname"

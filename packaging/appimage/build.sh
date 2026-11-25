@@ -11,6 +11,7 @@ OUT="$(mkdir -p "${1:-$SRC/dist}" && cd "${1:-$SRC/dist}" && pwd -P)"
 WORK="${WORK:-$OUT/work}"
 VERSION="${VERSION:-$(git -C "$SRC" describe --tags --always 2>/dev/null | sed 's/^v//' || true)}"
 VERSION="${VERSION:-0.0.0}"
+case "$VERSION" in [0-9]*.*) ;; *) VERSION="0.0.0+g$VERSION" ;; esac
 
 # pinned bundled interpreter (sha256 of the release asset)
 PBS_TAG=20261124

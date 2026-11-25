@@ -66,6 +66,7 @@ jobs:
           mkdir "/tmp/b/kulak-kesil-$v" && git config --global --add safe.directory "$PWD"
           git ls-files -z | xargs -0 cp --parents -t "/tmp/b/kulak-kesil-$v"
           tar -czf "/tmp/b/kulak-kesil-$v.tar.gz" -C /tmp/b "kulak-kesil-$v" && rm -rf "/tmp/b/kulak-kesil-$v"
+          pacman -S --noconfirm --needed python python-numpy python-pyqt6 pipewire pipewire-pulse libpulse lsp-plugins-lv2 systemd
           chown -R builder /tmp/b
-          cd /tmp/b && su builder -c 'makepkg -sf --noconfirm'
+          cd /tmp/b && su builder -c 'makepkg -f --noconfirm'
           namcap PKGBUILD ./*.pkg.tar.zst | grep -v ' Dependency ' || true
