@@ -2,7 +2,7 @@
 # Tag the release (vX.Y.Z) on GitHub first, then replace SKIP with the real
 # checksum (`updpkgsums`) and regenerate .SRCINFO (`makepkg --printsrcinfo > .SRCINFO`).
 pkgname=kulak-kesil
-pkgver=1.0.0
+pkgver=1.0.1
 pkgrel=1
 pkgdesc='Automatic per-app headphone EQ for PipeWire (routes each stream to an EQ output that fits it)'
 arch=('any')
