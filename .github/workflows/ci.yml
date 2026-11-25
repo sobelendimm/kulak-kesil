@@ -56,10 +56,12 @@ jobs:
     runs-on: ubuntu-latest
     container: archlinux:base-devel
     steps:
+      # git must exist BEFORE checkout, otherwise actions/checkout falls back to a tarball without .git
+      - name: install git and namcap
+        run: pacman -Syu --noconfirm namcap git
       - uses: actions/checkout@v4
       - name: makepkg from the checked-out tree
         run: |
-          pacman -Syu --noconfirm namcap git
           useradd -m builder
           v=$(sed -n 's/^pkgver=//p' packaging/aur/PKGBUILD)
           mkdir -p /tmp/b/src && cp packaging/aur/PKGBUILD packaging/aur/*.install /tmp/b/
