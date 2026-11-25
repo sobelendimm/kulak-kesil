@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Kulak Kesil
+GenericName=Smart Equalizer
+Comment=Automatic per-app headphone EQ for PipeWire
+Exec=kulak-kesil
+Icon=kulak-kesil
+Terminal=false
+Categories=AudioVideo;Audio;
+StartupWMClass=oto-eq-app

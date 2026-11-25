@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: ruff (syntax errors, undefined names)
+        run: |
+          pip install ruff
+          ruff check --select E9,F63,F7,F82 oto_eq tests tools
+      - name: shellcheck
+        run: shellcheck -S warning install.sh uninstall.sh tools/download_models.sh packaging/appimage/AppRun packaging/appimage/setup.sh packaging/appimage/build.sh
+      - name: actionlint
+        run: |
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7
+          ./actionlint
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.13"]
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: system libraries for Qt (offscreen)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libegl1 libgl1 libxkbcommon0 libdbus-1-3 libfontconfig1 libglib2.0-0
+      - name: Python dependencies
+        run: pip install numpy PyQt6 scipy jeepney
+      - name: unit tests (live PipeWire tests skip themselves without pactl)
+        run: python -m unittest discover -s tests
+
+  aur:
+    # builds the AUR package in a clean Arch container
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    steps:
+      - uses: actions/checkout@v4
+      - name: makepkg from the checked-out tree
+        run: |
+          pacman -Syu --noconfirm namcap git
+          useradd -m builder
+          v=$(sed -n 's/^pkgver=//p' packaging/aur/PKGBUILD)
+          mkdir -p /tmp/b/src && cp packaging/aur/PKGBUILD packaging/aur/*.install /tmp/b/
+          mkdir "/tmp/b/kulak-kesil-$v" && git config --global --add safe.directory "$PWD"
+          git ls-files -z | xargs -0 cp --parents -t "/tmp/b/kulak-kesil-$v"
+          tar -czf "/tmp/b/kulak-kesil-$v.tar.gz" -C /tmp/b "kulak-kesil-$v" && rm -rf "/tmp/b/kulak-kesil-$v"
+          chown -R builder /tmp/b
+          cd /tmp/b && su builder -c 'makepkg -sf --noconfirm'
+          namcap PKGBUILD ./*.pkg.tar.zst | grep -v ' Dependency ' || true

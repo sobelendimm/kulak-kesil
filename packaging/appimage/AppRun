@@ -1,0 +1,30 @@
+#!/bin/sh
+# AppImage entry point: picks the Kulak Kesil program by the first argument.
+HERE="$(dirname "$(readlink -f "$0")")"
+export PYTHONPATH="$HERE/usr/share/kulak-kesil"
+export PYTHONNOUSERSITE=1
+export PYTHONDONTWRITEBYTECODE=1
+PY="$HERE/usr/python/bin/python3"
+
+usage() {
+    cat <<'USAGE'
+Kulak Kesil (AppImage): automatic per-app headphone EQ for PipeWire.
+Usage: kulak-kesil.AppImage [--app | --cli ARGS | --tray | --router | --setup | --help]
+  (no argument), --app  open the main window
+  --cli ARGS            the `kulak` command (status, saglik, ton, ...)
+  --tray                the tray icon
+  --router              the router service (what the systemd unit runs)
+  --setup               one-time per-user setup: config + systemd user services
+Needs on the host: PipeWire + pipewire-pulse, pactl and pw-* tools, LSP LV2 plugins.
+USAGE
+}
+
+case "${1:---app}" in
+    --app) shift 2>/dev/null; exec "$PY" -m oto_eq.app "$@" ;;
+    --cli) shift; exec "$PY" -m oto_eq.cli "$@" ;;
+    --tray) shift; exec "$PY" -m oto_eq.tray "$@" ;;
+    --router) shift; exec "$PY" -m oto_eq.router "$@" ;;
+    --setup) shift; exec sh "$HERE/usr/share/kulak-kesil/appimage-setup.sh" "$@" ;;
+    -h|--help) usage ;;
+    *) usage >&2; exit 2 ;;
+esac

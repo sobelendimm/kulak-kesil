@@ -1,0 +1,24 @@
+pkgbase = kulak-kesil
+	pkgdesc = Automatic per-app headphone EQ for PipeWire (routes each stream to an EQ output that fits it)
+	pkgver = 1.0.0
+	pkgrel = 1
+	url = https://github.com/sobelendimm/kulak-kesil
+	install = kulak-kesil.install
+	arch = any
+	license = GPL-3.0-or-later
+	depends = python>=3.11
+	depends = python-numpy
+	depends = python-pyqt6
+	depends = pipewire
+	depends = pipewire-pulse
+	depends = libpulse
+	depends = lsp-plugins-lv2
+	depends = systemd
+	optdepends = python-matplotlib: EQ curve plot (kulak eq-ciz)
+	optdepends = python-jeepney: recognise music players and the browser over MPRIS
+	optdepends = noise-suppression-for-voice: RNNoise noise suppression for the microphone
+	optdepends = python-onnxruntime: audio analysis models (see docs/MODELS.md)
+	source = kulak-kesil-1.0.0.tar.gz::https://github.com/sobelendimm/kulak-kesil/archive/v1.0.0.tar.gz
+	sha256sums = SKIP
+
+pkgname = kulak-kesil

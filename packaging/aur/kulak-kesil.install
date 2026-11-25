@@ -1,0 +1,14 @@
+post_install() {
+  echo "==> Run once as your normal user (not root):  kulak-kur"
+  echo "    It writes your config and the systemd user services."
+}
+
+post_upgrade() {
+  echo "==> After an upgrade run again as your normal user:  kulak-kur"
+  echo "    (restarts the router with the new code)"
+}
+
+pre_remove() {
+  echo "==> Per-user services stay in ~/.config/systemd/user; remove them first with:"
+  echo "    /usr/share/kulak-kesil/uninstall.sh   (as your normal user)"
+}

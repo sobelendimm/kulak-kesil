@@ -127,6 +127,28 @@ desktop shortcut, an update leaves them that way). Uninstall: `./uninstall.sh` (
 your settings) or `./uninstall.sh --purge` (also deletes settings, state and downloaded
 models; backups from `kulak yedek` stay in `~/.local/share/oto-eq/yedekler`).
 
+### Arch / CachyOS: AUR package
+
+Once the package is published on the AUR (until then this does not work yet):
+
+```bash
+yay -S kulak-kesil
+kulak-kur        # one-time per-user setup (config + systemd user services)
+```
+
+### AppImage
+
+Download `kulak-kesil-<version>-x86_64.AppImage` from the
+[Releases](https://github.com/sobelendimm/kulak-kesil/releases) page, then:
+
+```bash
+chmod +x kulak-kesil-*.AppImage
+./kulak-kesil-*.AppImage --setup    # one-time: config + systemd user services
+./kulak-kesil-*.AppImage            # open the window (--cli, --tray: see --help)
+```
+
+PipeWire, `pactl`/`pw-*` and the LSP LV2 plugins must come from your distro.
+
 ## Usage
 
 Open **Kulak Kesil** from the app menu (or run `kulak-app`). The first run shows a short
