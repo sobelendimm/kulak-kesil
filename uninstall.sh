@@ -53,6 +53,11 @@ BIN_DIR="$HOME/.local/bin"
 AUTOSTART_FILE="$CFG_HOME/autostart/oto-eq-tray.desktop"
 APP_FILE="$DATA_HOME/applications/oto-eq.desktop"
 ICON_FILE="$CONF_DIR/kulak-kesil.png"
+# AppImage setup (packaging/appimage/setup.sh): launcher next to the AppImage copy, extracted-copy cache
+AI_DIR="$DATA_HOME/kulak-kesil"
+AI_RUN="$AI_DIR/run.sh"
+AI_RUN_MARK="kulak-kesil.AppImage --setup"
+AI_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/kulak-kesil"
 # ORDER MATTERS: the router first (on a clean stop it moves streams back to the
 # default sink, which also clears WirePlumber's remembered targets), then the
 # EQ sinks and the microphone.
@@ -168,6 +173,11 @@ fi
 if command -v kbuildsycoca6 >/dev/null 2>&1; then
     run quiet kbuildsycoca6 --noincremental || true
 fi
+
+# AppImage setup leftovers: the launcher and the extraction cache (the AppImage copy itself is left in place)
+rm_marked "$AI_RUN" "$AI_RUN_MARK"
+if [[ -d "$AI_CACHE" ]]; then run rm -rf "$AI_CACHE"; fi
+if [[ -d "$AI_DIR" && ! -e "$AI_DIR/kulak-kesil.AppImage" ]]; then run rmdir "$AI_DIR" 2>/dev/null || true; fi
 
 if [[ -e "$ICON_FILE" ]]; then run rm -f "$ICON_FILE"; fi
 SOCK="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/oto-eq.sock"

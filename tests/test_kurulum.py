@@ -300,6 +300,34 @@ class TestUninstall(ScriptCase):
         self.assertFalse(any("yedekler" in ln for ln in lines))
         self.assertIn(f"Backups kept: {data}/yedekler", r.stdout)
 
+    def test_appimage_launcher_and_cache_removed(self):
+        home = self.home()
+        run = home / ".local/share/kulak-kesil/run.sh"
+        run.parent.mkdir(parents=True)
+        run.write_text("#!/bin/sh\n# Launcher installed by `kulak-kesil.AppImage --setup`\n")
+        cache = home / ".cache/kulak-kesil/123-456"
+        cache.mkdir(parents=True)
+        r = self.run_script("uninstall.sh", home, "--dry-run")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        lines = [ln for ln in r.stdout.splitlines() if ln.startswith("[dry-run]")]
+        self.assertTrue(any("rm -f" in ln and ln.endswith("/kulak-kesil/run.sh") for ln in lines), lines)
+        self.assertTrue(any("rm -rf" in ln and ln.endswith("/.cache/kulak-kesil") for ln in lines), lines)
+        self.assertTrue(run.exists() and cache.exists())          # dry-run changes nothing
+        r = self.run_script("uninstall.sh", home)                  # real run, fake HOME
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertFalse(run.exists())
+        self.assertFalse((home / ".cache/kulak-kesil").exists())
+
+    def test_foreign_run_sh_left_untouched(self):
+        home = self.home()
+        run = home / ".local/share/kulak-kesil/run.sh"
+        run.parent.mkdir(parents=True)
+        run.write_text("#!/bin/sh\necho mine\n")
+        r = self.run_script("uninstall.sh", home)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(run.exists())
+        self.assertIn("is not ours", r.stderr)
+
     def test_units_found_in_manager_and_shell_dirs(self):
         home = self.home()
         cfg = home / "ayarlar"
