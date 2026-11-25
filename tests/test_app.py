@@ -1140,7 +1140,7 @@ class TestVariantsUi(AppTestBase):
         # the chip elides at 300 px: the width of the fallback font differs per machine
         full = "Müzik · Metal / Rock — Virgin Black"
         self.assertEqual(chip.text(), chip.fontMetrics().elidedText(full, appmod.Qt.TextElideMode.ElideRight, 300))
-        self.assertTrue(chip.text().startswith("Müzik · Metal / Rock"))
+        self.assertTrue(chip.text().startswith("Müzik"))
         self.assertIn("İçerik: Virgin Black", chip.toolTip())
         self.assertIn("Kaynak: MusicBrainz — gothic metal", chip.toolTip())
         self.assertIsNotNone(rows[0].variant_button)
