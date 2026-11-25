@@ -46,7 +46,8 @@ for pair in kulak:--cli kulak-app:--app kulak-tepsi:--tray; do
     chmod 755 "$BIN/$name.new" && mv -f "$BIN/$name.new" "$BIN/$name"
 done
 
-"$LAUNCH" --help >/dev/null    # warms the extraction cache (no FUSE) so a failure shows here, not in systemd
+# warms the extraction cache (no FUSE) so a failure shows here, not in systemd; it must not abort the setup
+"$LAUNCH" --help >/dev/null || echo "WARNING: the first launch test failed (see the message above); the services may not start until that is fixed" >&2
 systemctl --user daemon-reload
 systemctl --user enable oto-eq-sinks.service oto-eq.service oto-eq-mic.service
 systemctl --user restart oto-eq.service

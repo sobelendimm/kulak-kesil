@@ -318,6 +318,26 @@ class TestUninstall(ScriptCase):
         self.assertFalse(run.exists())
         self.assertFalse((home / ".cache/kulak-kesil").exists())
 
+    def test_running_appimage_process_is_stopped_by_pid(self):
+        home = self.home()
+        exe = home / ".cache/kulak-kesil/1-2/usr/python/bin/python3"
+        exe.parent.mkdir(parents=True)
+        shutil.copy("/usr/bin/sleep", exe)
+        proc = subprocess.Popen(["tray", "30"], executable=str(exe))
+        try:
+            r = self.run_script("uninstall.sh", home, "--dry-run")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn(f"[dry-run] kill {proc.pid}", r.stdout)
+            self.assertIsNone(proc.poll())                          # dry-run kills nothing
+            r = self.run_script("uninstall.sh", home)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(proc.wait(timeout=10), -15)
+            self.assertNotIn("did not exit", r.stderr)
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
+
     def test_foreign_run_sh_left_untouched(self):
         home = self.home()
         run = home / ".local/share/kulak-kesil/run.sh"
