@@ -39,6 +39,8 @@ jobs:
         python: ["3.11", "3.13"]
     env:
       QT_QPA_PLATFORM: offscreen
+      # tests assert the Turkish UI strings (i18n picks the language from LANG)
+      LANG: tr_TR.UTF-8
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
