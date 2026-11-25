@@ -1055,8 +1055,11 @@ class ToneTests(PageTestBase):
         cmd = eq_page.kulak_command("ab", which=lambda _n: None)
         self.assertEqual(cmd[-1], "ab")
         self.assertTrue(cmd[0].endswith("kulak") or cmd[1:3] == ["-m", "oto_eq.cli"])
-        with mock.patch.object(eq_page.shutil, "which",
-                               side_effect=which_of("ghostty", "kulak")):
+        # start_tone_ab binds shutil.which as a default argument: patching shutil.which
+        # would hit the real PATH (no terminal in a CI container), so inject `which`
+        real = self.page.start_tone_ab
+        with mock.patch.object(self.page, "start_tone_ab",
+                               lambda: real(which=which_of("ghostty", "kulak"))):
             self.page.tone_ab_btn.click()
         self.launch.assert_called_once()
 

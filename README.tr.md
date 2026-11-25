@@ -228,6 +228,12 @@ kurulumu yaptığın klasörü kullanır: klasörü taşırsan `./install.sh`'i 
 Güncelleme: `git pull && ./install.sh` (tepsinin otomatik başlamasını kapattıysan ya da
 masaüstü kısayolunu sildiysen güncelleme onları geri getirmez).
 
+### AUR ve AppImage
+
+AUR paketi yayınlandığında (o zamana kadar geçerli değildir): `yay -S kulak-kesil`, sonra bir kez `kulak-kur`.
+AppImage: Releases sayfasından `kulak-kesil-<sürüm>-x86_64.AppImage` indir, `chmod +x`, bir kez `--setup`, sonra çalıştır
+(`--help` seçenekleri gösterir). PipeWire, `pactl`/`pw-*` ve LSP LV2 eklentileri dağıtımdan gelmelidir.
+
 ## Lisans
 
 [GPL-3.0-or-later](LICENSE). İsteğe bağlı ses analizi modelleri bu lisansa **dahil değildir**:

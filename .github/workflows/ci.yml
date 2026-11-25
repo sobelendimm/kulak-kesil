@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: ruff (syntax errors, undefined names)
+        run: |
+          pip install ruff
+          ruff check --select E9,F63,F7,F82 oto_eq tests tools
+      - name: shellcheck
+        run: shellcheck -S warning install.sh uninstall.sh tools/download_models.sh packaging/appimage/AppRun packaging/appimage/setup.sh packaging/appimage/build.sh
+      - name: actionlint
+        run: |
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7
+          ./actionlint
+
+  test:
+    # the suite targets the real platform (Arch/CachyOS + PipeWire); run it in an Arch container
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+      # tests assert the Turkish UI strings (i18n picks the language from LANG)
+      LANG: tr_TR.UTF-8
+    steps:
+      - name: system packages
+        run: |
+          pacman -Syu --noconfirm git python python-numpy python-scipy python-pyqt6 python-jeepney pipewire pipewire-pulse libpulse lsp-plugins-lv2 qt6-base glibc-locales
+          sed -i 's/^#\(tr_TR.UTF-8\)/\1/' /etc/locale.gen && locale-gen
+      - uses: actions/checkout@v4
+      - name: unit tests (live PipeWire tests skip themselves without a running server)
+        # install.sh refuses root by design: run the suite as an ordinary user
+        run: |
+          useradd -m tester
+          chown -R tester "$GITHUB_WORKSPACE"
+          su tester -c "cd '$GITHUB_WORKSPACE' && LANG=$LANG QT_QPA_PLATFORM=$QT_QPA_PLATFORM python -m unittest discover -s tests"
+
+  aur:
+    # builds the AUR package in a clean Arch container
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    steps:
+      # git must exist BEFORE checkout, otherwise actions/checkout falls back to a tarball without .git
+      - name: install git and namcap
+        run: pacman -Syu --noconfirm namcap git
+      - uses: actions/checkout@v4
+      - name: makepkg from the checked-out tree
+        run: |
+          useradd -m builder
+          v=$(sed -n 's/^pkgver=//p' packaging/aur/PKGBUILD)
+          mkdir -p /tmp/b/src && cp packaging/aur/PKGBUILD packaging/aur/*.install /tmp/b/
+          mkdir "/tmp/b/kulak-kesil-$v" && git config --global --add safe.directory "$PWD"
+          git ls-files -z | xargs -0 cp --parents -t "/tmp/b/kulak-kesil-$v"
+          tar -czf "/tmp/b/kulak-kesil-$v.tar.gz" -C /tmp/b "kulak-kesil-$v" && rm -rf "/tmp/b/kulak-kesil-$v"
+          pacman -S --noconfirm --needed python python-numpy python-pyqt6 pipewire pipewire-pulse libpulse lsp-plugins-lv2 systemd
+          chown -R builder /tmp/b
+          cd /tmp/b && su builder -c 'makepkg -f --noconfirm'
+          namcap PKGBUILD ./*.pkg.tar.zst | grep -v ' Dependency ' || true

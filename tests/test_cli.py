@@ -1018,7 +1018,10 @@ class TestUnitsAndScripts(unittest.TestCase):
 
     def run_script(self, script, home, stubs, *args, lang="tr_TR.UTF-8"):
         env = {"HOME": str(home), "PATH": f"{stubs}:/usr/bin:/bin", "LANG": lang,
-               "XDG_RUNTIME_DIR": str(home)}
+               "XDG_RUNTIME_DIR": str(home),
+               # printf %q escapes non-ASCII (the ü in Masaüstü) as $'\303..' unless the
+               # charset locale exists; tr_TR is not generated in a CI container
+               "LC_CTYPE": "C.UTF-8"}
         r = subprocess.run(["bash", str(ROOT / script), "--dry-run", *args], env=env,
                            capture_output=True, text=True, timeout=60)
         self.assertEqual(r.returncode, 0, r.stderr)

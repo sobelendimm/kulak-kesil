@@ -1137,7 +1137,11 @@ class TestVariantsUi(AppTestBase):
         self.win.on_status(self.status_v())
         rows = self.win.page_status.rows
         chip = rows[0].findChild(appmod.QLabel, "chip")
-        self.assertEqual(chip.text(), "Müzik · Metal / Rock — Virgin Black")
+        # the chip elides at 300 px: the width of the fallback font differs per machine
+        full = "Müzik · Metal / Rock — Virgin Black"
+        self.assertEqual(chip.text(), chip.fontMetrics().elidedText(full, appmod.Qt.TextElideMode.ElideRight, 300))
+        self.assertTrue(chip.text().startswith("Müzik"))
+        self.assertIn("İçerik: Virgin Black", chip.toolTip())
         self.assertIn("Kaynak: MusicBrainz — gothic metal", chip.toolTip())
         self.assertIsNotNone(rows[0].variant_button)
         acts = [x for x in rows[0].variant_menu.actions() if not x.isSeparator()]
@@ -1157,7 +1161,7 @@ class TestVariantsUi(AppTestBase):
         v2 = {**VARIANTS, "muzik": {**VARIANTS["muzik"], "for": "Sisters of Mercy"}}
         self.win.on_status(self.status_v() | {"variants": v2})
         chip = self.win.page_status.rows[0].findChild(appmod.QLabel, "chip")
-        self.assertIn("Sisters of Mercy", chip.text())
+        self.assertIn("Sisters of Mercy", chip.toolTip())   # the chip text itself may be elided
 
     def test_hero_variant_odak(self):
         cfg = config.CONFIG_DIR

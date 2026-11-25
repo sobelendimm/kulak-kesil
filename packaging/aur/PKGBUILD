@@ -1,0 +1,52 @@
+# Maintainer: sobelendimm
+# Tag the release (vX.Y.Z) on GitHub first, then replace SKIP with the real
+# checksum (`updpkgsums`) and regenerate .SRCINFO (`makepkg --printsrcinfo > .SRCINFO`).
+pkgname=kulak-kesil
+pkgver=1.0.0
+pkgrel=1
+pkgdesc='Automatic per-app headphone EQ for PipeWire (routes each stream to an EQ output that fits it)'
+arch=('any')
+url='https://github.com/sobelendimm/kulak-kesil'
+license=('GPL-3.0-or-later')
+depends=('python>=3.11' 'python-numpy' 'python-pyqt6' 'pipewire' 'pipewire-pulse'
+         'libpulse' 'lsp-plugins-lv2' 'systemd')
+optdepends=('python-matplotlib: EQ curve plot (kulak eq-ciz)'
+            'python-jeepney: recognise music players and the browser over MPRIS'
+            'noise-suppression-for-voice: RNNoise noise suppression for the microphone'
+            'python-onnxruntime: audio analysis models (see docs/MODELS.md)')
+install=kulak-kesil.install
+source=("$pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+  cd "$pkgname-$pkgver"
+  local share="$pkgdir/usr/share/$pkgname"
+
+  # the program tree: config defaults are read from next to the package
+  install -d "$share"
+  cp -r oto_eq config "$share/"
+  install -Dm755 install.sh uninstall.sh -t "$share"
+  install -Dm644 systemd/*.service -t "$share/systemd"
+  install -Dm644 oto-eq.desktop oto-eq-tray.desktop -t "$share"
+  find "$share" -name '*.yedek*' -delete
+  chmod -R u=rwX,go=rX "$share"
+
+  # /usr/bin commands (same modules install.sh wraps into ~/.local/bin)
+  local name mod
+  for pair in kulak:oto_eq.cli kulak-app:oto_eq.app kulak-tepsi:oto_eq.tray; do
+    name=${pair%%:*}; mod=${pair#*:}
+    printf '#!/bin/sh\nexec env PYTHONPATH=/usr/share/%s /usr/bin/python3 -m %s "$@"\n' \
+      "$pkgname" "$mod" > "$name"
+    install -Dm755 "$name" "$pkgdir/usr/bin/$name"
+  done
+
+  # one-time per-user setup: writes the user's config and systemd user units,
+  # pointing them at /usr/share/kulak-kesil (idempotent)
+  printf '#!/bin/sh\nexec /usr/share/%s/install.sh "$@"\n' "$pkgname" > kulak-kur
+  install -Dm755 kulak-kur "$pkgdir/usr/bin/kulak-kur"
+
+  install -Dm644 oto-eq.desktop "$pkgdir/usr/share/applications/oto-eq.desktop"
+  install -Dm644 README.md README.tr.md docs/MODELS.md -t "$pkgdir/usr/share/doc/$pkgname"
+  install -Dm755 tools/download_models.sh "$share/tools/download_models.sh"
+  install -Dm644 LICENSE -t "$pkgdir/usr/share/licenses/$pkgname"
+}
