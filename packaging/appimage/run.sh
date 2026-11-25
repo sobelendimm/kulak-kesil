@@ -41,8 +41,17 @@ if [ ! -x "$dir/AppRun" ]; then
         echo "kulak-kesil: could not extract $APP" >&2
         exit 1
     fi
-    if [ -e "$dir" ]; then rm -rf "$tmp"; else mv "$tmp/squashfs-root" "$dir" && rmdir "$tmp"; fi   # parallel start won the race
+    if [ -e "$dir" ]; then rm -rf "$tmp"; else   # else: a parallel start did not win the race
+        if ! mv "$tmp/squashfs-root" "$dir"; then
+            rm -rf "$tmp"
+            echo "kulak-kesil: could not move the extracted copy into $dir" >&2
+            exit 1
+        fi
+        rmdir "$tmp"
+    fi
 fi
+# half-extracted leftovers of a killed start (a running extraction is younger than an hour)
+find "$CACHE" -maxdepth 1 -name '.extract.*' -mmin +60 -exec rm -rf {} + 2>/dev/null
 for old in "$CACHE"/*; do   # stale copies of replaced AppImages, unless still running
     [ -d "$old" ] && [ "$old" != "$dir" ] && ! in_use "$old" && rm -rf "$old"
 done
