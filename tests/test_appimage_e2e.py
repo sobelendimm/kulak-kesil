@@ -13,9 +13,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import pytest
-
-pytestmark = pytest.mark.e2e
+try:    # CI runs the suite with unittest, where pytest may be missing: the marker is only a convenience
+    import pytest
+    pytestmark = pytest.mark.e2e
+except ImportError:
+    pass
 
 ROOT = Path(__file__).resolve().parent.parent
 RUN = ROOT / "packaging/appimage/run.sh"
