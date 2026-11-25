@@ -57,6 +57,7 @@ class ScriptCase(unittest.TestCase):
                            'get-default-source) echo "alsa_input.x" ;; *) exit 0 ;; esac')
         for t in ("gio", "kbuildsycoca6", "setsid", "pkill"):
             self.stub(t, "exit 0")
+        self.stub("pgrep", "exit 1")        # uninstall.sh must never find (and kill) the developer's real tray
 
     def stub(self, name: str, body: str, where: Path | None = None) -> None:
         f = (where or self.stubs) / name
@@ -71,6 +72,7 @@ class ScriptCase(unittest.TestCase):
     def run_script(self, script: str, home: Path, *args: str, path: str | None = None,
                    src: Path = ROOT, env: dict | None = None) -> subprocess.CompletedProcess:
         e = {"HOME": str(home), "LANG": "C.UTF-8", "XDG_RUNTIME_DIR": str(home),
+             "TMPDIR": str(self.tmp),      # AppImage mounts are searched under $TMPDIR/.mount_kulak*
              "PATH": path or f"{self.stubs}:/usr/bin:/bin", **(env or {})}
         return subprocess.run(["bash", str(src / script), *args], env=e,
                               capture_output=True, text=True, timeout=120)

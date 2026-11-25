@@ -122,6 +122,18 @@ class Baslat(unittest.TestCase):
         self.assertEqual(r.stdout.strip(), "cached:--help", r.stderr)
         self.assertEqual(self.extractions(), 1)
 
+    def test_failed_probe_is_remembered_for_a_while(self):
+        r = self.run_("--help", fuse="probe", FAKE_MOUNT_FAIL="1")
+        self.assertEqual(r.stdout.strip(), "cached:--help", r.stderr)
+        self.assertEqual(len(list(self.cache.glob(".fuse-no-*"))), 1)
+        r = self.run_("--help", fuse="probe")     # mounting would work now, but the negative marker is fresh
+        self.assertEqual(r.stdout.strip(), "cached:--help", r.stderr)
+        for m in self.cache.glob(".fuse-no-*"):
+            os.utime(m, (0, 0))                   # marker older than an hour: probe again
+        r = self.run_("--help", fuse="probe")
+        self.assertEqual(r.stdout.strip(), "direct:--help", r.stderr)
+        self.assertEqual(list(self.cache.glob(".fuse-no-*")), [])
+
     def test_mount_probe_success_runs_directly_and_is_remembered(self):
         r = self.run_("--help", fuse="probe")
         self.assertEqual(r.stdout.strip(), "direct:--help", r.stderr)

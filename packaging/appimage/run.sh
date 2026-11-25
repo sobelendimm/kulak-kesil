@@ -32,6 +32,10 @@ fuse_probe() {  # `--appimage-mount` prints the mount point BEFORE it mounts: su
         sleep 0.1; i=$((i + 1))
     done
     kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null
+    if [ -n "${mnt:-}" ] && [ -e "$mnt" ]; then   # the runtime may leave its FUSE mount behind when killed
+        if command -v fusermount3 >/dev/null 2>&1; then fusermount3 -u -z "$mnt" 2>/dev/null
+        elif command -v fusermount >/dev/null 2>&1; then fusermount -u -z "$mnt" 2>/dev/null; fi
+    fi
     rm -f "$out"
     return "$res"
 }
@@ -39,9 +43,16 @@ fuse_probe() {  # `--appimage-mount` prints the mount point BEFORE it mounts: su
 fuse_ok() {
     case "${KULAK_KESIL_FUSE:-}" in 1) return 0 ;; 0) return 1 ;; probe) ;; *) fuse_static || return 1 ;; esac
     [ -e "$CACHE/.fuse-ok-$key" ] && return 0
-    fuse_probe || return 1
-    mkdir -p "$CACHE" 2>/dev/null && : > "$CACHE/.fuse-ok-$key"
-    return 0
+    # a failed probe is remembered for an hour (every start would otherwise wait for it again)
+    [ -n "$(find "$CACHE/.fuse-no-$key" -mmin -60 2>/dev/null)" ] && return 1
+    if fuse_probe; then
+        mkdir -p "$CACHE" 2>/dev/null || return 0
+        find "$CACHE" -maxdepth 1 -name '.fuse-*' -exec rm -f {} + 2>/dev/null   # markers of replaced builds
+        : > "$CACHE/.fuse-ok-$key"
+        return 0
+    fi
+    mkdir -p "$CACHE" 2>/dev/null && : > "$CACHE/.fuse-no-$key"
+    return 1
 }
 
 in_use() {  # some process runs from, or has mapped files of, this extracted copy (a tray/app started before an upgrade)

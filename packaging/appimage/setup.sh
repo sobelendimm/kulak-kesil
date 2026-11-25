@@ -47,9 +47,11 @@ for pair in kulak:--cli kulak-app:--app kulak-tepsi:--tray; do
 done
 
 # warms the extraction cache (no FUSE) so a failure shows here, not in systemd; it must not abort the setup
-"$LAUNCH" --help >/dev/null || echo "WARNING: the first launch test failed (see the message above); the services may not start until that is fixed" >&2
+WARMUP=0
+"$LAUNCH" --help >/dev/null || { WARMUP=1; echo "WARNING: the first launch test failed (see the message above); the services may not start until that is fixed" >&2; }
 systemctl --user daemon-reload
 systemctl --user enable oto-eq-sinks.service oto-eq.service oto-eq-mic.service
 systemctl --user restart oto-eq.service
 systemctl --user start oto-eq-sinks.service oto-eq-mic.service
 echo "Done. Commands: kulak, kulak-app, kulak-tepsi (in $BIN; add it to PATH if needed)"
+[ "$WARMUP" -eq 0 ] || { echo "ERROR: setup finished, but the launcher test failed (exit status 1)" >&2; exit 1; }

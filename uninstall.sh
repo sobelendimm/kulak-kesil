@@ -114,36 +114,6 @@ MGR_CFG="$(systemctl --user show-environment 2>/dev/null | sed -n 's/^XDG_CONFIG
 UNIT_DIRS=("$MGR_CFG/systemd/user")
 [[ "$CFG_HOME" == "$MGR_CFG" ]] || UNIT_DIRS+=("$CFG_HOME/systemd/user")
 
-say "$(L 'Tepsi ve pencere kapatılıyor' 'Closing the tray and window')"
-# Kill by PID, never `pkill -f`: (a) source installs: processes whose command line names the module;
-# (b) AppImage installs: processes whose executable lives in the extraction cache or in an AppImage mount.
-ME="$(id -u)"
-tray_pids() {
-    local p exe
-    for pat in 'oto_eq[.]tray' 'oto_eq[.]app'; do pgrep -u "$ME" -f "$pat" 2>/dev/null || true; done
-    for p in /proc/[0-9]*; do
-        [[ -O "$p" ]] || continue
-        exe="$(readlink "$p/exe" 2>/dev/null || true)"
-        case "$exe" in "$AI_CACHE"/*|*/.mount_kulak*/*) echo "${p#/proc/}" ;; esac
-    done
-}
-is_alive() { [[ -d "/proc/$1" ]] && ! grep -q ') Z' "/proc/$1/stat" 2>/dev/null; }   # a zombie is already gone
-mapfile -t PIDS < <(tray_pids | sort -un)
-if (( ${#PIDS[@]} )); then
-    for pid in "${PIDS[@]}"; do run kill "$pid" || true; done
-    if (( ! DRY )); then
-        for _ in 1 2 3 4 5 6 7 8 9 10; do
-            alive=0
-            for pid in "${PIDS[@]}"; do is_alive "$pid" && alive=1; done
-            (( alive )) || break
-            sleep 0.3
-        done
-        for pid in "${PIDS[@]}"; do
-            is_alive "$pid" && warn "$(L "süreç $pid kapanmadı; elle kapat (kill $pid)" "process $pid did not exit; close it by hand (kill $pid)")"
-        done
-    fi
-fi
-
 # never leave the user with a vanished default microphone
 if command -v pactl >/dev/null 2>&1 && \
    [[ "$(LC_ALL=C pactl get-default-source 2>/dev/null || true)" == "$MIC_SOURCE" ]]; then
@@ -178,6 +148,36 @@ for d in "${UNIT_DIRS[@]}"; do
 done
 run systemctl --user daemon-reload
 run systemctl --user reset-failed "${UNITS[@]}" 2>/dev/null || true
+
+say "$(L 'Tepsi ve pencere kapatılıyor' 'Closing the tray and window')"
+# Runs after the units are disabled (so systemd cannot respawn them). Kill by PID, never `pkill -f`: (a) source installs: processes whose command line names the module;
+# (b) AppImage installs: processes whose executable lives in the extraction cache or in an AppImage mount.
+ME="$(id -u)"
+tray_pids() {
+    local p exe
+    for pat in 'oto_eq[.]tray' 'oto_eq[.]app'; do pgrep -u "$ME" -f "$pat" 2>/dev/null || true; done
+    for p in /proc/[0-9]*; do
+        [[ -O "$p" ]] || continue
+        exe="$(readlink "$p/exe" 2>/dev/null || true)"
+        case "$exe" in "$AI_CACHE"/*|"${TMPDIR:-/tmp}"/.mount_kulak*/*) echo "${p#/proc/}" ;; esac
+    done
+}
+is_alive() { [[ -d "/proc/$1" ]] && ! grep -q ') Z' "/proc/$1/stat" 2>/dev/null; }   # a zombie is already gone
+mapfile -t PIDS < <(tray_pids | sort -un)
+if (( ${#PIDS[@]} )); then
+    for pid in "${PIDS[@]}"; do run kill "$pid" || true; done
+    if (( ! DRY )); then
+        for _ in 1 2 3 4 5 6 7 8 9 10; do
+            alive=0
+            for pid in "${PIDS[@]}"; do is_alive "$pid" && alive=1; done
+            (( alive )) || break
+            sleep 0.3
+        done
+        for pid in "${PIDS[@]}"; do
+            is_alive "$pid" && warn "$(L "süreç $pid kapanmadı; elle kapat (kill $pid)" "process $pid did not exit; close it by hand (kill $pid)")"
+        done
+    fi
+fi
 
 say "$(L 'Komutlar kaldırılıyor' 'Removing the commands')"
 for name in kulak kulak-tepsi kulak-app; do
